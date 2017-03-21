@@ -1,0 +1,14 @@
+1.由于对于osgi标准，osgi执行框架已经编写出来，有Equinox。就像Javaee平台已经编写出了web sever一样。
+  剩下给用户的、开发者的事情就是编写bundle。。即模块。即符合osgi标准的模块程序（比如具有Activitor。。同样地，可以实现其他符合osgi标准的需要暴露给osgi执行框架Equinox的接口，因为提供了其他服务，我们可以使用）。。
+  就像javaee平台中在项目部分要实现httpservlet接口等等javaee 规范标准一样。
+
+
+2.Helloword项目：
+   plugin-in project新建。
+  然后关键是run configuration的配置：
+		其中的关键是
+				1.依赖的bundle，或者说要加载的bundle。不建议全部都加载，但是基本的必须要。而且基本的所依赖的其他的bundle也要加载进来。如果eclipse中没有所依赖的bundle，那么要么下载，要么就直接将这个bundle同级的其他bundle加载进来。（或许因为同级的bundle里有相同的包）
+				2.运行参数 -console。会影响运行结果：程序参数-os ${target.os} -ws ${target.ws} -arch ${target.arch} -nl ${target.nl} -consoleLog -console
+									VM虚拟机参数：-Dosgi.requiredJavaVersion=1.7 -Xms256m -Xmx1024m -Declipse.ignoreApp=true -Dosgi.noShutdown=true
+	基本的bundle:		org.eclipse.osgi
+				org.eclipse.equinox.console（可以控制模块的osgi>标记符的出现）

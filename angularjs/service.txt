@@ -1,0 +1,2 @@
+1.注入问题，新建一个service,可以注入$http服务，但是不能注入$scope服务。因为service没有这个概念，因为各个controller都可以注入service,
+   而controller都有自己的$scope。所以service不存在$scope，只有controller才有。module也有。

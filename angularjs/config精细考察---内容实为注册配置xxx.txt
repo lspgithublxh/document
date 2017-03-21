@@ -1,0 +1,9 @@
+1.主要内容：“提供者”进行注册和配置：（其中，提供者 被注入到config回调函数中。常量也可以注入到这个回调函数中）
+  “提供者”：$provide 能够注册配置factory 
+              $compileProvider 能够注册配置directive
+	      $routeProvider 能够注册配置when ：url和（controller , template）的映射。。这个服务是angular-route里提供的。
+              ConnectionProvider 用处？
+
+
+2.执行时间：constant()之后，run()之前。
+    ---从上也可看，provider产生后、配置后才运行的config

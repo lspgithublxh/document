@@ -1,0 +1,2 @@
+1.打开服务 services.msc
+2.启动服务 net start 服务名（.exe前面部分 如有mysql.exe 则输入 net start mysql）

@@ -1,0 +1,17 @@
+                        基本流程：创建web项目后就可以打包war，打包war后就可以部署项目了。
+一、创建web项目:
+ mvn archetype:generate -DgroupId=com.lsp.gena -DartifactId=projectName -DarchetypeArtifactId=maven-archetype-webapp -DinteractivMode=false
+
+二、打包项目(jar) //当然要先配置号pom.xml  
+ mvn package   //均是在有pom文件的那个层次打开cmd执行。以便知道是对哪个项目进行打包
+   
+三、打包项目(war)//也要配置号pom.xml (包括dependency 和 build)
+
+ mvn package //pom基本配置
+
+四、部署项目(war)到maven插件型的jetty中   //jetty基本的配置要在pom.xml中对这种插件写好
+ mvn jetty:run //同样在web项目的pom显示级别即可。  则可以在浏览器中http://localhost:8080/index.jsp来访问到了。
+
+五、部署项目(war)到maven插件型的tomcat中  //tomcat7则要写好，而且版本是2.1 不能写成2.0-SNATSHOP这样的版本。
+ mvn tomcat7:run //同样在web项目的pom显示级别即可。在浏览器中http://localhost:9090/index.jsp来访问到了。
+  还有tomcat插件，mvn tomcat:run运行方式，道理类似。当然，还有其他的运行目标---而不止是run而已，如deploy 

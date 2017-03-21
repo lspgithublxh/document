@@ -1,0 +1,13 @@
+             					JSON传来传回前端的方式
+一、 @RequestMapping(value = "/all", method = RequestMethod.POST ,produces="application/json;charset=UTF-8")
+  其中produce控制的是返回的数据的类型和编码格式。。如果为json，那么返回的数据为json对象，而不是字符串(字符串转json字符串会加引号)。
+    如果为UTF-8，则中文显示是正确的，不是乱码。
+  
+二、使用了@RequestBody User user 。。此时xml里不用配置mappingJackson2HttpMessageConvertor也可以，自动封装到User里。
+   传到前台以中文也没有问题。且返回的是jsonstring。传过来也是jsonstring
+    此时即：@ResponseBody + @RequestBody + <mvc:annotation-driven/> + <context:component-scan  />即可。
+三、不用@ResponseBody ，只在xml里配置返回json。如何方式？实际上使用了convertor也不行
+
+
+						JSON传来传回页面的方式
+一、配置一个ViewResolver即可。不用@ResponseBody
