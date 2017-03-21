@@ -1,0 +1,3 @@
+ 1.tomcat7配置pom:https://my.oschina.net/lilw/blog/168667   一名架构师写的。可以买一本maven书来看---因为如果想要长远的发展，现在就必须开始阅读看书了，当然同步的做东西起来。
+                   https://my.oschina.net/lilw/home
+ 2.私服搭建nexus  http://blog.csdn.net/kingzone_2008/article/details/39454873

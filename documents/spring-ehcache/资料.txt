@@ -1,0 +1,15 @@
+一、性质：是CacheProvider,是分布式缓存，是进程内缓存。
+    1存储地：内存和磁盘，二级存储。（可扩展，可加载，可异常处理）。diskStore
+    2写入磁盘的时间：虚拟机重启。diskPersistent
+    3读出磁盘的时间：虚拟机重启。读取cache.index文件。
+    4分布式缓存实现方法：RMI,可插入API。
+    5部件：缓存管理器（多个可以，每个实多个例可以有缓存区域）
+    6缓存的内容：对方法的返回结果进行缓存。---只要方法的参数不变，则直接取缓存。
+    7缓存的时效：配置。
+    8缓存的个数超过设定值后：超出部分都写入磁盘中。也可以手动flush到磁盘。同时还要执行设置的清理内存策略：LRU(最近最少使用，闲逛最久),FIFO（先进先出），LFU（最少访问次数）。
+    9设定缓存的对象可以不被访问的最长时间：，之后就被清除。timeToIdleSeconds overflowToDisk eternal maxElementsInMemory memoryStoreEvictionPolicy
+    10设定缓存的对象最长的生存时间：，时间一过，也要被清除。timeToLiveSeconds 
+    
+二、实现办法：通过创建DAO接口的切面（代理类）来执行取缓存和存缓存的动作(程序)。
+    
+    

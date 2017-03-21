@@ -1,0 +1,17 @@
+        我的远端仓库地址：https://github.com/lspgithublxh/lspRepository
+一、安装完成之后，打开bash 
+   git config --global user.name "lsh"
+   git config --global user.email "1913796939@qq.com"
+  创建公钥：
+    ssh-keygen -t rsa -C "1913796030@qq.com"
+   参考资料：http://blog.jobbole.com/78960/
+
+二、常用命令：
+   仓库关联： git remote add GitHub https://github.com/lspgithublxh/lspRepository.git
+   git init
+   git remote add Git git@github.com:lspgithublxh/lspRepository.git
+   git add --all
+   git commit -m "add file"
+   git push Git master:web   //新分支
+
+   touch .gitignore  //创建gitignore文件

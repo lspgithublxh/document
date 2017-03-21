@@ -1,0 +1,7 @@
+					一、像javaee平台的实现包括server和项目两部分
+					osgi标准的实现也有两部分：一部分是osgi框架--(执行osgi项目)，另一部分就是符合osgi标准规范的项目
+					
+					二、osgi标准的项目的特征：
+			   1.Activitor:主函数类，入口类。是osgi框架（执行器）调用一个bundle的入口类。
+					
+					三、osgi实际运用场景：eclipse对插件的即插即用的管理，即使用osgi框架：Equinox。

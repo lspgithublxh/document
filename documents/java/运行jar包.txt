@@ -1,0 +1,6 @@
+一、基本方式
+  1.
+  java -jar D:\cmd.jar   //此时cmd.jar里面的META-INF/MENIFEST.MF中最后一行回车前加一行：Main-Class: com.lsp.gena.App
+  2.有lib方式：
+  java -Xms256m -Xmx512m -Djava.ext.dirs=D:\lib -cp D:\cmd.jar com\huawei\test\App   //-Xms -Xmx是指java堆区中的新生代的最小空间和最大空间
+

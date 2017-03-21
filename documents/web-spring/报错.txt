@@ -1,0 +1,2 @@
+一、jar包冲突：不同的包中出现了一个包名、名称都一样的两个东西，但一个是类，一个是接口。这样一旦引用了这个东西，往往就会出问题。
+		java.lang.IncompatibleClassChangeError: class org.springframework.core.type.classreading.ClassMetadataReadingVisitor

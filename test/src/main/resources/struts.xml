@@ -1,0 +1,70 @@
+
+<!DOCTYPE struts PUBLIC
+"-//Apache Software Foundation//DTD Struts Configuration 2.0//EN"
+"http://struts.apache.org/dtds/struts-2.0.dtd">
+<struts>
+
+	<!-- Dev Mode TRUE ; disable in production! -->
+	<constant name="struts.devMode" value="true" />
+
+	<package name="test" extends="struts-default">
+	
+	
+
+		<!-- Inicio Filters -->
+		<interceptors>
+			<!--  declarando classe para ser executada antes das Actions -->
+			<interceptor name="authentication"
+				class="com.lisi.addr.interceptor.ValidaLogin" />
+
+			<!-- Declarando ordem de execucao da pilha -->
+			<interceptor-stack name="interceptor">
+				<interceptor-ref name="authentication" />
+				<interceptor-ref name="defaultStack" />
+			</interceptor-stack>
+		</interceptors>
+
+		<!--  o default eh usar a pilha de ordenacao interceptor que primeiro autentica e depois segue o defaultStack -->
+		<default-interceptor-ref name="interceptor" />
+
+
+		<!-- Global Results -->
+		<global-results>
+			<!--  redireciona quando expira sessao para fazer login na pagina principal index.jsp -->
+			<result name="expired" type="redirectAction">index</result>
+		</global-results>
+
+		<!-- Inicio Actions -->
+		<action name="index">
+			<result>/index.jsp</result>
+			<interceptor-ref name="defaultStack"></interceptor-ref>
+		</action>
+
+		<!--  Hello World! http://localhost/webapp/hello to test -->
+		<action name="hello" class="com.lisi.addr.controller.HelloAction">
+			<result name="success">hello.jsp</result>
+			<interceptor-ref name="defaultStack"></interceptor-ref>
+		</action>
+
+		<action name="login" class="com.lisi.addr.controller.LoginAction"
+			method="login">
+			<!--  Tem que ser defaultStack se nao ele roda de novo pra autorizacao e fica loop na pagina -->
+			<interceptor-ref name="defaultStack"></interceptor-ref>
+			<result name="valid">sistema.jsp</result>
+			<result name="invalid">index.jsp</result>
+		</action>
+		
+		<!--  Action para testar Sistema de Session e Intercept -->
+		<action name="sessionTest" class="com.lisi.addr.controller.LoginAction"
+			method="sessionTest">
+			<result name="success">sessionTest.jsp</result>
+		</action>
+		
+		<!--  Action para fazer logout no sistema -->
+		<action name="logout" class="com.lisi.addr.controller.LoginAction"
+			method="logout">
+			<result name="success">index.jsp</result>
+		</action>
+
+	</package>
+</struts>

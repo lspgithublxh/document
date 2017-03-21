@@ -1,0 +1,48 @@
+1.重点研究对齐、位置这样的样式，而不是让每个部件怎么更优美的样式。因为后者可以直接利用已有的插件、别人做得很好了的插件。
+			    一、重点在于对block级别元素和inline-block级别元素的考察。inline级别则基本上只是元素本身的修饰。
+				然后是混合情形。block里面有inline的元素。inline之前元素怎么对齐的问题。
+
+1.盒子模型中的margin(其实也只是对元素本身所占区域的说明，包括padding, height\width也是)
+2.display
+3.top\bottom\left\right距离
+4.位置的继承
+5.元素是怎么一个一个布局上去的
+6.float：
+
+
+ 				二、布局的观点
+ 1.从上到下从左到右一个元素一个元素地布局。
+ 2.position的设置。分为：忽略、继承、绝对、相对四种。
+		    忽略是忽略tblr设置。相对是相对其正常位置。绝对包括相对于浏览器的绝对和相对于第一个非static的父元素的绝对定位。
+		    值有正负之分。
+				三、对齐的影响因素---没有对齐的原因
+1.在于样式里面，对某类元素下某类元素有padding和margin方面的专门设置。导致如果元素采用不是同一种结构（某类元素下某类元素），就会不对齐，对不齐。
+  所以要对齐，就要设置该类元素下该类元素的padding和display方面的值。比如padding-top display:block会影响位置。
+  第二，可以利用对齐的元素ul table.当然，如果元素复杂了，那么也要查看这些元素结构和里面的padding \margin\display设置情况，甚至是float的设置情况。
+
+				四、布局的方法（战术）
+1.背景和边框
+   直接设置backgroud-color border 宽样色 1px solid transparent/#080000;
+
+2.左边的距离、上下左右的距离
+  首先是对元素本身的margin设置\padding设置。。二者如何区分，设置哪个？看边框是否重要，来判断设置padding或者margin
+
+3.让后面的元素在它右方，紧随
+  float:left设置这个元素，那么后面的元素就会在它右方开始排布。
+
+4.对齐、居中
+  弹性布局。对于块居中可以。display:flex;justify-content:center;align-items:center; 同时，也可以padding设置左右上下的值一样，margin也是一样。就对齐了。
+  对于文本居中，text-align可以实现。
+  
+
+				五、布局的实战
+明确效果需求，再思考模拟方法。
+
+				六、布局的例子
+1.ul横向：全在于li标签的设置，因为li是块级元素默认，所以只要改变成行级就可以了。或者向左浮动也可以。
+2.分页按钮：border设置和li:first-child的设置border-top-left-radius之类就可以圆角效果了。
+3.div居中，或者说任何一个对象居中：可以外加div，对此div弹性设置：即display:flex;justify-content:center;就可以。什么是弹性设置？
+4.进度条，叠加，层层叠加起来的效果。。里层外层叠加起来的效果。
+
+
+				七、最佳布局：弹性盒子布局

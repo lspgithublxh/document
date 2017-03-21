@@ -1,0 +1,5 @@
+			1.整合资料：http://blog.csdn.net/gebitan505/article/details/44455235/
+			2.整合本质上要做的事情：
+		根本上就是要配置sessionFactory  这个bean 。然后是MapperScannerConfigurer(这个配置dao所在包和sessionFactory bean的 bean)
+		
+	

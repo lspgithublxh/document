@@ -1,0 +1,16 @@
+一、基本的xml配置解析
+    http://stevex.blog.51cto.com/4300375/1358043
+	http://blog.csdn.net/cdnsa/article/details/22268451  
+    更有security相关的标签，在jsp中可以使用,以及接口中方法的权限注解。。
+
+二、未登录访问资源：返回登录页面；
+    已经登录而访问没有权限、权限不足的资源：返回专门的页面 。配置：access-denied-page配置。。
+
+三、登录页面提交后的处理过程。三个步骤--三部分--即三块内容--即三个类--三个方法：认证方法(可以秘密的，开发人员不参与这个过程，只配置：存放全部用户信息的资源的路径和访问这个资源的账号密码)，取用户信息方法，权权比较方法。
+    结果就是认证成功或者失败的结论，及其处理类的配置。
+
+四、安全通道认证:tomcat中  Connnector标签下的  ssl配置:scheme="https" sslProtocol="TLS"
+
+
+   非常全面的安全机制：：各种认证：https://www.ibm.com/developerworks/cn/java/j-lo-springsecurity/
+  跨域访问配置：http://blog.csdn.net/behurry/article/details/38169279

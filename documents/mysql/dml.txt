@@ -1,0 +1,16 @@
+	一、数据库操作，表结构操作
+show databases;
+create database mydatabase;
+drop table myuser；   底层到底做了什么？有没有把相关文件也删除了，从而不能恢复？
+alter table user add home varchar(20) default 'haidian'
+alter table user drop home;
+alter table user change sex age int(3);//改名改类型
+	二、增加索引
+alter table user add index name_index(name)
+
+	三、增加数据（无主键）
+insert into user( name,sex,degree) values('lsp',9,45.33)
+        四、更新数据
+update user set sex=25 where id = 1
+ 
+
