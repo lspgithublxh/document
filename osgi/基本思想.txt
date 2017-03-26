@@ -5,3 +5,9 @@
 			   1.Activitor:主函数类，入口类。是osgi框架（执行器）调用一个bundle的入口类。
 					
 					三、osgi实际运用场景：eclipse对插件的即插即用的管理，即使用osgi框架：Equinox。
+					
+					四、bundle层次
+			1.其中更小的级别就是package:import package 和export package。
+			2.一个接口就可以注册为一个服务：。。BundleContext里面，是一个又一个的接口名和其实现类实例的映射对。
+					五、bundle中编写程序时，类的来源
+			jre lib 中（rt.jar,tool.jar,ext目录，endorsed目录） ---> system bundle导出的包里 ---> 依赖的bundle里（import fragment） --->自己.mf文件中的classpath 

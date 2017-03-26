@@ -1,1 +1,12 @@
 1.https://www.ibm.com/developerworks/cn/education/opensource/os-eclipse-osgi/
+2.http://blog.csdn.net/guobing965816/article/details/7905068
+3.将普通jar转换为osgi的jar ：http://www.tuicool.com/articles/MbY3mu
+4.环境搭建资料：http://blog.csdn.net/chen42955/article/details/52138264
+5.bundles仓库：http://git.eclipse.org/c/
+		http://maven.outofmemory.cn/org.eclipse.jetty.osgi/jetty-osgi-boot/
+		http://mvnrepository.com/artifact/org.eclipse.jetty.osgi
+		http://central.maven.org/maven2/org/eclipse/jetty/osgi/jetty-osgi-boot/     最有效的方式、最有效的地址
+
+6.http请求实现项目：http://blog.csdn.net/chen42955/article/details/52138264
+	https://examples.javacodegeeks.com/enterprise-Java/jetty/jetty-osgi-example/
+	https://www.eclipse.org/jetty/documentation/9.4.x/framework-jetty-osgi.html

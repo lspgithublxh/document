@@ -1,0 +1,3 @@
+1.不能超链接的原因：一般是打开该种类型文件的方式不对----这可以在windows/prefrences/general/editors/下面设置default打开的工具（程序）而实现。
+2.任意类的寻找，任意包的寻找：使用ctrl + shift + H来找会更方便！！
+3.任意变量名的查找，ctrl + H来找， 在File标签下搜索会搜索到结果！

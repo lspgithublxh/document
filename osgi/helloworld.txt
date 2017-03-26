@@ -1,0 +1,12 @@
+1.平台依赖的bundle：即target platform需要的：
+  javax ---- 5个
+  apache.felix  ---- 3个
+  eclipse.equinox  ----5个
+  eclipse.jetty ----9个
+  eclipse.osgi ---4个
+ ----上述不算事件，共有 26个。属于平台级别的。
+ ----项目本身会依赖包。包来自于哪些bundle？？从搜索来看，好像与平台无关。好像是全部的，因为配置osgi framework有多种选择。
+  ----是否运行的时候，项目所依赖的包一定来自于运行框架（即用户所配置的OSGi Framework的某个配置bundle集）？？
+
+2.http请求实现类在eclipse.equinox里面的包中
+  org.eclipse.equinox.http.servlet.ExtendedHttpService
