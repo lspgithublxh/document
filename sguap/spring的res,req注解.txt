@@ -1,0 +1,4 @@
+1.@RequestParam("key") Type name
+
+2.@PathVariable int num
+  对uri中某个段里数据提取出来。

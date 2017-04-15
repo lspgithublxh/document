@@ -1,0 +1,12 @@
+1.要解决的问题：
+   应用与应用之间通信的问题。即收发消息（实时）。
+2.实现的方案：（大致的原理）
+   发送方发送到  server的Exchanges, bindings将exchanges东西路由到server的queues里，queue将消息发送给之前订阅了这个label的接收方。
+并收到接收方返回的ack确定。
+
+3.发送数据的通信协议:TCP。并在上建立channel（可以理解为tcp一个进程，channel一个线程）。
+   从而可以保证客户端并发地发送消息，而不是一次次建立删除tcp连接。
+
+4.exchanges到queue的路由方式。
+   直接到一个queue,到全部的queue，到模式匹配到的queue三种routingkeys方式。
+

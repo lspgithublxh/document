@@ -1,0 +1,17 @@
+1.重定向发生在浏览器发起请求的时候，浏览器自己更新的。而不是浏览器在接收到请求的时候自己更新的！！
+  转发是服务端发生的事情，是资源的转发，是服务端执行了一个请求后继续接着执行另一个请求，这种从一个请求到下一个请求就叫做转发！！！
+  post 和 get是浏览器发送报文给服务端的两种报文格式而已。
+
+2.重定向的具体实现：一是可以在servlet中java代码实现，
+		    二是可以在jsp中嵌入代码来实现，
+                   三是可以在html中meta标签来做重定向！！<meta http-equiv="refresh" content="0;url=max/helloworld.action"> 0代表立即跳转。
+总之，重定向都是给浏览器发送一个信息，叫再次向服务端发起请求。
+
+3.浏览器端手动改变url的方式：
+    get方式：页面上：a标签点击；js中window.location.url重定向。ajax方式不会改变，无论是get/post方式请求/发送报文。
+    post方式：页面上：form中submit点击之后：url会被浏览器修改为form提交的url.。。
+
+4.servlet/action到jsp的重定向和转发
+  action到action的重定向和转发
+  
+6.filter中的转发和重定向

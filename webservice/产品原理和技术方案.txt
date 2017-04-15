@@ -1,0 +1,15 @@
+1.请求协议：
+ webservice客户端请求服务端的形式：http协议，post方式，且报文和返回的数据都是专门特定的xml格式。
+
+
+2.java客户端代码(和源代码)的生成：资料：http://blog.csdn.net/tianma630/article/details/8231224
+wsimport -keep -d d:\project\webservice -s d:\project\webs
+ervice -p com.yunhai.webservice -verbose http://localhost:8080/services/v2?wsdl
+
+-d 生成class文件
+-s 生成java文件
+-p 生成包结构
+3.绑定端口地址和服务后。通过http://localhost:8080/services/v2?wsdl浏览器中可以看到wsdl文档。
+  根据这个wsdl文档来编写客户端java代码，来访问发布的服务。（当然可以自动生成客户端java代码，即2.中方式）
+  参考：http://blog.csdn.net/hanxuemin12345/article/details/40163757
+

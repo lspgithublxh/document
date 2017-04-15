@@ -1,1 +1,3 @@
 1.极客网站：https://examples.javacodegeeks.com/enterprise-Java/jetty/jetty-osgi-example/
+2.jar包下载：http://mvnrepository.com/artifact/asm/asm-attrs/2.2.3
+3.系统软件下载：http://mirrors.sohu.com/

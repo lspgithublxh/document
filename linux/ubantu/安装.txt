@@ -1,0 +1,13 @@
+1.资源地址：
+  http://releases.ubuntu.com/precise/
+
+2.永久蜜月：
+	5A02H-AU243-TZJ49-GTC7K-3C61N
+   可以试一试：
+  	VY1DU-2VXDH-08DVQ-PXZQZ-P2KV8
+	VF58R-28D9P-0882Z-5GX7G-NPUTF
+	YG7XR-4GYEJ-4894Y-VFMNZ-YA296
+
+
+3.图形化界面用户名：lishaoping  密码：admin
+  命令行界面用户名：lixiaohai 密码:admin

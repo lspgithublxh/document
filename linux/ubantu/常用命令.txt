@@ -1,0 +1,4 @@
+1.资料：http://www.cnblogs.com/laov/p/3541414.html
+2.权限更改：sudo chmod 777 filename 对这个文件设置当前用户、当前用户组、其他用户的权限。
+            sudo chmod u+r g+w o+x filename 来对这个文件设置当前用户、当前用户组、其他用户的权限。
+
