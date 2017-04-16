@@ -9,4 +9,21 @@
 
 4.exchanges到queue的路由方式。
    直接到一个queue,到全部的queue，到模式匹配到的queue三种routingkeys方式。
+    exchanges 与queues之间本身有一个bindings key。这个key的值是要求的，相当一种级别。是允许的routing key值的总和，是正则模式。
+    而用户会指定一个exchanges 到queues的一个类型多种的routing key。 是分类到具体queue的一个具体级别，一个具体值。
+     匹配规则：即routing key 映射为什么正则模式的规则。fanout（广播）,direct(list contain方式)，topic（正则匹配到的方式）
 
+5.多host方式
+   一个host就有一套：exchanges,bindings,queues。来实现权限化用户。用户exchanges queues之间的通信隔离，命名空间隔离。
+
+
+6.api（即它所实现的方法中公开的方法和对象（类，接口），外部程序可以使用这些对象、接口调用相应的方法。它会执行具体的实现该方法功能的操作）
+    （物理上看，就是加载对象代表的文件即二进制代码到内存中，执行所调方法对应的二进制代码处开始执行，来自动执行相应的二进制代码并产生相应的效果结果）
+
+7.可配置的功能参数：
+  7.1queue一次发送给消费者的消息的条数。prefetchCount。
+  7.2交换机、队列、消息的持久化：durable。其中交换机和队列直接设置durable属性。而消息于发送者有关，所以是发送方指定delivery mode决定的。
+
+8.rpc调用（remote procedure call ）
+   关键是消费者收到消息并处理完成后发送ack到server后，server进一步如何转发给生产者。
+   这里采用了消息转发的方式，直接将ack结合请求的id封装为消息发送到生产者订阅的queue里，这样生产者就收到了消息。
