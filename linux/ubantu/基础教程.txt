@@ -2,3 +2,5 @@
 2.http://www.cnblogs.com/dutlei/archive/2012/11/20/2778327.html
 
 3.ĞéÄâ»úÉÏÍøÅäÖÃ£ºhttp://blog.csdn.net/terryzero/article/details/6016130
+
+4.ÍøÂç£ºhttp://www.slyar.com/blog/vmware-bridged-nat-hostonly.html
