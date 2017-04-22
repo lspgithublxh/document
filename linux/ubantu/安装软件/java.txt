@@ -1,0 +1,2 @@
+1.一是解压tar.gz
+  二是加环境变量于/etc/profile

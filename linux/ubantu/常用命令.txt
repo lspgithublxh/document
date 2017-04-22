@@ -19,4 +19,57 @@
   sudo ps -e|grep ssh //查看sshd是否启动
 
 
+7.创建文件：touch 文件名.txt
+  编辑文件：vim 文件名.txt。可以。
+  重定向输入文件: ls -al > 文件名.txt。（将ls -al产生于控制台的信息输入到所选文件中）
+                  ls -al >> 文件名.txt。追加方式。
 
+
+
+8.tar 解压文件
+
+
+9.搜索程序：whereis
+
+10.进程管理：进程有子进程。
+   ps 显示进程。
+   
+11.磁盘和内存管理
+   mount 挂载
+   cfdisk 查看所有磁盘分区信息
+
+12网络和硬件管理
+  ifconfig
+  ficonfig 网卡 up|down 激活网卡
+  route add -net 路由地址 gw网关地址 netmask 子网掩码 dev网卡
+  ip link show  显示网卡配置
+  ping ip地址 向目标地址发送ICMP封包
+
+13.系统
+  系统位数：getconf LONG_BIT    //32位则安装x86软件
+
+14.查看软件包信息
+   rpm -qa |grep gcj
+15.卸载软件
+   yum -y remove 软件名
+16.创建目录：mkdir -p /usr/lib/java
+
+17.文件查找： find /usr -name "*jdk*.gz"  //模糊查找
+
+18.解压文件.gz
+  tar zxvf 文件 -C /usr/java   （gzip 压缩，find  x为提取，v为详细信息）
+  tar xf 文件 
+
+
+19.编辑文件 
+   vi 文件名  
+   vim 文件名
+   按i 进入编辑。 ok后按esc退出编辑。:wq保存退出
+
+20.source /etc/profile 使配置文件立即生效
+
+21.进程端口占用查看：lsof -i:8080
+
+22.ubuntu版本： lsb_release -a
+
+23.防火墙规则：iptables -L -n
