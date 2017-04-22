@@ -22,4 +22,5 @@
       --客户端代理   --服务端代理   --网关代理
   4.2均衡例子：
      服务端代理方式：  Apache + JK2   。Apache server + tomcat server
-                  前端处理器：  
+                  前端处理器：  apache server上的httpd服务
+

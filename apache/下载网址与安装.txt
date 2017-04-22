@@ -1,0 +1,8 @@
+1.http://mirrors.tuna.tsinghua.edu.cn/apache/
+2.http://mirrors.hust.edu.cn/apache/
+
+
+二、安装：
+ 一步一步选择。
+ 最后在cmd下执行httpd -k install
+ 安装url:http://indian.blog.163.com/blog/static/1088158200755105546704/

@@ -1,0 +1,25 @@
+配置教程：http://www.cnblogs.com/litubin/articles/4795248.html
+ 	http://blog.csdn.net/mzy666888/article/details/50714970
+
+1.下载mod_jk-1.2.31-httpd-2.0.52.so（版本要和apache统一匹配）
+   下载地址：http://archive.apache.org/dist/tomcat/tomcat-connectors/jk/binaries/win32/jk-1.2.31/
+   放到apache server的/modules文件夹下。
+
+2.在conf下新建mod_jk.conf, workers.properties两个文件。
+
+//配置负载均衡
+3.httpd.conf中加内容：
+ mod_jk.conf, workers.properties也加内容
+
+//配置session复制
+
+4.tomcat1,tomcat2中server.xml中添加集群内容（消除单机上的端口冲突）
+
+5.apache http server启动完全不用java。它不是用java写的。
+
+6.配置完成后，重启电脑，后apache http server自动运行了。此时启动tomcat1,tomcat2，
+  那么先启动的会接收到后启动的tomcat的消息。因为必然是tomcat2广播了一个启动消息。
+  一台电脑上发出的请求，无论在多个浏览器下还是单个，处理的服务器都会是一个。可见后端服务器是根据前端ip来的（或许还不是session，因为两个浏览器访问时session是不一样的）。
+
+   ----完成负载均衡。。小集群。
+  
