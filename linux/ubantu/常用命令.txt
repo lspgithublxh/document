@@ -52,7 +52,7 @@
    rpm -qa |grep gcj
 15.卸载软件
    yum -y remove 软件名
-16.创建目录：mkdir -p /usr/lib/java
+16.创建目录（包括父目录没有都一起创建）：mkdir -p /usr/lib/java
 
 17.文件查找： find /usr -name "*jdk*.gz"  //模糊查找
 
@@ -73,3 +73,19 @@
 22.ubuntu版本： lsb_release -a
 
 23.防火墙规则：iptables -L -n
+
+24.创建符号链接 : In -s /路径1  /路径2（名称也可以）。从而可以从路径2跳转到路径1
+
+25.rpm安装库so
+   
+
+26.yum安装库so
+
+27.apt-get安装库也可以：
+  apt-get install libaio1 libaio-dev
+
+28.改变文件的所有者或和群组：
+  chown -R mysql data （只改变所有者）
+  chown redhat3:redhat3 /home/test/ （改变了所有者和归的群组）
+  chgrp -R mysql .  （递归改变当前所有文件所有组为mysql）
+  chkconfig --add mysql.server  （增加一项服务）

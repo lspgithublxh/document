@@ -1,0 +1,77 @@
+1.系统可以扩展（因为数据量会增多，业务会越来越多。。统一管理，就需要中在同一个网络增加服务器）
+
+2.系统高可用（容纳处理服务故障）
+
+3.最基本网络架构（局域网）：
+   3.1 管理节点（1）： 提供的服务（2）：nbd_mgm （可以查看集群的状态：看其中mysql服务器、存储节点服务器的连接等状态。进入服务后使用命令：show.）
+                                        nbd_mgmd （启动服务时，用来启动config.ini文件）（config.ini定义了管理节点和存储节点的ip等，类似my.ini配置结构）
+                                             ndb_mgmd -f /var/lib/mysql-cluster/config.ini --initial
+   3.2 mysql服务器节点（1）：提供的服务（2）： mysql （此命令运行就可以进入数据库，执行建表查询等sql命令了）
+					       mysql.server start （启动时用的）（或是mysqld服务）
+                                               mysqld --initial :安装时，启动之前，还有个初始化创建数据库的过程。
+   3.3 存储节点（2）：提供的服务（1）：ndbd （启动存储服务时用）
+					 ndbd --initial
+ 
+4.参考资料：http://blog.csdn.net/z_102865/article/details/52162492
+           http://www.cnblogs.com/CareySon/p/3627594.html
+  ubuntu 下：http://www.2cto.com/database/201501/370976.html
+  软件下载：mysql-cluster-gpl-7.3.7-linux-glibc2.5-x86_64.tar.gz   https://dev.mysql.com/downloads/file/?id=454198
+  	   官方下载：https://dev.mysql.com/downloads/cluster/
+           国内网站下载：http://mirrors.sohu.com/mysql/MySQL-Cluster-7.5/
+  全部安装资料：http://www.linuxdiyf.com/linux/25224.html
+	     http://blog.csdn.net/worisaa/article/details/60879761
+  官方文档：https://dev.mysql.com/doc/refman/5.7/en/mysql-cluster-quick.html
+		https://downloads.mysql.com/tutorials/cluster/mysql_wp_cluster_quickstart_linux.pdf
+
+
+5.配置过程：极其简单：
+   四台服务器上安装好Mysql后：
+   5.1：配置mysql服务器、两台存储服务器的系统配置文件：/etc/my.cnf	
+						内容是mysqld 、ndbd 、nbd_mgm 、 nbd_mgmd的指向：即指向管理服务器（ip会指出）。
+   5.2：配置管理服务器的config.ini文件：一个在新建的文件夹下建立的文件
+                                            内容是：本管理节点的ip和存储节点的ip为主的键值对。
+   5.3：建立表格时：要求engine=ndbcluster
+
+6.集群要实现的功能：
+  6.1负载均衡：
+  6.2数据冗余：（备份）（容灾）
+
+  ----前端（客户端）所见高可用，后端就是容灾备份（实现）。
+  ----前端（客户端）所见高性能，后端就是负载均衡（实现）。
+
+  数据分片。也是集群要实现的功能----更像是分布式数据库了（hadpoop）
+
+7.数据库同步：
+  同步结构：share-disk（一个存储中心，多个数据库引擎。每个数据库引擎都活跃为外部提供服务）
+            share-nothing（有负载均衡那种）：每台数据库服务器都有一个引擎和一个完整存储。数据库服务器之间数据的变化会同步传输到其他节点上。节点之间心跳检测知道存活，仲裁文件知道修改，虚拟ip知道地址。
+                                             同时有主节点（客户端请求调度均衡节点）
+
+8.数据库分片
+
+
+9.数据库事务隔离级别：
+   事务特性有A（原子性）C（一致性）I（隔离性）D（持久性）
+   其中隔离性：通过给每个事务专门的空间实现：
+          隔离级别：     多个事务在并发时：一个事务对另一个事务做的插入、更新可以进行提交前后提交后的可见和不可见的约束。
+
+10.mysql 主从复制
+
+11.实际安装：
+  安装节点上的数据库，初始化时：
+  1.   apt-get install libaio1 libaio-dev
+  2.   ./mysqld --initialize
+
+  ----本质过程就是：
+   a.编写配置文件：conf.ini（管理节点，需要5个条目[ndbd default] 、[ndb_mgmd] 、 [ndbd] 、[ndbd] 、 [mysqld]）
+		   my.cnf （数据节点，只需要 [mysql_cluster]条目；
+			    mysqld节点：还需要一项：[mysqld]条目）
+   b.启动服务：ndb_mgmd -f  /var/lib/mysql-cluster/config.ini --initial  //（config安装路径）
+               mysql.server start  （mysql.server是 解压后/support-files/mysql.server复制到 /etc/init.d/目录下而来）
+               ndbd --initial
+               ndbd --initial
+
+   （另外， mysqld节点，数据库初始化 mysqld --initial）
+   //结论，同一个mysql集群数据库安装包，配置不同的文件，使用不同的命令启动，它就可以表现为不同的角色（管理节点，mysqld节点，数据节点）
+           不同角色是否可以部署到一台机器上？（同一种肯定不行，因为端口占用）
+            管理节点：1186
+          
