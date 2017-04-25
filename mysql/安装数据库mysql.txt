@@ -10,6 +10,7 @@
 
   参考资料：https://jingyan.baidu.com/article/597035521d5de28fc00740e6.html
      以及官方文档！！
+    linux下：http://blog.csdn.net/ljbmxsm/article/details/50612777
 
 2.更改密码：
   一个cmd中：net stop mysql

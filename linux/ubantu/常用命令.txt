@@ -12,7 +12,7 @@
 5.下载：wget http://....资源路径。（下载图片已经成功）。
    粘贴： 在编辑菜单中。有粘贴项目，可以实现windows到虚拟机的粘贴。
 
-
+//这也是安装虚拟机首先要做的事情：
 6.虚拟机上安装openssh-server。这样宿主机方便访问：参考：http://jingyan.baidu.com/article/9c69d48fb9fd7b13c8024e6b.html
   sudo apt-get update//可以运行两次
   sudo apt-get install openssh-server
