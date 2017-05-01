@@ -1,0 +1,124 @@
+1.osgi框架其实是一个jar包的动态管理器：
+  ---类和接口的定义信息的重新加载（在方法区,perm space）。
+
+
+2.bundle型jar的加载（卸载，重新加载等）都要通过调用osgi框架实现，调用bundle中的服务也要通过osgi框架来实现。。
+
+
+
+3.正确依赖资料（16个）：
+	http://fokman.iteye.com/blog/2242675
+0	ACTIVE      org.eclipse.osgi_3.10.102.v20160118-1700
+1	ACTIVE      org.apache.felix.gogo.runtime_0.10.0.v201209301036
+2	ACTIVE      org.eclipse.equinox.http.jetty_3.1.2.v20160115-1350
+3	ACTIVE      org.eclipse.equinox.console_1.1.100.v20141023-1406
+4	ACTIVE      org.eclipse.jetty.util_9.2.13.v20150730
+5	ACTIVE      org.eclipse.jetty.continuation_9.2.13.v20150730
+6	ACTIVE      org.eclipse.jetty.servlet_9.2.13.v20150730
+7	ACTIVE      org.eclipse.jetty.http_9.2.13.v20150730
+8	ACTIVE      org.eclipse.jetty.io_9.2.13.v20150730
+9	ACTIVE      org.apache.commons.logging_1.1.1.v201101211721
+10	ACTIVE      org.eclipse.equinox.http.servlet_1.2.2.v20160202-2102
+11	ACTIVE      org.eclipse.jetty.server_9.2.13.v20150730
+12	ACTIVE      org.apache.felix.gogo.command_0.10.0.v201209301215
+13	ACTIVE      javax.servlet_3.1.0.v201410161800
+14	ACTIVE      org.apache.felix.gogo.shell_0.10.0.v201212101605
+15	ACTIVE      org.eclipse.osgi.services_3.5.0.v20150519-2006
+16	ACTIVE      org.eclipse.jetty.security_9.2.13.v20150730
+
+  有了上述的16个jar，则服务可以启动了。这是一种将httpserver嵌入到osgi框架中的办法（这里是jetty服务器）
+
+3.2带有插件工程的项目的平台依赖（第23号即是用户写的插件工程）：
+0	ACTIVE      org.eclipse.osgi_3.10.102.v20160118-1700
+	            Fragments=7
+1	ACTIVE      org.eclipse.equinox.common_3.7.0.v20150402-1709
+2	ACTIVE      org.eclipse.core.expressions_3.5.0.v20150421-2214
+3	ACTIVE      org.eclipse.core.contenttype_3.5.0.v20150421-2214
+4	ACTIVE      org.eclipse.core.commands_3.7.0.v20150422-0725
+5	ACTIVE      com.ibm.icu_54.1.1.v201501272100
+6	ACTIVE      org.eclipse.team.core_3.7.100.v20150203-1452
+7	RESOLVED    org.eclipse.osgi.compatibility.state_1.0.100.v20150402-1551
+	            Master=0
+8	ACTIVE      org.eclipse.ant.core_3.4.0.v20150428-1928
+9	ACTIVE      org.eclipse.equinox.jsp.jasper.registry_1.0.300.v20130327-1442
+10	ACTIVE      org.eclipse.equinox.jsp.jasper_1.0.500.v20150119-1358
+11	ACTIVE      org.eclipse.equinox.preferences_3.5.300.v20150408-1437
+12	RESOLVED    org.eclipse.jdt.compiler.apt_1.2.0.v20150514-0146
+	            Master=29
+13	ACTIVE      org.eclipse.osgi.services_3.5.0.v20150519-2006
+14	ACTIVE      javax.annotation_1.6.0
+15	ACTIVE      org.eclipse.core.jobs_3.7.0.v20150330-2103
+16	ACTIVE      javax.inject_1.0.0.v20091030
+17	RESOLVED    org.eclipse.jdt.compiler.tool_1.1.0.v20150513-2007
+	            Master=29
+18	ACTIVE      javax.servlet.jsp_2.2.0.v201112011158
+19	RESOLVED    org.eclipse.core.resources.win32.x86_64_3.5.0.v20140124-1940
+	            Master=27
+20	ACTIVE      org.eclipse.core.runtime_3.11.1.v20150903-1804
+21	ACTIVE      org.eclipse.text_3.5.400.v20150505-1044
+22	ACTIVE      org.eclipse.equinox.console_1.1.100.v20141023-1406
+23	ACTIVE      pluginProject_1.0.0.qualifier
+24	ACTIVE      javax.el_2.2.0.v201303151357
+25	ACTIVE      org.eclipse.compare.core_3.5.500.v20150505-1058
+26	ACTIVE      org.eclipse.core.variables_3.2.800.v20130819-1716
+27	ACTIVE      org.eclipse.core.resources_3.10.1.v20150725-1910
+	            Fragments=19
+28	RESOLVED    org.eclipse.core.runtime.compatibility.registry_3.6.0.v20150318-1505
+	            Master=31
+29	ACTIVE      org.eclipse.jdt.core_3.11.2.v20160128-0629
+	            Fragments=17, 12
+30	ACTIVE      javax.xml_1.3.4.v201005080400
+31	ACTIVE      org.eclipse.equinox.registry_3.6.0.v20150318-1503
+	            Fragments=28
+32	ACTIVE      org.apache.jasper.glassfish_2.2.2.v201501141630
+33	ACTIVE      org.eclipse.equinox.http.registry_1.1.300.v20130402-1529
+34	ACTIVE      org.eclipse.core.filesystem_1.5.0.v20150725-1910
+	            Fragments=36, 35
+35	RESOLVED    org.eclipse.core.filesystem.java7_1.0.100.v20150423-0754
+	            Master=34
+36	RESOLVED    org.eclipse.core.filesystem.win32.x86_64_1.4.0.v20140124-1940
+	            Master=34
+37	ACTIVE      javax.servlet_3.1.0.v201410161800
+38	ACTIVE      org.eclipse.equinox.app_1.3.300.v20150423-1356
+39	ACTIVE      org.apache.felix.gogo.command_0.10.0.v201209301215
+40	ACTIVE      org.apache.felix.gogo.runtime_0.10.0.v201209301036
+41	ACTIVE      org.apache.felix.gogo.shell_0.10.0.v201212101605
+
+
+4.将equinox放到web容器中进行开发：
+   4.1参考资料：http://blog.csdn.net/jay1110c/article/details/52287850
+             https://www.ibm.com/developerworks/cn/web/0907_osgiweb_liuqing/
+
+   4.2额外注意的内容：
+      4.2.1 MENIFEST.MF里面的输入输出包、Require-Bundle的版本（和web项目提供的一样）、Bundle-ClassPath的内容
+      4.2.2 plugin.xml里面各个扩展点分别匹配的请求路径
+      4.2.3 build.properties的配置，在build、Runtime里面可以配置
+
+   嵌入到web项目后启动插件项目时的依赖：
+  id	State       Bundle
+0	ACTIVE      org.eclipse.osgi_3.3.0.200704022148
+	            Fragments=17
+1	ACTIVE      org.eclipse.equinox.common_3.3.0.200704022148
+2	ACTIVE      org.eclipse.update.configurator_3.2.100.v20070322
+3	ACTIVE      org.eclipse.equinox.http.servletbridge_1.0.0.200704022148
+4	ACTIVE      org.eclipse.equinox.http.registry_1.0.0.200704022148
+5	RESOLVED    javax.servlet.jsp_2.0.0.v200806031607
+6	INSTALLED   javax.servlet_3.1.0.v201410161800
+7	RESOLVED    org.apache.commons.el_1.0.0.v200806031608
+8	RESOLVED    org.apache.commons.logging_1.0.4.v20080605-1930
+9	RESOLVED    org.apache.jasper_5.5.17.v200806031609
+13	ACTIVE      org.eclipse.equinox.http.servlet_1.0.0.200704022148
+14	ACTIVE      org.eclipse.equinox.jsp.jasper.registry_1.0.0.v20080427-0830
+15	ACTIVE      org.eclipse.equinox.jsp.jasper_1.0.100.v20080427-0830
+16	ACTIVE      org.eclipse.equinox.registry_3.3.0.v20070318
+17	RESOLVED    org.eclipse.equinox.servletbridge.extensionbundle_1.0.0
+	            Master=0
+18	RESOLVED    org.eclipse.osgi.services_3.1.100.200704022148
+21	ACTIVE      pluginProject_1.0.0.201705011710
+
+
+5. servletbridge的功能：
+   加载bundle，安装到bundleContext,启动bundle.
+   注册插件里面的servlet到httpservice。当web container的请求转发到这里时，转发（调用httpservice）到相应的servlet。
+ 
+   参考资料：http://www.cnblogs.com/jdluojing/p/4201814.html

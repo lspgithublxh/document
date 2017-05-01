@@ -89,3 +89,19 @@
   chown redhat3:redhat3 /home/test/ （改变了所有者和归的群组）
   chgrp -R mysql .  （递归改变当前所有文件所有组为mysql）
   chkconfig --add mysql.server  （增加一项服务）
+
+
+29.内核升级：sudo apt-get install linux-image-generic-lts-raring linux-headers-generic-lts-raringsudo apt-get install --install-recommends linux-generic-lts-raring xserver-xorg-lts-raring libgl1-mesa-glx-lts-raring
+
+30重启：sudo reboot
+
+31.putty上传文件：pscp D:\tool\0321_2.jpg lixiaohai@192.168.180.135:/home/lixiaohai/
+
+
+32.网络工具:nc命令（瑞士军刀）
+   传输文件:
+		接收方监听:nc -lp 1234 > install.log
+                传输方发送：nc -w 1 192.168.228.222 1234 < install.log
+   聊天：
+		接收方：nc -lp 1234
+                传输方发送：nc 192.168.228.222 1234

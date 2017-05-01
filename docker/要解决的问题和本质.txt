@@ -1,2 +1,73 @@
 1.本质：是有单一操作系统的并在该操作系统上创建出了大量的相互隔离的环境（文件系统）（容器）的虚拟机（VM）。轻型虚拟机。
   每个容器都可以部署/安装大量的应用。每个容器之间相互隔离，互不知道。
+
+
+2.层次：应用（web、数据库、hadoop集群、消息队列） ----- 容器 ------- 操作系统
+   容器之间没有任何接口。
+
+3.c/s架构方式（客户端，主机），客户端通过api与主机上的docker守护进程通信，如创建docker容器。
+   3.1使用docker镜像创建容器。一个docker镜像创建多个docker容器。
+   3.2docker镜像是创建容器的模板，docker仓库中有大量的docker镜像。
+   3.2安装docker，用docker machine这个命令行工具。
+
+4.安装和启动...：（最新的ubuntu上）
+     4.1 sudo apt-get install docker.io
+     4.2 sudo service docker start
+     4.3 sudo docker version
+      搜索相关镜像：sudo docker search centos
+      已经下载的镜像：sudo docker images
+       下载镜像：sudo docker pull learn/tutorial
+
+     4.4 事前准备：
+      添加蜜月：sudo apt-key adv --keyserver hkp://pgp.mit.edu:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
+        添加docker源：sudo vim /etc/apt/sources.list.d/docker.list
+                      加入 # Ubuntu xenial
+			    deb https://apt.dockerproject.org/repo ubuntu-xenial main
+
+5.功能、用途：
+
+
+6.镜像：
+  在迭代，会随着编辑和保存而产生新的版本。新版本的容器。
+
+7.容器：
+  一个容器一个进程。
+
+8.LXC（具有资源核算的关键功能）
+
+9.安装网站：http://www.tuicool.com/articles/JBnQja
+		http://www.tuicool.com/articles/iIja2ay
+   
+  下载网站：https://apt.dockerproject.org/repo/pool/main/d/docker-engine/
+               https://pkgs.org/
+	
+  原理资料：http://blog.csdn.net/zjin_hua/article/details/52041757
+
+
+
+10.安装和启动：在root用户目录下：
+  10.1 查看安装后的状态：docker status
+  10.2 立即先启动（才可以使用其他命令）：docker start   （另一种运行方式：update-rc.d docker defaults）
+  10.3 下载镜像：docker pull ubuntu
+  10.4 查看镜像和自己的版本：docker images   ; docker version
+  10.5 利用下载的镜像，运行它产生一个容器：docker run -i -t ubuntu  并且进入到了ubuntu容器中。（一个容器一个进程）
+  10.6 运行镜像--即会进入该容器，如果没有会自动下载它：docker run -it centos /bin/bash
+  10.7 查看还在运行中的容器进程：docker ps
+
+  10.7 网络连接： nc -U /var/run/docker.sock 两次回车
+
+11. 循环安装的问题：ubuntu里安装docker ,docker里安装centos容器，centos容器里再安装docker。。。。
+
+
+12. Dockerfile问题
+
+13. docker目录文件： /var/lib/docker里面
+                     /var/run/docker里面也有内容 /var/run下也有docker.sock等文件
+
+
+14. 下载镜像的过程：
+    客户端（用户在客户端输入脚本，输入命令）发送信息到docker deamon, deamon 发送信息到 docker hub, 拉下来 镜像后创建容器，并运行容器，产生信息后还发送给客户端。
+    
+
+15. 容器之间的通信（四种网络模式，容器都可以有自己独立的ip,像虚拟机一样）。。
+

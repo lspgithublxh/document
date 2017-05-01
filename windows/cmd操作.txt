@@ -1,2 +1,7 @@
 1.打开服务 services.msc
 2.启动服务 net start 服务名（.exe前面部分 如有mysql.exe 则输入 net start mysql）
+
+3.查看端口占用情况：netstat -ano
+  查看某个端口被那个进程占用：netstat -ano|findstr "8080"
+  查看进程id对应的程序：tasklist|findstr "1520"
+  结束该进程：taskkill /f /t /im httpd.exe （也可以任务管理器里面显示pid列后关闭该进程）
