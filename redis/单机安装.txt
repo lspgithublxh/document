@@ -1,1 +1,31 @@
 1.网址：http://blog.csdn.net/lexang1/article/details/52381949
+  1.2安装网址：http://www.cnblogs.com/langtianya/p/5187681.html
+
+2.安装：
+  2.1 解压：tar -xvf redis-3.0.6.tar.gz
+  2.2 编译：sudo make （先安装tcl： sudo apt-get install tcl）
+  2.3 测试编译后的状态：sudo make test（进入src目录） 
+  2.4 启动redis服务端进程：   进入src目录： ./redis-server
+  2.5 启动客户端进程： src下：./redis-cli
+  2.6 客户端命令：
+       set key value
+       get key
+       incr key （自增1）
+       rpush list item
+       lrange list beginIndex endIndex （读取，不是弹出）
+       lpop list （弹出左边第一个元素）
+ 
+       sadd key value（加元素）
+       smembers key （查看元素）
+       scard key （取出个数）
+
+       hset key field value    （map对象）
+       hget key field
+       hgetall key
+       hkeys key
+       hvals key
+   
+       sort list 排序 
+      
+       subscribe pingdao  订阅（某一个客户端，可以多个）
+       publish pingdao "content"  发布 （另一个客户端，可以多个）
