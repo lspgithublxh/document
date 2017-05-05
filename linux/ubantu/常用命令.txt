@@ -96,7 +96,7 @@
 30重启：sudo reboot
 
 31.putty上传文件：pscp D:\tool\0321_2.jpg lixiaohai@192.168.180.135:/home/lixiaohai/
-
+   //cmd上运行上述命令
 
 32.网络工具:nc命令（瑞士军刀）
    传输文件:
@@ -105,3 +105,8 @@
    聊天：
 		接收方：nc -lp 1234
                 传输方发送：nc 192.168.228.222 1234
+
+
+33. 文件重命令：
+   mv  filename1 filename2
+
