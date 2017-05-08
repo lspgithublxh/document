@@ -1,0 +1,8 @@
+1.解压tar -zxvf jdk1....
+   移动到创建的/usr/local/java中
+  vim /etc/profile
+  写下：JAVA_HOME=/usr/local/java
+        CLASSPATH=$JAVA_HOME/lib
+        PATH=$PATH:$JAVA_HOME/bin
+        export JAVA_HOME CLASSPATH PATH
+  保存退出。执行：source /etc/profile
