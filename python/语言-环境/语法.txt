@@ -1,3 +1,4 @@
+参考资料：http://www.crifan.com/files/doc/docbook/python_beginner_tutorial/release/html/python_beginner_tutorial.html
 1.本质
   是一种解释型语言：像javascript一样。
 
