@@ -1,0 +1,3 @@
+1.资料：http://www.cnblogs.com/skyme/archive/2011/10/26/2223984.html
+2.路线事务：http://www.ibeifeng.cn/page/hadoop.html?hmsr=cn-bdss&hmmd=cpc&hmpl=pb306-hadoop&hmcu=g0701-意图不明&hmkw=52998945750_hadoop权威指南第三版%20中文%20pdf&hmci=12842413821
+
