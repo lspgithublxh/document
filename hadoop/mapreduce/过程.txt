@@ -1,0 +1,21 @@
+1. map过程：
+   传入行号、该行文本。输出键、值。
+
+2. reduce过程：
+   传入键、值的集合，输出键、值。
+
+3.Hadoop的包装类： 
+  int --- IntWritable
+  String  --- Text
+  long  --- LongWritable
+  
+4.map过程和reduce过程产生的键值对的搜集器：OutputCollector<泛型， 泛型>
+ map 传过来的值集合还是java中的Iterator
+
+
+5.任务的发送--到集群上（打包为jar包）：
+  JobClient:运行JobConf，发送这个任务.
+  JobConf:要设置mapper类，reduce类，本Main函数所在的类--因为它在打的jar包里。
+  FileInputFormat：设置输入文件路径
+  FileOutFormat：设置输出数据的文件路径
+

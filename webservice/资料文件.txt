@@ -1,1 +1,4 @@
 1.http://www.cnblogs.com/siqi/p/3475222.html
+2.http://www.cnblogs.com/intsmaze/p/6055684.html  有创新性的。
+3.http://blog.csdn.net/tanga842428/article/details/52159757 和rpc对比。
+4.http://blog.csdn.net/zhaowen25/article/details/45443951 具体的rpc框架。
