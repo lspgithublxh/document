@@ -1,0 +1,42 @@
+1.磁盘块：512B （一次读写若干个磁盘块来运作磁盘的）
+  块的大小影响磁头寻址。太小，则不好寻址，因为更小的步长。
+  一次寻址的时间如果有10ms,那么这个时间内可以从磁盘传输1MB的数据了。
+  不要把大多数时间用来寻址，比如如果文件块只有1MB。那么50%时间都用来寻址了！！。如果文件块有100MB，那么只有1%时间用来寻址。 
+  但文件块太大则丧失了并发处理的机会，不能利用好其他节点完成之后的空闲时机。
+
+2.HDFS块：64MB
+  读出一个文件块，大约0.64s。寻址0.01s。
+
+3.常见的配置：
+  3.1 fs.default.name=hdfs://localhost/  默认的文件系统,默认端口8020
+  3.2 dfs.replication=1 文件块的冗余量：为3则复制三份备份到三个数据节点。
+
+4.常见的分布式文件操作：hadoop fs -help
+  4.1 读取文件
+     URL类打开一个文件流
+     hadoop URLCat hdfs://localhost/user/tom/quangle.txt
+     FileSystem类也可以打开一个文件流，用FSDataOutputStream可以详细控制这个流。
+     FileStatus可以列出文件目录。
+
+  4.2 创建目录
+  4.3 移动文件
+  4.4 删除文件
+  4.5 列出索引目录
+  4.6 上传文件、下载文件
+     hadoop fs -copyFromLocal input/docs/quangle.txt hdfs://localhost/user/tom/quangle.txt
+     hadoop fs -copyToLocal quangle.txt quangle.copy.txt
+5.常见配置文件：
+ 5.1 core-site.xml
+
+6.Hadoop有JAVA编写，文件系统间的相互作用由Java API进行的。
+  其他语言通过运行Thrift 服务的java服务器来间接访问到hdfs。或者jni方式调用java客户端。
+ 其次，hdfs提供了通过http访问的web服务器，通过节点上的web服务器，可以访问到节点上的资源。
+  
+7.javaAPI
+
+8.网络拓扑（节点之间的网络距离）：
+  数据中心d/机架r/节点n/进程
+  备份往往自己节点上放一份，其他机架上的若干个节点上各放一个备份。
+ 
+
+  

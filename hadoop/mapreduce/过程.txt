@@ -18,4 +18,18 @@
   JobConf:要设置mapper类，reduce类，本Main函数所在的类--因为它在打的jar包里。
   FileInputFormat：设置输入文件路径
   FileOutFormat：设置输出数据的文件路径
+  //新的产品里，JobClient已经和JobConf合并了， 功能都在Job类里面。
 
+
+6.执行mapreduce任务的集群的输入数据解决来源：
+  可以用户提交任务时才上传，也可以直接使用集群上本身就有的分布式文件。
+  用户上传的文件，被处理形成一个个“分片”再传给任务节点处理。
+
+7.集群上每个任务节点都可以map 和combine和reduce：
+  同时调度节点|主节点进行最后的汇总combine和reduce。
+  这样，每个节点都要负载，且都要均衡！！
+
+
+8.reduce输出的存储地问题：
+  是HDFS方式的。即本地有备份存储，同时也向其他机架上的节点发送reduce输出的HDFS文件块。
+ 
