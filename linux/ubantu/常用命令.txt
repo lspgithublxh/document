@@ -110,4 +110,34 @@
 33. 文件重命令：
    mv  filename1 filename2
 
-34.
+34.移动路径而不是文件夹内的内容： mv ~/hadoop-2.8.0/ ~/opt     最后这个目录无/
+          第一个加不加/都是整体移动。
+          第二个不加/，整体移动。加也是整体移动。 只有创建新文件夹是直接加到里面
+         
+ 
+35. 依赖检测：
+    readelf -h libhadoop.so.1.0.0 
+    查看依赖：
+    ldd libhadoop.so.1.0.0   （如果是在32位机器上看64位so，就会报错：not a dynamic executable）
+    位查看：
+    file libhadoop.so.1.0.0
+
+
+36. 创建新用户：http://blog.csdn.net/lele52141/article/details/6593840 
+              http://blog.csdn.net/iyouki/article/details/54015778
+   这个不适用//sudo useradd -m -d /home/lixiaohai -p admin -s /bin/bash lixiaohai   // echo password | passwd --stdin lixiaohai
+   //sudo userdel -r lixiaohai //删除用户
+     usermod  
+  这个适用：adduser --home /home/lixiaohai --shell /bin/bash  lixiaohai  效果也好
+
+  /etc/passwd里面有用户的信息。
+
+
+37 安装java
+ JAVA_HOME=/usr/local/java
+ CLASSPATH=$JAVA_HOME/lib:$JAVA_HOME/jre/lib:$CLASSPATH
+ PATH=$PATH:$JAVA_HOME/bin:$JAVA_HOME/jre/bin
+ export JAVA_HOME CLASSPATH PATH
+
+
+38 关闭防火墙：sudo ufw disable

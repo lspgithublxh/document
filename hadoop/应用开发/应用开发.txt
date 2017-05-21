@@ -1,0 +1,76 @@
+1.配置文件：
+ 默认属性配置文件：core-default.xml
+  特定重新配置文件：core-site.xml
+  具体格式：
+  <configuration>
+     <property>
+      <name></>
+       <value></>
+	</>
+    </>
+  访问配置文件的类：Configuration  方法：addResource("///.xml");
+
+
+2.安装：
+   参考资料：http://blog.csdn.net/stark_summer/article/details/42424279   tar -xzvf hadoop-2.8.0.tar.gz
+		http://www.cnblogs.com/tec-vegetables/p/3778358.html  可以看wordcount程序
+		http://blog.csdn.net/u012859691/article/details/44178971 可以看jps
+		http://www.linuxdiyf.com/linux/27981.html
+		http://blog.csdn.net/mark_lq/article/details/53384358可以看浏览器
+   ssh安装资料：http://www.cnblogs.com/yangyquin/p/5021070.html
+
+3.ssh无密码登录：
+   3.1>lixiaohai创建目录.ssh   不能sudo
+ //  >授权sudo usermod -g root lixiaohai
+ //  >关键是要授权.ssh 777的权限。才可以执行下面的语句在lixiaohai用户下。
+   3.2>ssh-keygen -t rsa
+   3.3>cp id_rsa.pub authorized_keys 
+   >sudo apt-get install openssh-client （一般用户都没有安装openssh-client，所以要专门安装一下。）
+   3.4>ssh localhost //之后输入yes,回答后。不需要密码就进去了。就welcome了。 
+   3.5>scp authorized_keys lixiaohai@192.168.180.132:/home/lixiaohai/远程复制文件过去。
+   3.6>转到132上，cat authorized_keys >> .ssh/authorized_keys   
+   3.7>转到133上，ssh lixiaohai@192.168.180.132 远程登录：。直接进入。
+   >exit 退出。
+   
+4.集群需要配置的文件：
+4.0 hostname主机名 和hosts主机名与ip的映射（master,slave）（需要重启）
+4.1 ssh无密码登录环境的建立（master可以无密码访问到slave即可）
+4.2 主要配置文件的配置：(master)
+~/hadoop/etc/hadoop/hadoop-env.sh  //配置java_home     和export HADOOP_OPTS="-Djava.library.path=${HADOOP_HOME}/lib/native"
+~/hadoop/etc/hadoop/yarn-env.sh  //配置java_home
+~/hadoop/etc/hadoop/slaves   //添加slaves节点
+~/hadoop/etc/hadoop/core-site.xml  //配置namenode访问路径：fs.default.name
+~/hadoop/etc/hadoop/hdfs-site.xml //配置每个slave节点的日志本地路径、数据本地路径、备份数。（子节点中不能有这些信息，要删除）（主节点：hdfs-site.xml.template重命名为hdfs-site.xml也可以）
+				  //或者说配置namenode的通信文件夹和datanode的通信文件夹
+~/hadoop/etc/hadoop/mapred-site.xml//配置job tracker访问路径：mapred.job.tracker  
+~/hadoop/etc/hadoop/yarn-site.xml
+4.3 slaves文件的配置(master)
+4.4创建数据节点 /hadoop/tmp /dfs/data /dfs/name
+
+-----master将配置文件发送到各个slave。再移动文件位置，使得etc/hosts文件和hadoop文件的路径一样。
+-----添加HADOOP_HOME路径到profile和PATH里
+
+---主节点：关闭、格式化、启动（会触发启动所有从节点的hadoop）（./stop-all.sh和sudo ./stop-all.sh不是权限区别，问题大不一样，）
+   ./stop-all.sh
+   ./hdfs namenode -format
+   ./start-all.sh
+   jps查看进程信息。
+
+---主节点：上传测试文件、运行wordcount程序测试、查看运行结果
+
+  
+export HADOOP_HOME=/home/lixiaohai/opt/hadoop-2.8.0
+export HADOOP_COMMON_HOME=$HADOOP_HOME
+export HADOOP_HDFS_HOME=$HADOOP_HOME
+export HADOOP_MAPRED_HOME=$HADOOP_HOME
+export HADOOP_YARN_HOME=$HADOOP_HOME
+export YARN_HOME=$HADOOP_HOME
+export JAVA_LIBRARY_PATH=$HADOOP_HOME/lib/native
+export YARN_CONF_DIR=$HADOOP_HOME/etc/hadoop
+export HADOOP_PREFIX=$HADOOP_HOME
+export HADOOP_CONF_DIR=$HADOOP_HOME/etc/hadoop 
+export HADOOP_ROOT_LOGGER=DEBUG,console
+export CLASSPATH=.:$JAVA_HOME/lib:$HADOOP_HOME/lib:$CLASSPATH
+export PATH=$JAVA_HOME/bin:$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$PATH
+
+注意：hadoop-env.sh中的java_home一定要和/etc/profile里面的java_home一样。
