@@ -85,13 +85,22 @@ export PATH=$JAVA_HOME/bin:$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$PATH
 6.文件操作：参考资料：http://blog.csdn.net/qq_32166627/article/details/53302903
    ./hadoop fs -mkdir /user 根目录下创建目录
    ./hadoop fs -ls /  查看根目录下的内容
-  
+   ./bin/hadoop fs -put ~/opt/taskl/words.txt /user/  上传文件
+
+
 7.mapreduce操作：
-  启动一个mapreduce任务：之前必须启动5个进程
-  ./hadoop dfsadmin -safemode leave 安全模式每次启动都要执行
+  ./hadoop dfsadmin -safemode leave 安全模式每次启动都要执行。可以不执行。
   ./hadoop jar ~/opt/hadoop-2.8.0/share/hadoop/mapreduce/hadoop-mapreduce-examples-2.8.0.jar wordcount /user/ /output
+
+  查看结果：./bin/hadoop fs -cat /output/part-r-00000
 
 
 8.问题：
   8.1要保证namenode下:  dfs/name/current/VERSION 和datanode下： dfs/data/current/VERSION 中的clusterID一样。
+  8.2尤其/etc/hosts里面127.0.1.1   localhost.localdomain   localhost这一行配置。
+  8.3 dfs.namenode.name.dir 是最新的，dfs.name.dir不是。
+  8.4 namenode 启动三个线程，datanode启动2个线程。则已经表示启动了yarn。可以进行mapreduce任务的执行。
+
+9.新增节点：http://blog.csdn.net/mark_lq/article/details/53393081
+  
           
