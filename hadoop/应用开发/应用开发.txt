@@ -34,6 +34,7 @@
    
 4.集群需要配置的文件：
 4.0 hostname主机名 和hosts主机名与ip的映射（master,slave）（需要重启）
+    而且要非常严格
 4.1 ssh无密码登录环境的建立（master可以无密码访问到slave即可）
 4.2 主要配置文件的配置：(master)
 ~/hadoop/etc/hadoop/hadoop-env.sh  //配置java_home     和export HADOOP_OPTS="-Djava.library.path=${HADOOP_HOME}/lib/native"
@@ -74,3 +75,23 @@ export CLASSPATH=.:$JAVA_HOME/lib:$HADOOP_HOME/lib:$CLASSPATH
 export PATH=$JAVA_HOME/bin:$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$PATH
 
 注意：hadoop-env.sh中的java_home一定要和/etc/profile里面的java_home一样。
+      另外，/etc/hosts里面有127.0.1.1 ubuntu这个配置，要改变，因为会被hadoop mapreduce利用。
+     在者，每次重启后，要关闭防火墙
+
+
+5.查看集群和上传任务：
+
+
+6.文件操作：参考资料：http://blog.csdn.net/qq_32166627/article/details/53302903
+   ./hadoop fs -mkdir /user 根目录下创建目录
+   ./hadoop fs -ls /  查看根目录下的内容
+  
+7.mapreduce操作：
+  启动一个mapreduce任务：之前必须启动5个进程
+  ./hadoop dfsadmin -safemode leave 安全模式每次启动都要执行
+  ./hadoop jar ~/opt/hadoop-2.8.0/share/hadoop/mapreduce/hadoop-mapreduce-examples-2.8.0.jar wordcount /user/ /output
+
+
+8.问题：
+  8.1要保证namenode下:  dfs/name/current/VERSION 和datanode下： dfs/data/current/VERSION 中的clusterID一样。
+          

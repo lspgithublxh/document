@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+<property>
+<name>mapreduce.framework.name</name>
+<value>yarn</value>
+</property>
+<property>
+<name>mapreduce.jobhistory.address</name>
+<value>hdfs://S1PA11:10020</value>
+</property>
+<property>
+<name>mapreduce.jobhistory.webapp.address</name>
+<value>hdfs://S1PA11:19888</value>
+</property>
+<property>
+<name>mapred.local.dir</name>
+<value>file:/home/lixiaohai/hadoop/tmp</value>
+</property>
+<property>
+<name>mapred.job.tracker</name>
+<value>hdfs://S1PA11:9001</value>
+</property>
+<property>
+<name>mapred.system.dir</name>
+<value>/mapred/system</value>
+</property>
+</configuration>
