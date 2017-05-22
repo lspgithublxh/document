@@ -98,6 +98,7 @@
 31.putty上传文件：pscp D:\tool\0321_2.jpg lixiaohai@192.168.180.135:/home/lixiaohai/
    //cmd上运行上述命令
        下载文件：pscp -r lixiaohai@192.168.180.136:/home/lixiaohai/opt/hadoop-2.8.0/etc/hadoop/* D:\tool\
+	文件夹复制：pscp -r lixiaohai@192.168.180.136:/home/lixiaohai/opt/taskl D:\tool\
 32.网络工具:nc命令（瑞士军刀）
    传输文件:
 		接收方监听:nc -lp 1234 > install.log
