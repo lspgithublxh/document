@@ -17,6 +17,8 @@
 		http://blog.csdn.net/u012859691/article/details/44178971 可以看jps
 		http://www.linuxdiyf.com/linux/27981.html
 		http://blog.csdn.net/mark_lq/article/details/53384358可以看浏览器
+                http://hadoop.apache.org/docs/r2.8.0/hadoop-project-dist/hadoop-common/ClusterSetup.html可以看详细的参数配置、命令含义、资源网站地址。
+
    ssh安装资料：http://www.cnblogs.com/yangyquin/p/5021070.html
 
 3.ssh无密码登录：
@@ -111,4 +113,20 @@ export PATH=$JAVA_HOME/bin:$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$PATH
   ----也说明节点可以自己启动自己，然后master知道了。
       ./sbin/hadoop-daemon.sh start datanode
      ./sbin/yarn-daemon.sh start nodemanager
-          
+
+10.java api 参考资料：http://hadoop.apache.org/docs/r2.8.0/hadoop-project-dist/hadoop-common/filesystem/index.html
+
+11.查看master的状态信息：http://hadoop.apache.org/docs/r2.8.0/hadoop-mapreduce-client/hadoop-mapreduce-client-core/MapredAppMasterRest.html
+    有详细的http rest请求-响应格式。
+    》专门运行mapreduce:http://hadoop.apache.org/docs/r2.8.0/hadoop-mapreduce-client/hadoop-mapreduce-client-core/MapredCommands.html
+
+12.编写自己的mapreduce程序，打包为jar,并发送到hadoop集群运行。
+   参考资料：http://blog.csdn.net/zhangt85/article/details/42077281
+   详细的：http://hadoop.apache.org/docs/r2.6.0/hadoop-mapreduce-client/hadoop-mapreduce-client-core/MapReduceTutorial.html
+   12.1命令与jar包的关系
+      》执行hadoop jar命令，本质上是会执行jar包中的指定类中的main方法的，而hadoop jar命令中的参数就会传入main函数的args参数组中，而这些参数可以用来设置像FileInputFormat的输入路径和FileOutputFormat的输出路径的属性。
+      》因为根本无法从jar包MANIFEST.MF这种文件中获知主类是哪个，所以只有在hadoop jar命令中明确写出这个主类的名称，且这个主类名称不会被当做参数传递到该主类的main方法的args中。
+      》在main中执行的事情主要是设置Job对象的各个参数，然后会发送提交这个Job对象，集群就开始执行这个job了。
+   
+
+        
