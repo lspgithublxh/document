@@ -77,8 +77,8 @@ export PATH=$JAVA_HOME/bin:$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$PATH
 注意：hadoop-env.sh中的java_home一定要和/etc/profile里面的java_home一样。
       另外，/etc/hosts里面有127.0.1.1 ubuntu这个配置，要改变，因为会被hadoop mapreduce利用。
      在者，每次重启后，要关闭防火墙
-
-
+   sudo mv jdk1.8.0_131/ /usr/local/这种最后一级不是本用户建立的，移动会移动里面的内容，文件夹不会保留，。（从用户文件夹到根用户文件夹。而不跨越用户则会暴露包）
+   sudo mv jdk1.8.0_131/ /usr/local/java/   这种就会保留文件夹。因为java文件夹是本用户建立的，sudo mkdir也是自己建立。但是也不一定，/opt下就可以还是保留了文件夹。
 5.查看集群和上传任务：
 
 
@@ -100,7 +100,15 @@ export PATH=$JAVA_HOME/bin:$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$PATH
   8.2尤其/etc/hosts里面127.0.1.1   localhost.localdomain   localhost这一行配置。
   8.3 dfs.namenode.name.dir 是最新的，dfs.name.dir不是。
   8.4 namenode 启动三个线程，datanode启动2个线程。则已经表示启动了yarn。可以进行mapreduce任务的执行。
+  8.5 DataNode NodeManager有手动启动的命令
 
-9.新增节点：http://blog.csdn.net/mark_lq/article/details/53393081
-  
+9.动态新增节点：http://blog.csdn.net/mark_lq/article/details/53393081
+  》基本安装、ssh无密码登录配置
+  》hosts hostsname jdk安装 hadoop安装和建立文件夹和scp 传配置文件
+  》更改自身配置文件和其他机器上的配置文件。其他机器hosts。。
+  ----其实，如果文件夹结构都一致（三个数据文件夹和一个主程序hadoop-2.8.0路径），那么只配置每个机器上的hosts。master再配置slaves即可。因为配置文件没有关于节点的配置信息，否则10000个节点怎么加？是不可能的。
+  ----也说明了每个节点不会直接就知道和其他节点打交道，甚至不直接和其他节点打交道，只和master打交道，仅仅知道其他节点的ip而已。
+  ----也说明节点可以自己启动自己，然后master知道了。
+      ./sbin/hadoop-daemon.sh start datanode
+     ./sbin/yarn-daemon.sh start nodemanager
           

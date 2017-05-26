@@ -23,3 +23,6 @@
 一、建立分项目
 二、建立顶级pom.xml
 三、
+
+
+附加：打eclipse工程：mvn eclipse:eclipse

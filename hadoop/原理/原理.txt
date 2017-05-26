@@ -40,7 +40,13 @@
 
 6.mapreduce设计目的：
   运行需要数分钟或者数小时的作业。
+
+7.mapreduce过程：
+  1)jobtracker构造任务，将信息发送给一个一个的tasktracker
+  2）tasktracker从共享文件系统中获取到任务jar文件，输入文件从分布式缓存复制到这里。
+  3)tasktracker解压jar，创建一个新的TaskRunner实例，实例启动新的子JVM来运行一个任务，这个子JVM进程通过umbilical接口和父进程tasktracker通信。
   
 
+8.软件技术书大量的内容：都是对程序的描述，看这种书没有意义，没有任何意思，且没有价值，直接看源码，或者思考想象其算法、协议、规则才更有价值！！
 
 
