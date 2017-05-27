@@ -96,6 +96,7 @@ export PATH=$JAVA_HOME/bin:$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$PATH
  ./bin/hadoop jar ../jar/javahadoop-1.0-SNAPSHOT.jar com.hadoop.test.WordsCount /user/ /output2
   》查看结果：./bin/hadoop fs -cat /output/part-r-00000
   》查看各个节点上的各个任务运行日志：lixiaohai@S1PA222:~/opt/hadoop-2.8.0/logs/userlogs/application_1495883797210_0003/container_1495883797210_0003_01_000001
+     其中stdout是System.out.print()打印的结果。各个节点上都可以看得到，而且每个节点的container 的id是不会重复的，虽然一个节点可能有多个。
 
 
 8.问题：
