@@ -1,0 +1,18 @@
+参考资料：http://blog.csdn.net/dai451954706/article/details/46966165 （有浏览器图可以看）
+
+1.先安装hadoop集群--运行良好，并且启动spark之前，要先启动hadoop。
+  》解压文件，配置环境变量：/etc/profile  $SPARK_HOME
+  》配置目录下conf文件夹下的slaves文件、spark-env.sh文件（启动参数、环境变量）、spark-defaults.conf文件（spark提交任务时默认读取的文件）
+  》创建日志和工作的logs、worker文件夹
+  》启动spark进程和历史任务进程（sbin/start-all.sh , sbin/start-history-server.sh）
+
+2.测试spark集群
+  》启动shell（即scala脚本）: bin/spark-shell --master spark://master:7077
+  》输入scala脚本测试：如var data = Array(1,2,3,4,5,6,7,8,9,10)
+			 var pdata = sc.parallelize(data)
+                         pdata.reduce(_ + _)
+
+3.浏览器查看集群节点信息：http://master:8080  ，历史任务信息：http://master:7777
+  （hadoop集群信息的查看不再赘述）
+	
+  

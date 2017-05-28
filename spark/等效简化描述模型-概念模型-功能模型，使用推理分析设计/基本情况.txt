@@ -1,0 +1,78 @@
+参考资料：http://www.infoq.com/cn/articles/apache-spark-introduction
+		http://spark.apache.org/
+1.如何在内存中计算的？
+
+
+2.编写的程序如何运行的？java\scala\python
+
+3.高阶操作符
+
+
+4.shell操作：交互式查询数据（python和scala可以）
+  》scala:运行在JVM上，但是用自己的编译器生成.class文件。因为它是另一种语言。
+
+
+5.map\reduce操作：
+
+
+6.sql查询操作：
+
+
+7.流数据处理
+
+
+8.机器学习
+
+9.图表数据处理
+
+10.多路计算
+
+11.有向无环图：多步数据管道
+
+12.比hadoop中mapreduce好的地方？
+   》首先，spark依赖与hdfs分布式文件系统。所以上传文件是必须的。
+   》但是，hadoop的mapreduce的一路map\reduce直到输出结果到文件里的方式，比较固定不灵活。比如想数据来源不一定是文件，而是数据库，同样输出地也不是文件而是数据库。
+     而且如果希望一个任务在执行中执行多轮map/reduce是不行的，因为只有一轮，一轮就结束了。多轮只能多个job。
+   》从而关心一个问题：中间数据存储在哪里？可不可以利用到上次处理的结果？
+     I:内存中，而不是磁盘中。但是可以利用磁盘---当内存不够的时候将数据集存入磁盘。
+         
+
+13.Shuffle洗牌。数据就是牌，洗者就是spark。
+
+
+14.RDD  弹性分布式数据集
+   》等效模型：数据库中的表。上层概念:分区。各个RDD在各个分区里。
+   》容错：RDD可以重新创建和计算数据集
+   》不可变：RDD像字符串，不可变；变换RDD后返回的是新的RDD，旧RDD仍然不变和存在。
+   》对RDD的操作：变换（transformation）型:这种操作（函数）：输入的是RDD，输出的是另一个RDD，内部是利用就RDD生产新RDD的过程。典型函数：map,filter,flatMap,groupByKey,reduceByKey,
+		  			   aggregateByKey, pipe, coalesce
+		  行动（Action）型:这种操作（函数）：输入RDD，返回一个新的值，内部就是处理计算这个RDD的某种量度、指标。典型函数:reduce,collect,count, first, take, countByKey, foreach
+   》RDD在语言实现中是一个对象，那么它就有自己的若干方法和属性。而这些方法就是上述的变换方法和行动方法。
+   》产生和存入内存时机：
+     当用SparkContext上下文的textFile生成一个RDD对象时，没有真正把RDD数据加入内存中，而只是在内存中建立了一个抽象结构，当执行行动函数时，才会把数据存储到内存中。
+   
+			
+   ----存在一个可以调用执行各个变换型类和行动型类的主类。
+
+15.spark streaming
+  处理实时的流数据  
+
+16.Spark Sql
+   将数据（JSON、数据库、Spark数据集）转化，用户可以进行特定的类似SQL的查询。
+ 
+17.Spark MLlib
+   实现了通用学习算法和工具。
+
+18.Spark GraphX
+
+19.JAVA API
+
+20.共享变量：
+    》广播变量：在每台机器上缓存只读变量
+    》累加器：可以获取一个累加器，并将它增值，但是任务无法读取变量的值，而需要驱动程序。
+
+
+
+
+
+

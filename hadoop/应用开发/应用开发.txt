@@ -89,7 +89,7 @@ export PATH=$JAVA_HOME/bin:$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$PATH
    ./hadoop fs -ls /  查看根目录下的内容
    ./bin/hadoop fs -put ~/opt/taskl/words.txt /user/  上传文件
    ./bin/hadoop fs -get /output/part-r-00000 /home/lixiaohai/opt/taskl/  下载文件
-
+    ./bin/hadoop fs  -get /output11/ ../  这样可以下载整个文件夹，从而不用重命名了。
 7.mapreduce操作：
   ./hadoop dfsadmin -safemode leave 安全模式每次启动都要执行。可以不执行。
   ./hadoop jar ~/opt/hadoop-2.8.0/share/hadoop/mapreduce/hadoop-mapreduce-examples-2.8.0.jar wordcount /user/ /output

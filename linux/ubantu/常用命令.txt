@@ -99,6 +99,7 @@
    //cmd上运行上述命令
        下载文件：pscp -r lixiaohai@192.168.180.136:/home/lixiaohai/opt/hadoop-2.8.0/etc/hadoop/* D:\tool\
 	文件夹复制：pscp -r lixiaohai@192.168.180.136:/home/lixiaohai/opt/taskl D:\tool\
+	文件夹复制且用模糊匹配：pscp -r lixiaohai@192.168.180.136:/home/lixiaohai/opt/output11* D:\log\
 32.网络工具:nc命令（瑞士军刀）
    传输文件:
 		接收方监听:nc -lp 1234 > install.log
@@ -145,3 +146,8 @@
 /etc/init.d/iptables stop
 /etc/init.d/iptables status
 /etc/init.d/iptables start
+
+39 软链接： In -s 原文件夹 新文件夹
+         如 In -s hadoop-2.8.0 hadoop  就会出现  hadoop -> hadoop-2.8.0这样显示形式的文件夹
+         如 In -s jdk-1.8.0_11 jdk
+40,创建多文件夹：mkdir -p /home/spark/hadoop/hdfs/{data,name}
