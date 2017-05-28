@@ -130,5 +130,7 @@ export PATH=$JAVA_HOME/bin:$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$PATH
       》因为根本无法从jar包MANIFEST.MF这种文件中获知主类是哪个，所以只有在hadoop jar命令中明确写出这个主类的名称，且这个主类名称不会被当做参数传递到该主类的main方法的args中。
       》在main中执行的事情主要是设置Job对象的各个参数，然后会发送提交这个Job对象，集群就开始执行这个job了。
    
+13.额外问题：
+   自检：hadoop checknative –a
 
         

@@ -10,7 +10,8 @@
 
 4.shell操作：交互式查询数据（python和scala可以）
   》scala:运行在JVM上，但是用自己的编译器生成.class文件。因为它是另一种语言。
-
+  》启动shell脚本： ./bin/spark-shell --master spark://S1PA11:7077
+  
 
 5.map\reduce操作：
 
