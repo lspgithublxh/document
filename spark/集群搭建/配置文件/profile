@@ -1,0 +1,45 @@
+# /etc/profile: system-wide .profile file for the Bourne shell (sh(1))
+# and Bourne compatible shells (bash(1), ksh(1), ash(1), ...).
+
+if [ "$PS1" ]; then
+  if [ "$BASH" ] && [ "$BASH" != "/bin/sh" ]; then
+    # The file bash.bashrc already sets the default PS1.
+    # PS1='\h:\w\$ '
+    if [ -f /etc/bash.bashrc ]; then
+      . /etc/bash.bashrc
+    fi
+  else
+    if [ "`id -u`" -eq 0 ]; then
+      PS1='# '
+    else
+      PS1='$ '
+    fi
+  fi
+fi
+
+if [ -d /etc/profile.d ]; then
+  for i in /etc/profile.d/*.sh; do
+    if [ -r $i ]; then
+      . $i
+    fi
+  done
+  unset i
+fi
+JAVA_HOME=/usr/local/java
+export HADOOP_HOME=/home/lixiaohai/opt/hadoop-2.8.0
+export HADOOP_COMMON_HOME=$HADOOP_HOME
+export HADOOP_HDFS_HOME=$HADOOP_HOME
+export HADOOP_MAPRED_HOME=$HADOOP_HOME
+export HADOOP_YARN_HOME=$HADOOP_HOME
+export YARN_HOME=$HADOOP_HOME
+export JAVA_LIBRARY_PATH=$HADOOP_HOME/lib/native
+export YARN_CONF_DIR=$HADOOP_HOME/etc/hadoop
+export HADOOP_PREFIX=$HADOOP_HOME
+export HADOOP_CONF_DIR=$HADOOP_HOME/etc/hadoop 
+export HADOOP_ROOT_LOGGER=DEBUG,console
+export SCALA_HOME=/usr/local/scala
+export SPARK_HOME=/home/lixiaohai/opt/spark-2.1.1-bin-hadoop2.7
+CLASSPATH=$JAVA_HOME/lib:$JAVA_HOME/jre/lib:$HADOOP_HOME/lib:$CLASSPATH
+PATH=$PATH:$JAVA_HOME/bin:$JAVA_HOME/jre/bin:$HADOOP_HOME/bin:$SCALA_HOME/bin:$HADOOP_HOME/sbin:$SPARK_HOME/bin
+export JAVA_HOME CLASSPATH PATH
+

@@ -66,13 +66,14 @@
 18.Spark GraphX
 
 19.JAVA API
+   参考资料：http://spark.apache.org/docs/latest/api/java/index.html
 
 20.共享变量：
     》广播变量：在每台机器上缓存只读变量
     》累加器：可以获取一个累加器，并将它增值，但是任务无法读取变量的值，而需要驱动程序。
 
 
-
+21.内核使用scale语言编写。
 
 
 
