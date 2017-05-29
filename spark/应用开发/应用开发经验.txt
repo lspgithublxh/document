@@ -1,6 +1,8 @@
 1.参考资料：http://www.cnblogs.com/juncaoit/p/6543518.html
-       http://blog.csdn.net/bluejoe2000/article/details/41556979
-	http://blog.csdn.net/lifaming15/article/details/44021059
+       http://blog.csdn.net/bluejoe2000/article/details/41556979（分布式，提交操作命令详细, scala）
+	http://blog.csdn.net/lifaming15/article/details/44021059（分布式，maven，应用型，linux shell）
 	http://www.jianshu.com/p/a617005df355
 	http://blog.csdn.net/teddeyang/article/details/23192733
 	http://zhangym.iteye.com/blog/2276159（maven）
+
+2.

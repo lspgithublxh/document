@@ -8,8 +8,10 @@
   》创建日志和工作的logs、worker文件夹
   》启动spark进程和历史任务进程（sbin/start-all.sh , sbin/start-history-server.sh）
   》启动实例， ./bin/spark-submit --class org.apache.spark.examples.SparkPi --master yarn --deploy-mode cluster --driver-memory 1G --executor-memory 1G --executor-cores 1 examples/jars/spark-examples_2.11-2.1.1.jar 40
-  
- 1.1具体spark-env.sh配置：
+  》启动自己上传的任务： ./bin/spark-submit --class com.spark.test.main.WordsCount --executor-memory 1G --total-executor-cores 1 ../javaSpark2.jar /user/words.txt
+			./bin/spark-submit --class com.spark.test.main.WordsCount --master yarn --deploy-mode cluster --driver-memory 1G  --executor-memory 1G --total-executor-cores 1 ~/opt/javaSpark2.jar /user/words.txt 
+			 ./bin/spark-submit --class com.spark.test.main.WordsCount --master yarn --deploy-mode cluster --driver-memory 1G  --executor-memory 1G --total-executor-cores 1 ../javaSpark-1.0-SNAPSHOT.jar /user/words.txt
+1.1具体spark-env.sh配置：
   	export SPARK_MASTER_IP=10.206.131.48  # bind the master to a different IP address or hostname
 
 	export SPARK_MASTER_PORT=7077 # SPARK_MASTER_WEBUI_PORT, to use non-default ports for the master
