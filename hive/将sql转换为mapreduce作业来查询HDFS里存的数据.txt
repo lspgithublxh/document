@@ -1,0 +1,8 @@
+1.最底层是HDFS,上面跑SPARK，再上面跑HIVE/PIG
+
+2.Hive把spark作为计算引擎，而Hive的查询产生task tree任务给Spark集群。
+  》Hive表也可以转换为RDD，供spark处理。
+  》也相当与Hive的查询是等效转换为了一系列的spark RDD的变换操作和行动操作。
+
+3.Hive on Spark
+  参考资料：http://www.csdn.net/article/2015-04-24/2824545

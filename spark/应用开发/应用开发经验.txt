@@ -18,13 +18,23 @@
   http://www.cnblogs.com/BYRans/p/5003029.html（DataFrame, SQLContext）
   http://blog.csdn.net/lw_ghy/article/details/51471832（SQLContext和HiveContext的组合，SparkSession。最新的api）
   http://blog.csdn.net/u012373815/article/details/53327983（SparkSessin, jdbc）
+	http://www.tuicool.com/articles/7ZnY3mr（Hive查询, sparksession）
 4.DataFrame
   》构造方法：数据文件、hive表、一般rdbs数据库表、RDD。
-
+  
 
 5.SQLContext
 
-5.Spark Sql的作用是控制了Sql执行的最长时间，但是对于本身就很快的查询，比如几秒内的查询是没有优势的。
+6.Spark Sql的作用是控制了Sql执行的最长时间，但是对于本身就很快的查询，比如几秒内的查询是没有优势的。
+
+7.概述
+  》HDFS把一个文件都分块分布式存储在各个节点上，对外统一访问。
+  》Spark读取一个HDFS文件转换为JAVARDD对象进行变换和行动处理（mapreduce类似，但更多路，多步骤）
+  》Hive把JAVARDD对象或者JSON文件或者List<>对象或者其他文件内容转换为DataSet（DataFrames）结构，进行Sql查询。
+
+8.KV Store
+
+9.大数据生态圈：http://www.36dsj.com/archives/23504
 
 
  
