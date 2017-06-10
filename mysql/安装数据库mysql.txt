@@ -1,6 +1,7 @@
 1.下载数据库mysql :mysql-5.7.17-winx64.zip
   然后解压。  增加my.ini文件。加相应内容。
   同时，在执行一切mysqld命令之前，要先建立data文件夹（并列于bin目录）,
+  //以管理员身份启动cmd,尤其是win10下和5.7.18下：
   执行mysqld --initialize 初始化操作（在data目录下生成一系列文件夹和文件）
   才是mysqld install    
   和  net start mysql
@@ -11,6 +12,8 @@
   参考资料：https://jingyan.baidu.com/article/597035521d5de28fc00740e6.html
      以及官方文档！！
     linux下：http://blog.csdn.net/ljbmxsm/article/details/50612777
+
+》》win10下，和5.7.18下，需要自己写my.ini文件。
 
 2.更改密码：
   一个cmd中：net stop mysql

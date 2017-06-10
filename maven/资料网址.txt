@@ -4,3 +4,6 @@
 
 
  3.多模块项目搭建：http://www.jianshu.com/p/79cc250be1b2
+
+
+ 4.安装问题：很容易。配置环境MAVEN_HOME。配置settings.xml中， <mirror> 和<localRepository>两个标签就可以了。配置eclipse中的setting路径和repository路径。
