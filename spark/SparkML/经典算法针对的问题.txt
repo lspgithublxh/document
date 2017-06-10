@@ -63,5 +63,6 @@
             
   
 参考资料：http://blog.csdn.net/liulingyuan6/article/details/53648273
+http://www.cnblogs.com/xtsylc/p/4806650.html（k-means聚类算法）
 
 
