@@ -1,0 +1,11 @@
+1.决策树算法：
+  》条件-问题表述：
+  》必须认识到的本质、性质、关系、规律：
+  》分析：
+  》结论：
+
+
+
+
+参考资料：http://www.cnblogs.com/leoo2sk/archive/2010/09/19/decision-tree.html
+
