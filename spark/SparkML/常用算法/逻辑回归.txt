@@ -1,0 +1,15 @@
+类别：分类算法。有监督式学习。
+1.解决的问题：
+  >条件：有批注的数据若干。
+  >预备：
+	##1 回归：根据点，找拟合线。点回归到了线上。
+	##2 线性回归：找拟合直线：y = ax + b;
+	##3 逻辑回归：拟合出逻辑函数，使得输入x, 而输出要么是0，要么是1；或者输出是一个比例：0-1之间。是一个二分函数。
+	##4 只要发生：就有可能性。
+
+
+http://www.mamicode.com/info-detail-501714.html
+
+http://www.tuicool.com/articles/auQFju
+
+http://blog.csdn.net/pakko/article/details/37878837
