@@ -17,7 +17,7 @@
   sudo apt-get update//可以运行两次
   sudo apt-get install openssh-server
   sudo ps -e|grep ssh //查看sshd是否启动
-
+---一般只要按上述操作putty就可以访问该操作系统了。
 
 7.创建文件：touch 文件名.txt
   编辑文件：vim 文件名.txt。可以。
@@ -100,6 +100,8 @@
        下载文件：pscp -r lixiaohai@192.168.180.136:/home/lixiaohai/opt/hadoop-2.8.0/etc/hadoop/* D:\tool\
 	文件夹复制：pscp -r lixiaohai@192.168.180.136:/home/lixiaohai/opt/taskl D:\tool\
 	文件夹复制且用模糊匹配：pscp -r lixiaohai@192.168.180.136:/home/lixiaohai/opt/output11* D:\log\
+
+  linux上文件传送： scp -r hadoop lixiaohai@S1PA222:/home/lixiaohai/opt/hadoop-2.8.0/etc/ 会保留原文件夹。
 32.网络工具:nc命令（瑞士军刀）
    传输文件:
 		接收方监听:nc -lp 1234 > install.log
@@ -151,3 +153,12 @@
          如 In -s hadoop-2.8.0 hadoop  就会出现  hadoop -> hadoop-2.8.0这样显示形式的文件夹
          如 In -s jdk-1.8.0_11 jdk
 40,创建多文件夹：mkdir -p /home/spark/hadoop/hdfs/{data,name}
+
+
+41./etc/hosts主机配置文件：局域网内通过域名互相访问时配置这里的文件。
+   
+42.环境变量配置和生效
+
+
+43.移动文件：sudo mv 文件路径1 文件路径2， 那么将文件路径1下的内容放到文件路径2下。
+ 

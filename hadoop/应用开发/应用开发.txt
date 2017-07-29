@@ -47,18 +47,19 @@
 				  //或者说配置namenode的通信文件夹和datanode的通信文件夹
 ~/hadoop/etc/hadoop/mapred-site.xml//配置job tracker访问路径：mapred.job.tracker  
 ~/hadoop/etc/hadoop/yarn-site.xml
+ ----注意：这些配置文件不能被其他编辑器打开编辑，否则传到linux上后会报错。比如word,notepad++
 4.3 slaves文件的配置(master)
-4.4创建数据节点 /hadoop/tmp /dfs/data /dfs/name
-
+4.4创建数据节点 /home/lixiaohai/hadoop/tmp /home/lixiaohai/dfs/name /home/lixiaohai/dfs/data
 -----master将配置文件发送到各个slave。再移动文件位置，使得etc/hosts文件和hadoop文件的路径一样。
 -----添加HADOOP_HOME路径到profile和PATH里
 
 ---主节点：关闭、格式化、启动（会触发启动所有从节点的hadoop）（./stop-all.sh和sudo ./stop-all.sh不是权限区别，问题大不一样，）
-   ./stop-all.sh
+   ./stop-all.sh（这一句可能不要执行，会让配置文件hdfs-site.xml和hadoop-env.sh为空）
    ./hdfs namenode -format
    ./start-all.sh
    jps查看进程信息。
-
+----网页查看：http://192.168.130.128:50070/dfshealth.html#tab-overview（首页）
+		http://192.168.130.128:8088/cluster（mapreduce任务）
 ---主节点：上传测试文件、运行wordcount程序测试、查看运行结果
 
   
@@ -91,9 +92,11 @@ export PATH=$JAVA_HOME/bin:$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$PATH
    ./bin/hadoop fs -get /output/part-r-00000 /home/lixiaohai/opt/taskl/  下载文件
     ./bin/hadoop fs  -get /output11/ ../  这样可以下载整个文件夹，从而不用重命名了。
 7.mapreduce操作：
-  ./hadoop dfsadmin -safemode leave 安全模式每次启动都要执行。可以不执行。
-  ./hadoop jar ~/opt/hadoop-2.8.0/share/hadoop/mapreduce/hadoop-mapreduce-examples-2.8.0.jar wordcount /user/ /output
- ./bin/hadoop jar ../jar/javahadoop-1.0-SNAPSHOT.jar com.hadoop.test.WordsCount /user/ /output2
+ > ./hadoop dfsadmin -safemode leave 安全模式每次启动都要执行。可以不执行。
+ > ./hadoop jar ~/opt/hadoop-2.8.0/share/hadoop/mapreduce/hadoop-mapreduce-examples-2.8.0.jar wordcount /user/ /output
+ > ./bin/hadoop jar share/hadoop/mapreduce/hadoop-mapreduce-examples-2.8.0.jar wordcount /user/ /output2
+
+ >./bin/hadoop jar ../jar/javahadoop-1.0-SNAPSHOT.jar com.hadoop.test.WordsCount /user/ /output2
   》查看结果：./bin/hadoop fs -cat /output/part-r-00000
   》查看各个节点上的各个任务运行日志：lixiaohai@S1PA222:~/opt/hadoop-2.8.0/logs/userlogs/application_1495883797210_0003/container_1495883797210_0003_01_000001
      其中stdout是System.out.print()打印的结果。各个节点上都可以看得到，而且每个节点的container 的id是不会重复的，虽然一个节点可能有多个。
@@ -101,7 +104,8 @@ export PATH=$JAVA_HOME/bin:$HADOOP_HOME/bin:$HADOOP_HOME/sbin:$PATH
 
 8.问题：
   8.1要保证namenode下:  dfs/name/current/VERSION 和datanode下： dfs/data/current/VERSION 中的clusterID一样。
-  8.2尤其/etc/hosts里面127.0.1.1   localhost.localdomain   localhost这一行配置。
+  8.2尤其/etc/hosts里面加一行127.0.1.1   localhost.localdomain   localhost配置，同时注释掉127.0.0.1	ubuntu这一样配置。
+     主节点和任务节点都要修改主机名/etc/hostname为各自的节点名（否则会报链接错误）
   8.3 dfs.namenode.name.dir 是最新的，dfs.name.dir不是。
   8.4 namenode 启动三个线程，datanode启动2个线程。则已经表示启动了yarn。可以进行mapreduce任务的执行。
   8.5 DataNode NodeManager有手动启动的命令
