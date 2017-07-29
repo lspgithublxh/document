@@ -1,11 +1,11 @@
 参考资料：http://blog.csdn.net/dai451954706/article/details/46966165 （有浏览器图可以看）
 	http://www.chinacloud.cn/show.aspx?id=23371&cid=12（ubuntu，最可靠）
 	http://www.tuicool.com/articles/MbuaUv
-1.先安装hadoop集群--运行良好，并且启动spark之前，要先启动hadoop。
+1.先安装hadoop集群--运行良好，并且启动spark之前，要先启动hadoop。安装scala
   》解压文件，配置环境变量：/etc/profile  $SPARK_HOME
 	tar -zcvf spark-1.6.1-bin-hadoop2.6.tar.gz
   》配置目录下conf文件夹下的slaves文件、spark-env.sh文件（启动参数、环境变量，4个HOME，3个PATH.....）、spark-defaults.conf文件（spark提交任务时默认读取的文件）
-  》创建日志和工作的logs、worker文件夹
+  》创建日志和工作的logs、worker文件夹：在spark的安装目录下：mkdir logs（这个可以建立---也可以不建立--会自动建立这个文件夹,worker可不建立）（但是分布式文件需要建立：./hadoop fs -mkdir /sparkHistoryLogs  即建立配置中的日志文件，不建立会报SparkException:exitCode:15错）
   》启动spark进程和历史任务进程（sbin/start-all.sh , sbin/start-history-server.sh）
   》启动实例， ./bin/spark-submit --class org.apache.spark.examples.SparkPi --master yarn --deploy-mode cluster --driver-memory 1G --executor-memory 1G --executor-cores 1 examples/jars/spark-examples_2.11-2.1.1.jar 40
   》启动自己上传的任务： ./bin/spark-submit --class com.spark.test.main.WordsCount --executor-memory 1G --total-executor-cores 1 ../javaSpark2.jar /user/words.txt
@@ -53,3 +53,5 @@
   （hadoop集群信息的查看不再赘述）
 	
   
+4.问题：
+  >没试过，但是还是只改配置文件---可以copy内容，不直接从windows复制文件过来覆盖。
