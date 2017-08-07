@@ -1,0 +1,72 @@
+1.loadLED 常临人车总在场出场人数人次车数车次。//给led系统调用
+   getMrmljccrs_new：最新刷卡时间、没删除的临时常驻之一的人员车辆之一的进场人数（在场）和进出场总人数。//但没有限定是当天。
+	进出总数、进数：SELECT str1, str2 FROM (SELECT SUM( CASE TYPE WHEN 0 THEN 1 ELSE 0 END) AS str1, COUNT(1) AS str2 FROM (SELECT TYPE FROM `v_people_inout_max` `p` JOIN `Personal_inout` `p2` ON ( `p2`.`personal_id` = `p`.`personal_id` ) AND ( `p2`.`record_time` = `p`.`record_time` ) WHERE `p2`.`per_or_tem` = '1') AS c) d 
+   	
+   getMrmljccrs_zongjin：当天临时常驻之一的人员车辆之一的进场总刷卡数（进场人次）。//常临总的总出人次计算应有误
+ 	当天常临进出总数
+
+2.loadPass 闸机调用：
+	方法同下：
+  
+
+3.loadPassData 闸机调用
+    createJO调用一下二者之一：上次同步以来，出入证信息关联常临车辆的信息。//删除的人不考虑在内
+		上次同步以来，出入证信息关联常临人员的信息。//删除的人不考虑在内
+ 
+车（可以没有人的用工信息）：  SELECT d.`bid_no`, d.id_card, IFNULL(c.`car_number`, lc.`car_number`), pp.identity, pp.name,  CASE WHEN d.`state` = '1' AND IFNULL(d.`modify_status`, '0') != '3' AND d.`grant_time` < NOW() AND ( d.`period_of_validity` > NOW() OR d.`period_of_validity` IS NULL ) THEN '1' ELSE '0' END state, DATE_FORMAT(d.`grant_time`,'%Y-%m-%d %T'), DATE_FORMAT(d.`period_of_validity`,'%Y-%m-%d %T') FROM card d LEFT JOIN car_info c ON d.`p_c_id` = c.`id` LEFT JOIN ls_car_info lc ON d.`p_c_id` = lc.`id` LEFT JOIN (SELECT p.id, p.name, p.identity FROM personal_info p WHERE IFNULL(p.`modify_status`, '0') != '3' UNION ALL SELECT lp.id, lp.name, lp.identity FROM ls_personal_info lp WHERE IFNULL(lp.`modify_status`, '0') != '3') pp ON c.`personal_id` = pp.`id` OR lc.`personal_id` = pp.id WHERE d.`card_type` IN ('3', '4')  AND UNIX_TIMESTAMP(d.update_time) > UNIX_TIMESTAMP('1999-01-01 00:00:00')
+//卡：系统生成刷入的卡号（id_card）、ic卡自带卡号、有效期、授权起止时间、有效状态，人：身份证id、姓名，车：车牌号码
+人（需要人的用工信息）：   SELECT d.`bid_no`, d.id_card, '', pp.identity, pp.name, CASE WHEN d.`state` = '1' AND IFNULL(d.`modify_status`, '0') != '3' AND d.`grant_time` < NOW() AND ( d.`period_of_validity` > NOW() OR d.`period_of_validity` IS NULL ) THEN '1' ELSE '0' END state, DATE_FORMAT(d.`grant_time`, '%Y-%m-%d %T'), DATE_FORMAT( d.`period_of_validity`, '%Y-%m-%d %T' ) FROM card d LEFT JOIN (SELECT p.id, p.name, p.identity, e.id_card_id FROM personal_info p,employment_info e WHERE IFNULL(p.`modify_status`, '0') != '3' AND IFNULL(e.`modify_status`, '0') != '3' AND p.id=e.personal_info_id UNION ALL SELECT lp.id, lp.name, lp.identity, le.id_card_id FROM ls_personal_info lp,ls_employment_info le WHERE IFNULL(lp.`modify_status`, '0') != '3' AND IFNULL(le.`modify_status`, '0') != '3' AND lp.id=le.ls_personal_info_id) pp ON d.`id` = pp.`id_card_id` WHERE d.`card_type` IN ('1', '2')  AND UNIX_TIMESTAMP(d.update_time) > UNIX_TIMESTAMP('1999-01-01 00:00:00')
+//卡：系统生成刷入的卡号（id_card）、ic卡自带卡号、有效期、授权起止时间、有效状态，人：身份证id、姓名，
+
+
+4.loadPassDataWithFace 闸机调用：（人脸识别闸机）
+     出入证信息关联常临人员上次以来（时间参数）的基本信息（身份证，名字，出入证卡片信息）。
+	SELECT d.`bid_no`, d.id_card, '', pp.identity, pp.name, CASE WHEN d.`state` = '1' AND IFNULL(d.`modify_status`, '0') != '3' AND d.`grant_time` < NOW() AND ( d.`period_of_validity` > NOW() OR d.`period_of_validity` IS NULL ) THEN '1' ELSE '0' END state, DATE_FORMAT(d.`grant_time`, '%Y-%m-%d %T'), DATE_FORMAT( d.`period_of_validity`, '%Y-%m-%d %T' ), pp.personal_pic FROM card d LEFT JOIN (SELECT p.id, p.name, p.identity, e.id_card_id, p.personal_pic FROM personal_info p, employment_info e WHERE IFNULL(p.`modify_status`, '0') != '3' AND IFNULL(e.`modify_status`, '0') != '3' AND p.id = e.personal_info_id UNION ALL SELECT lp.id, lp.name, lp.identity, le.id_card_id, '' personal_pic FROM ls_personal_info lp, ls_employment_info le WHERE IFNULL(lp.`modify_status`, '0') != '3' AND IFNULL(le.`modify_status`, '0') != '3' AND lp.id = le.ls_personal_info_id) pp ON d.`id` = pp.`id_card_id` WHERE d.`card_type` IN ('1', '2')  AND UNIX_TIMESTAMP(d.update_time) > UNIX_TIMESTAMP('1990-01-01 01:01:01')
+    //卡：系统生成刷入的卡号（id_card）、ic卡自带卡号、有效期、授权起止时间、有效状态，人：身份证id、姓名、照片（临时人不传），
+   
+
+
+5.loadPassDataWithCard 闸机调用：
+     和3一样。
+
+6.saveGate 闸机调用：
+  getPassByCar_number : 
+	常驻车辆：	 1)先用车牌号看车辆类型  SELECT car_type FROM (SELECT t.car_number , t.card_id, '0' car_type FROM car_info t UNION ALL SELECT t1.car_number , t1.card_id, '1' car_type FROM ls_car_info t1) tt WHERE tt.car_number = '津A8888' ORDER BY car_type
+			 2）再用车牌号看出入卡信息（卡号，卡类型）：SELECT t.`car_number`, IFNULL(p .identity,lp.identity) identity, c.`card_type`, t.`id`, c.`id_card`, t.`car_type`, t.`dept_type`,t.bid_no FROM card c, car_info t LEFT JOIN personal_info p ON p.id=t.`personal_id` LEFT JOIN `ls_personal_info` lp ON lp.id=t.`personal_id` WHERE t.`car_number` = '津A8888' AND IFNULL(t.`modify_status`, '0') != 3 AND t.card_id = c.id 
+			    联合若干车的信息（项目部、车牌、车辆类型、车主），封装到CardVO对象，返回。
+			    若无卡： 则只用车牌号看车的信息（项目部、车牌、车辆类型、车主）：SELECT t.`car_number`, IFNULL(p.identity,lp.identity) identity, t.`id`, t.`car_type`, t.dept_type,t.bid_no FROM car_info t LEFT JOIN personal_info p ON p.id=t.`personal_id` LEFT JOIN `ls_personal_info` lp ON lp.id=t.`personal_id` WHERE t.`car_number` = '津A8888' AND IFNULL(t.`modify_status`,'0') != 3
+        临时车辆：       1）同上，只是车的项目部固定为2：SELECT t.`car_number`, IFNULL(p.identity,lp.identity) identity, c.`card_type`, t.`id`, c.`id_card`, t.`car_type`, '2' dept_type,t.bid_no FROM card c, ls_car_info t LEFT JOIN personal_info p ON p.id=t.`personal_id` LEFT JOIN `ls_personal_info` lp ON lp.id=t.`personal_id` WHERE t.`car_number` = '津A8888' AND IFNULL(t.`modify_status`, '0') != 3 AND t.card_id = c.id 
+			 2） 同上，车的项目部固定为2：SELECT t.`car_number`, IFNULL(p.identity,lp.identity) identity, t.`id`, t.`car_type`,  '2' dept_type,t.bid_no FROM ls_car_info t LEFT JOIN personal_info p ON p.id=t.`personal_id` LEFT JOIN `ls_personal_info` lp ON lp.id=t.`personal_id` WHERE t.`car_number` = '津A8888' AND IFNULL(t.`modify_status`,'0') != 3
+
+  getPass:
+                        直接根据卡号看常临人（包括人员类型）、卡信息：SELECT d.card_type, CASE WHEN d.`card_type` = '1' THEN p.`identity` ELSE lp.`identity` END identity, CASE WHEN d.`card_type` = '1' THEN p.`name` ELSE lp.`name` END NAME, CASE WHEN d.`card_type` = '1' THEN e.dept_type ELSE '' END dept_type, CASE WHEN d.`card_type` = '1' THEN p.id ELSE lp.id END person_id, d.id, d.id_card, d.bid_no, prj.single_no, prj.prj_no, CASE WHEN d.`card_type` = '1' THEN e.personal_type ELSE le.personal_type END person_type FROM card d LEFT JOIN personal_info p ON p.`id` = d.`p_c_id` LEFT JOIN ls_personal_info lp ON lp.`id` = d.`p_c_id` LEFT JOIN v_employment_info e ON e.`id_card_id` = d.`id` LEFT JOIN v_ls_employment_info le ON le.`id_card_id` = d.`id` LEFT JOIN prj_info prj ON prj.bid_no = d.bid_no WHERE d.`state` = '1' AND IFNULL(d.`modify_status`, '0') != '3' AND IFNULL(p.`modify_status`, '0') != '3' AND IFNULL(lp.`modify_status`, '0') != '3' AND IFNULL(e.`modify_status`, '0') != '3' AND IFNULL(le.`modify_status`, '0') != '3' AND d.id_car									d = '2398013f14a24595b63ec9ffb52f76f4' 
+			//需要最新的用工信息
+   
+  	getInoutPersonType：  根据人员id、记录时间、常临类型，看是进场还是出场类型：从personal_inout中。
+        		  SELECT type FROM Personal_inout p1 WHERE p1.record_time =(SELECT MAX(record_time)  FROM Personal_inout p2 WHERE p2.per_or_tem='0' AND p2.state='1' AND p2.personal_id='3' AND DATE_FORMAT(record_time,'%Y-%m-%d')='2017-01-01') 
+			//也同时判断了是否有记录。
+
+  	---利用上述的数据，最后插入数据到表：Personal_inout   //条件是此人id、记录时间、常临类型在Personal_inout中没有。
+    			插入成功后如果还传来了record_img字段，那么将保存这个图片到img_store表中，保存为进出场抓拍。
+			
+  	getInoutCarType：根据车辆id、记录时间、常临类型，看进场还是出场：从car_inout中：  SELECT type FROM Car_inout p1 WHERE p1.record_time =(SELECT MAX(record_time)  FROM Car_inout p2 WHERE p2.per_or_tem='0' AND p2.state='1' AND p2.car_id='12' AND DATE_FORMAT(record_time,'%Y-%m-%d')='2017-01-01') 
+
+	--同上，利用上述数据，插入数据到表：Car_inout //条件也是此车id、记录时间、常临类型不在car_inout中。
+			//不考虑抓拍图片。
+
+7.loadFingerPrint：闸机获取指纹信息：
+  		根据上次同步时间，而获取到现在的所有人的指纹信息（手、手指、指纹text、指纹图片）（人：身份证、姓名）：select af.`identity`, per.name, af.hand_type, af.finger_type, af.finger_print, af.finger_img, DATE_FORMAT(af.update_time,'%Y-%m-%d %T') update_time  from attence_finger af  left join personal_info per on (af.`identity` = per.`identity`) where af.update_time > str_to_date(' 2017-01-01', '%Y-%m-%d %T') order by af.update_time desc
+					
+
+8.saveFingerPrint：闸机推送指纹信息：
+		根据人身份证、手、指看是否有记录数据，有则更新，无则插入：attence_finger
+ 
+9.personnel：移动考勤机获取人员信息：
+	根据标段从出入卡记录中找未过授权期的常临人的基本信息：常：SELECT d.`bid_no`, pp.identity, d.id_card, pp.name, d.`state`, DATE_FORMAT(d.`grant_time`, '%Y-%m-%d %T') grant_time, DATE_FORMAT( d.`period_of_validity`, '%Y-%m-%d %T' ) period_of_validity, e.personal_type,e.dept_type FROM card d LEFT JOIN (SELECT p.id, p.name, p.identity FROM personal_info p WHERE IFNULL(p.`modify_status`, '0') != '3' ) pp ON d.`p_c_id` = pp.`id` LEFT JOIN employment_info e ON d.id=e.id_card_id WHERE d.`card_type` IN ('1', '2') AND d.`state` = '1' AND IFNULL(d.`modify_status`, '0') != '3' AND d.`grant_time` < NOW() AND ( d.`period_of_validity` > NOW() OR d.`period_of_validity` IS NULL ) AND d.bid_no='1355001350190201' 
+								临：SELECT d.`bid_no`, pp.identity, d.id_card, pp.name, d.`state`, DATE_FORMAT(d.`grant_time`, '%Y-%m-%d %T') grant_time, DATE_FORMAT( d.`period_of_validity`, '%Y-%m-%d %T' ) period_of_validity, '' personal_type FROM card d LEFT JOIN (SELECT p.id, p.name, p.identity FROM ls_personal_info p WHERE IFNULL(p.`modify_status`, '0') != '3' ) pp ON d.`p_c_id` = pp.`id` LEFT JOIN ls_employment_info e ON d.id=e.id_card_id WHERE d.`card_type` IN ('1', '2') AND d.`state` = '1' AND IFNULL(d.`modify_status`, '0') != '3' AND d.`grant_time` < NOW() AND ( d.`period_of_validity` > NOW() OR d.`period_of_validity` IS NULL ) AND d.bid_no='1355001350190201' 
+	人：证、名，  卡：系统刷入的id、标段、可用状态，用工：人员类型、项目部类型
+
+10.attendance：移动考勤机推送记录：
+	直接插入Personal_inout表中，只要人id、记录时间在表中没有对应记录。包括人的经纬度信息。使用了getPass方法	
+	
+		   	

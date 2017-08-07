@@ -1,0 +1,25 @@
+1.script等的本质，和一般的标签没有区别。。同理可以获取它的dom对象。或者创建一个这样的对象。访问它和设置它的属性。
+  同理link, title等元素。
+
+2.函数
+ 
+
+3.视频监控
+  就是连接上远程的摄像头，然后将摄像头的信息用web页面的形式展现出来
+
+
+4.js操作flash。application/x-shokewave-flash
+  一是embed,这样可以加入<set>标签方式加如数据，前端可以看到。
+  二是object,这不可以直接加入数据。直接构造完object完整标签，放入一个div。调用该div dom对象的SetXMLDataFromString方法，将这样的{margin: {all: 0}, settings: globalSettings, charts: {chart: l_chart}} xml化的数据放进去就可以了。
+
+5.第三方插件的原理：
+  比如new Button。
+  是：用字符串标签的方式，构造了一个dom对象（或者jquery对象）。然后可以对这个对象设置属性，绑定事件，后加到dom流里面。
+   
+
+6.debugger的作用：
+  
+
+7.前端用dom变化来解释功能，js,css来动态控制dom变化（利用插件，还可以控制本地资源、工具资源的变化）。(具体实现：浏览器本身的功能和插件的功能)
+  后端用数据变化来解释功能，sql来控制数据变化。
+  

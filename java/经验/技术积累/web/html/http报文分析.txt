@@ -1,0 +1,23 @@
+1.请求报头：
+	
+  1)Cache-control:是否有cache
+  2)Connection:链接方式：keep-alive长连接。
+  3)Content-Type:发送的报文体内容的格式，application/soap+xml
+  4)Cookie:JSESSIONID=FFFFFFFFFFFFFFFFFFF;up:admin=49其中包括在document.cookie里设置的内容。对于一个域（http://ip:port都会一样的使用）
+  5)Content-Length:报文内容长度：326
+   )User-agent:客户端执行者：Java/1.7.0_51  或者浏览器中：Mozilla/5.0(Windows NT 6.1;Win4;x64)...Chrome....
+   )Accept:接收服务端的内容类型：text/html,application/xhtml+xml
+   )Accept-Encoding:接收的编码压缩方式gzip
+   )Accept-Language:接收的语言类型：zh-CN,zh;q=0.8
+   )Host:主机和端口:localhost:9000
+   )Upgrade-Insecure-Requests:1
+   )X-Custom-Header1:Bar
+   )Origin:源类型（与跨域有关）		
+
+2.响应头：
+  )Request URL:请求的资源路径
+  )Request Method:请求方式：GET
+  )Status Code:状态码：200
+  )Remote Address:[::1]:7878服务器地址和端口
+  )Access-Control-Allow-Origin:*允许的跨域请求
+

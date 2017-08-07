@@ -1,0 +1,6 @@
+1.非页面请求会进过servlet，从而经过这个层次的filter。
+
+2.一般的页面请求包括浏览器中的请求----是对用mx标签库的jsp，直接在FrameworkTag和MxConfig两个类中经过就结束了。
+
+
+3.filter配置在web.xml里。直接dofilter可以成功。重定向也可以成功！！

@@ -1,0 +1,66 @@
+问题来源：实际精确功能不符合，和数据不一致
+1.人员管理
+  //调..读取身份证、调用摄像头拍照、调..将信息写到卡片上、调用指纹采集器采集指纹
+  //常驻人员管理：增减常驻人，扫证拍头办卡，个人信息二维码化（并可打印）。（只看功能）  personal_info
+  //临时人员管理：增减临时人，扫证拍头办卡   ls_personal_info
+  //指纹管理：常驻人的双手指纹录入和查找 attence_finger
+   
+  //人员实时进出场：今天出入场的常临人员的展示（通过刷卡事件） personal_inout
+  //人员出入证发放记录：可以看一段时期内哪些人进过场（因为进场就会发证--但是是第一次） card
+  //人员动态统计：每天五种人的在场数量  personal_inout
+  //常驻人员构成：人员基本信息的分类统计 personal_info
+
+2.车辆管理
+  //调..读取身份证、调用摄像头拍照、调..将信息写到卡片上
+  //常驻车辆管理：扫证拍头（新增负责人）办卡（车辆专用的出入卡），车辆信息二维码化 car_info
+  //临时车辆管理：扫证拍头（新增负责人）办卡（车辆专用的出入卡）  ls_car_info
+  //进出车辆统计: 每天五种人的在场车辆数量 （及其出入车次） car_inout
+  //车辆出入证发放记录：可以看一段时间内哪些车进过场（因为进出会发卡，看发卡时间） card
+  //车辆进出场：查看今天出入场的车辆 car_inout
+
+3.机具管理
+   （存储了什么和查看什么？）
+  //施工机具台账：每种机具的数量责任人基本信息、进出场记录、检验记录、领用记录。tools_book
+  //施工机具检查：每种机具的检查信息查看。tools_book tools_checkout_record
+  //施工机具领用：每种机具的领用情况（领用与库存）和归还清空和进行领用或者归还。tools_book tools_use_record
+
+
+4.人员定位
+  //区域管理：存储了标段下各个区域的名称和形状、面积等。t_position_area
+  //定位设备绑定：常驻人员的定位设备记录 t_position_dev_rel  v_personal_info  personal_info
+  //规则管理：某公司对区域内一类人员的规则。people_alarm_rule
+  //人员位置信息：存储了某个人员（带定位设备）某天的轨迹信息。统计四种人有定位信息的个数。t_position_recent  v_personal_info  v_POSITION_DEV_REL
+                  存储多个区域的有序顶点信息(从而可以画出图)。 t_position_area   t_position_area_detail
+  //人员轨迹查询：仍然查若干人某天的轨迹信息。并画出若干人的轨迹点曲线。   t_position_recent  v_personal_info  
+  //告警信息： 存储了告警设备（一个人，一个视频有告警设备，人的是人员定位设备）传来的告警信息。alarm_info
+  //跨区记录\告警：记录人员从一个区域到另一个区域（离开和进入两个信息）的信息（仅仅是记录或者包含报警） alarm_info
+  //临近记录\告警：记录人员临近一个区域的信息（告警或者没有告警）。 alarm_info
+
+5.工程视频
+  //同画面视频监控： 获取预置位--配置摄像头（p_code登录摄像头信息， preset_config），获取当天和最近7天的每个人员实时进出的记录（personal_inout， personal_info，v_employment_info,...）,
+		    获取当天和最近7天车辆的出入记录（car_inout, car_info, ls_car_info），获取当天现场人员和车辆的总量和分常驻临时统计的数量。
+  //电子地图视频跟踪：若干人不同天的轨迹信息（t_position_recent），
+                      预置位配置（画场区图，分区--以选中某个摄像头来配置并且显示，点击某个摄像头后，获取视频配置信息后登录摄像头（p_code,preset_config））
+
+  //视频参数配置： 配置访问摄像头基本信息（ip,port,user, password）   p_code
+  //视频抓拍管理：存储了各种方式拍摄的图片。 img_store
+  //人员进出抓拍：某段时间常临人员出入场时刷卡记录和抓拍记录的展示（刷卡时间，抓拍图片） personal_inout   img_store   v_employment_info personal_info
+  //车辆进出抓拍：某段时间常临车辆进出场时刷卡信息和抓拍图片的展示（刷卡时间，抓拍图片） car_inout car_info  img_store  ls_car_info
+
+6.系统管理
+  //扫卡（扫身份证：IDCardReader）、打卡（打印二维码：ThermalPrinter）、读写卡（从卡片上读取id和写入id：EpcReader，人车信息写到卡片上--即制证: ZBRPrinter）、调头（调用摄像头拍照: Camera）、指纹录入（document.getElementById("fingerPrint")）
+  //用户管理：查看所有可以的登录用户(t_sys_user), 某个用户的目前授予的角色（n个）和剩下的可授予的角色（并进行授予或者回收，夺回） （t_sys_role  t_sys_role_user）
+              关联标段（prj_info ,t_sys_user）(目前是任意修改关联到哪些个标段)
+  //角色管理：查看所有的角色（t_sys_role） , 查看所有的菜单并查看角色具有的菜单并增加该角色还不具有的菜单（授权）(从存储角色具有的菜单上看，这个授权很简单)t_sys_rolemenu			
+  //菜单管理：增删改查所有的菜单
+  //接口检测：升级系统ip:port  p_code
+  //系统日志：t_sys_log   (日志采用：org.apache.commons.logging.Log， commons-logging )
+  //系统二维码：ip:port, 标段
+
+7.基本信息
+  //工程信息：一个标段的基本信息 prj_info
+  //项目部信息：同一个标段下的三部信息 dept_info
+  //标段信息：同一个标段下的所有合同信息 contract_info
+  //参建单位信息：同一个标段下所有参建单位的信息 part_army
+  //现场人员花名册：基建的该标段下的人 v_personal_info
+

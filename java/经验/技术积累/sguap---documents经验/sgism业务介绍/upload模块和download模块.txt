@@ -1,0 +1,21 @@
+1.upload:
+  	main页面：查看branch_info页面信息。
+
+
+
+
+2.download：是webservice接口
+  1)getNewVer: 获取新版本
+		# 传老版本，用它从branch_info里找比它最新的branch_id出来。
+ 		# 用上述id从t_mx_attachment附件表里找出附件（就是本项目的压缩包PersonCar_V1.0.1.zip）路径（本地）和大小（3G级别）。
+
+  2)download:下载文件：
+		# 根据传来的版本，从branch_info联合t_mx_attachment中找出下载的文件完整路径。
+		  读取该文件，但是一次只读一部分，即先忽略前面部分，从某处开始读一部分，转为base64编码,传过去。下次webservice请求来后，从上次的地方开始继续往后读，直至读完。对应客户端应该是连续的webservice请求，而一次将文件写入到磁盘。
+
+
+
+
+
+----autoserver应该部署在oracle里。
+       	

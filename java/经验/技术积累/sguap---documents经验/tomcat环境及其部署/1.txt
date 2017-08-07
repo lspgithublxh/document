@@ -1,0 +1,4 @@
+1.sguap-server采用新的。
+
+2.tomcat config
+  两个tomcat的server.xml中不仅http端口不同，而且<server port>端口不同。

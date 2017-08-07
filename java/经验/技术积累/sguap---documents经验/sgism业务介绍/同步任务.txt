@@ -1,0 +1,84 @@
+//send_state != '1' OR  send_state IS NULL    
+1.传递常驻车辆信息 SyncCzclDataService.java   car_info
+   会从ls_personal_info取数据，因为car_info和ls_car_info里面有临时人或者常驻人的信息（即常驻人可以使用临时车辆）
+ ----只看状态，不看日期。
+
+2.推送证卡信息  SyncCardDataService  card
+SELECT id, card_type, CAST( DATE_FORMAT( create_time, '%Y-%m-%d %H:%i:%S' ) AS CHAR ) create_time, CAST( DATE_FORMAT(grant_time, '%Y-%m-%d %T') AS CHAR ) grant_time, id_card, p_c_id, CAST( DATE_FORMAT( period_of_validity, '%Y-%m-%d %T' ) AS CHAR ) period_of_validity, state, CAST( DATE_FORMAT(update_time, '%Y-%m-%d %T') AS CHAR ) update_time, bid_no, send_state, '' send_time, modify_status FROM card WHERE send_state != '1' OR send_state IS NULL  
+ ----只看状态，不看日期
+
+3.推送资信信息 syncCertificateDataService.pushCertificateData   certificate_info
+select p.identity,c.certi_pic,c.certificate,c.certificate_no,cast(DATE_FORMAT(c.update_time,'%Y-%m-%d %T') as char),cast(DATE_FORMAT(c.expiry_date,'%Y-%m-%d %T') as char),c.issue_unit,c.create_user,cast(DATE_FORMAT(c.create_time,'%Y-%m-%d %T') as char),c.update_user,c.modify_status from certificate_info c,personal_info p WHERE c.personal_info_id = p.id and (c.send_state!='1' or c.send_state is NULL)
+ ----只看状态，不看日期	
+
+4.推送用工信息 syncEmploymentDataService.pushEmploymentData 
+SELECT e.bid_no, e.dept_type, e.personal_info_id, e.id_card_id, e.single_no, e.prj_no, e.org_name, e.org_no, e.contract_no, e.contract_name, e.employ_type, e.contract_pic, e.personal_type, e.work_type, e.remark, e.pass, cast(DATE_FORMAT(e.in_date, '%Y-%m-%d %T') as char) in_date, cast(DATE_FORMAT(e.out_date, '%Y-%m-%d %T') as char) out_date, cast(DATE_FORMAT(e.create_time, '%Y-%m-%d %T') as char) create_time, e.create_user, cast(DATE_FORMAT(e.update_time, '%Y-%m-%d %T') as char) update_time, e.update_user, e.send_state, cast(DATE_FORMAT(e.send_time, '%Y-%m-%d %T') as char) send_time,cast(DATE_FORMAT(e.test_date, '%Y-%m-%d %T') as char) test_date, e.id,e.modify_status FROM employment_info e,personal_info p WHERE (e.send_state != '1' OR e.send_state IS NULL ) AND e.personal_info_id=p.id
+ ----只看状态，不看日期
+
+5.推送人员基本信息  syncPersonBaseDataService.pushPersonBaseData   Personal_info
+SELECT id, identity, name, sex, age, nation, blood, degree, emergency_contact, emergency_phone, emergency_rela, hospital, last_medical_test, cast(DATE_FORMAT(last_medical_test_date,'%Y-%m-%d %T') as char) last_medical_test_date, medical_history, mobile_phone, cast(DATE_FORMAT(start_date,'%Y-%m-%d %T') as char) start_date, working_years, send_state, cast(DATE_FORMAT(send_time,'%Y-%m-%d %T') as char) send_time, data_src, create_user, cast(DATE_FORMAT(create_time,'%Y-%m-%d %T') as char) create_time, update_user, cast(DATE_FORMAT(update_time,'%Y-%m-%d %T') as char) update_time, modify_status FROM Personal_info WHERE send_state!='1' OR send_state IS NULL
+
+6.传递实时统计数据 analysisDataService.pushRealTimeAnalysisData   人车机具出入的统计数据(3列)  ，，人车当天，机具台账总共
+SELECT 'people' AS dtype, r.`dept_type` AS vtype, COUNT(1) AS num FROM (SELECT `p2`.`dept_type` AS `dept_type`, `p2`.`personal_id` AS `personal_id`, `p2`.`per_or_tem` AS `per_or_tem` FROM (SELECT `p_out`.`personal_id` AS `personal_id`, MAX(`p_out`.`record_time`) AS `record_time` FROM `personal_inout` `p_out` WHERE ( ( `p_out`.`modify_status` <> _utf8 '3' ) AND ( SUBSTR(`p_out`.`record_time`, 1, 10) = DATE_FORMAT(SYSDATE(), _utf8 '%Y-%m-%d') ) AND p_out.per_or_tem = '1' AND p_out.`bid_no` = '1355001350190201' ) GROUP BY `p_out`.`personal_id`) `p` LEFT JOIN `personal_inout` `p2` ON `p2`.`personal_id` = `p`.`personal_id` AND `p2`.`record_time` = `p`.`record_time` WHERE `p2`.`type` = _utf8 '0') r WHERE r.per_or_tem = '1' GROUP BY r.`dept_type` UNION SELECT 'people' AS dtype, 'tempnum' AS vtype, COUNT(1) AS num FROM (SELECT `p2`.`personal_id` AS `personal_id`, `p2`.`per_or_tem` AS `per_or_tem` FROM (SELECT `p_out`.`personal_id` AS `personal_id`, MAX(`p_out`.`record_time`) AS `record_time` FROM `personal_inout` `p_out` WHERE ( ( `p_out`.`modify_status` <> _utf8 '3' ) AND ( SUBSTR(`p_out`.`record_time`, 1, 10) = DATE_FORMAT(SYSDATE(), _utf8 '%Y-%m-%d') ) AND p_out.per_or_tem = '2' AND p_out.`bid_no` = '1355001350190201' ) GROUP BY `p_out`.`personal_id`) `p` LEFT JOIN `personal_inout` `p2` ON `p2`.`personal_id` = `p`.`personal_id` AND `p2`.`record_time` = `p`.`record_time` WHERE `p2`.`type` = _utf8 '0') r WHERE r.per_or_tem = '2' UNION SELECT 'car' AS dtype, 'carnum' AS vtype, COUNT(1) AS num FROM (SELECT `c_out`.`car_id` AS `car_id`, MAX(`c_out`.`record_time`) AS `record_time` FROM `car_inout` `c_out` WHERE SUBSTR(`c_out`.`record_time`, 1, 10) = DATE_FORMAT(SYSDATE(), '%Y-%m-%d') AND `c_out`.`bid_no` = '1355001350190201' GROUP BY `c_out`.`car_id`) p INNER JOIN car_inout out2 ON out2.`car_id` = p.car_id AND out2.`record_time` = p.record_time WHERE out2.`type` = '0' UNION SELECT 'tools' AS dtype, analy_type AS vtype, SUM(total_num) AS num FROM v_tools_analy_type book WHERE book.`inout_satus` = '1' AND book.bid_no = '1355001350190201' GROUP BY analy_type 
+
+
+7.推送车辆进出场数据 SyncCljccDataService Car_inout
+ select bid_no,car_number,type,cast(DATE_FORMAT(record_time,'%Y-%m-%d %T') as char),id_card from Car_inout where send_state!='1' or send_state is NULL
+----只看状态，不看日期
+
+8.推送人员进出场数据   personInOutDataService.pushPersonInOutData 
+ SELECT bid_no, single_No, identity, TYPE, cast(DATE_FORMAT(record_time,'%Y-%m-%d %T') as char), prj_no, NAME, id_card, cast(DATE_FORMAT(create_time,'%Y-%m-%d %T') as char), create_user, cast(DATE_FORMAT(update_time,'%Y-%m-%d %T') as char), update_user, delete_flag, send_state, cast(DATE_FORMAT(send_time,'%Y-%m-%d %T') as char), modify_status FROM personal_inout WHERE send_state!='1' OR send_state IS NULL
+----只看状态，不看日期
+
+9.推送施工机具数据 sgjjDataService tools_book
+SELECT id, bid_no, cast(DATE_FORMAT(create_time, '%Y-%m-%d %T') as char) create_time, create_user, modify_status, cast(DATE_FORMAT(next_date, '%Y-%m-%d %T') as char) next_date, prj_no, put_location, quality_verify, remark, return_status, send_state, cast(DATE_FORMAT(send_time, '%Y-%m-%d %T') as char) send_time, single_no, standard_model, tools_name, tools_type, total_num, cast(DATE_FORMAT(update_time, '%Y-%m-%d %T') as char) update_time, update_user FROM tools_book WHERE send_state != '1' OR send_state IS NULL 
+
+10.推送施工机具检试数据 sgjjDataService tools_checkout_record
+SELECT `id`, `tools_id`, cast(DATE_FORMAT(`checkout_date`,'%Y-%m-%d %T') as char) checkout_date, `checkout_method`, `checkout_num`, `checkout_place`, `ck_person_id`, `ck_person`, cast(DATE_FORMAT(`next_date`,'%Y-%m-%d %T') as char) next_date, `qualified`, `unqualified_deal`, `remarks`, `create_user`, cast(DATE_FORMAT(create_time,'%Y-%m-%d %T') as char) create_time, cast(DATE_FORMAT(update_time,'%Y-%m-%d %T') as char) update_time, `update_user`, `modify_status` FROM tools_checkout_record WHERE send_state!='1' OR send_state IS NULL
+
+11. 推送施工机具进退场数据  sgjjDataService  tools_inout
+SELECT `id`, `tools_book_id`, `quality_verify`, cast(DATE_FORMAT(`next_date`,'%Y-%m-%d %T') as char), `put_location`, `duty_person_id`, `duty_person`, `control_type`, cast(DATE_FORMAT(`in_date`,'%Y-%m-%d %T') as char), cast(DATE_FORMAT(`out_date`,'%Y-%m-%d %T') as char), `create_user`, cast(DATE_FORMAT(`create_time`,'%Y-%m-%d %T') as char), `update_user`, cast(DATE_FORMAT(`update_time`,'%Y-%m-%d %T') as char) FROM `tools_inout`  WHERE IFNULL(send_status,'0')='0'
+
+12. 推送施工机具领用数据 sgjjDataService  tools_use_record
+ SELECT `id`, `tools_id`, `get_company`, cast(DATE_FORMAT(`get_date`,'%Y-%m-%d %T') as char), `get_num`, `get_person_id`, `get_person`, `give_person_id`, `give_person`, `return_num`, `return_status`, `create_user`, cast(DATE_FORMAT(`create_time`,'%Y-%m-%d %T') as char), `update_user`, cast(DATE_FORMAT(`update_time`,'%Y-%m-%d %T') as char) FROM  `tools_use_record` WHERE IFNULL(send_state,'0')='0'
+
+13.推送施工机具归还数据 sgjjDataService  tools_use_return_record
+SELECT `record_id`, `use_id`, `return_num`, cast(DATE_FORMAT(`return_time`,'%Y-%m-%d %T') as char), `create_user`,cast( DATE_FORMAT(`create_time`,'%Y-%m-%d %T') as char), `update_user`, cast(DATE_FORMAT(`update_time`,'%Y-%m-%d %T') as char) FROM `tools_use_return_record`  WHERE IFNULL(send_status,'0')='0'
+
+14.生成今天各单位人员最新的刷卡记录中的进场型记录的按单位统计人数的数据（仅仅是先生成数据）合并上当天这个小时段上刷了出场但当天为止都没刷入场的人的人次，，，作为在场人数（但人次应该改为人数，即要去重） quantityService 
+SELECT t.vtype, SUM(t.num) num FROM (SELECT v.`dept_type` AS vtype, COUNT(1) AS num FROM v_people_real_time v GROUP BY v.`dept_type` UNION ALL SELECT p2.dept_type, COUNT(1) AS num FROM `personal_inout` p2 WHERE `p2`.`type` = _utf8 '1' AND DATE_FORMAT( `p2`.`record_time`, '%Y-%m-%d %H' ) = DATE_FORMAT(SYSDATE(), _utf8 '%Y-%m-%d %H') AND NOT EXISTS (SELECT 1 FROM v_people_real_time v WHERE v.`personal_id` = p2.personal_id) GROUP BY p2.dept_type) t GROUP BY t.vtype 
+ //可能有问题：v_people_real_time：每个人当天最后的刷卡时间。且太复杂没有什么意义！！冗余度太高。
+  //语句本质上是统计当前小时和当天的数据的叠加--而且还不去重。极大问题。且定时任务在每小时57分统计，有三分种没有统计。
+   （统计当天每个人的最新的刷卡记录，合并上当前小时上没有统计进来的（不在v_people_real_time只在personal_inout里面）每个人的刷卡次数（不去重））
+ ??问题是人数和人次。    
+
+15.推送每小时在场人数统计数据  quantityService t_gather_present_daily  
+SELECT `year`, `month`, `day`, `hour`, `bid_no`, `yz_num`, `jl_num`, `sg_num`, `fb_num`, `ls_num`, cast(DATE_FORMAT(`create_time`, '%Y-%m-%d %H:%i:%S') as char), `send_state` ,cast(DATE_FORMAT(`send_time`, '%Y-%m-%d %H:%i:%S') as char) FROM `t_gather_present_daily` where `send_state` = '0' or send_state is null 
+ //推送每天每小时5类人在场人数的统计（）
+----只看状态，不看日期
+
+
+16. 推送设备绑定信息数据  positionService.pushDevRelData    t_position_dev_rel
+ SELECT `ID`, `SINGLE_NO`, `BID_NO`, `DEV_NO`, `NAME`, `IDENTITY`, `STATUS`, CAST( DATE_FORMAT( UPDATE_TIME, '%Y-%m-%d %H:%i:%S' ) AS CHAR ) `UPDATE_TIME`, CAST( DATE_FORMAT( GRANT_TIME, '%Y-%m-%d %H:%i:%S' ) AS CHAR ) `GRANT_TIME`, CAST( DATE_FORMAT( END_TIME, '%Y-%m-%d %H:%i:%S' ) AS CHAR ) `END_TIME` FROM `t_position_dev_rel` WHERE send_flag='0' OR send_flag IS NULL 
+ //都是推送全部而不是最新。但是有send_flag为标记，推送了就标记，，但是没有天的限制条件会全表搜索，时间耗费多。
+
+17.推送人员位置信息数据 
+SELECT t.`ID`, t.`REL_ID`, t.`DEV_NO`, t.`IDENTITY`, t.`YEAR`, t.`MONTH`, t.`DAY`, CAST( DATE_FORMAT( t.POSITION_TIME, '%Y-%m-%d %H:%i:%S' ) AS CHAR ) `POSITION_TIME`, CAST( DATE_FORMAT( t.RECORD_TIME, '%Y-%m-%d %H:%i:%S' ) AS CHAR ) `RECORD_TIME`, t.`LONGITUDE`, t.`LATITUDE`, t.`HEIGHT`, t.`PRECISION`, u.`DETAIL`, (SELECT NAME FROM p_code WHERE code_type='18900000' AND VALUE=e.`personal_type`) PERSONAL_TYPE, e.`DEPT_TYPE`,e.`ORG_NAME` FROM `t_position_recent` t LEFT JOIN t_position_upload u ON t.`ID`=u.`RECENT_ID`,t_position_dev_rel r,employment_info e,personal_info p WHERE (t.send_flag='0' OR t.send_flag IS NULL) AND t.`REL_ID`=r.`ID` AND r.`BID_NO`=e.`bid_no` AND t.`IDENTITY`=p.`identity` AND e.`personal_info_id`=p.id AND r.`STATUS`='1' 
+ //推送未标记的每天每个人(实际上就是每台定位设备)的轨迹信息。  //同时存数据到t_position_upload（非常奇怪，detail为空的时候插入数据）
+ （属于既要存到本地，也要上传到数据库）
+
+18.推送施工或监理单位资源投入统计数据  personal_inout从刷卡记录中看出
+ select substring(p1.record_time, 1,instr(p1.record_time, ' ') - 1) dt, e1.org_name, e1.org_no, p1.bid_no, e1.dept_type, count(distinct p1.`identity`) worker_count, count(distinct (case when e1.personal_type like '%01%' then p1.`identity` else null end)) user_count  from personal_inout p1 left join personal_info p2 on p1.`identity` = p2.`identity`  left join v_employment_info e1 on e1.personal_info_id = p2.id  inner join prj_info prj on p1.bid_no = prj.bid_no where substring(p1.record_time,1, instr(p1.record_time, ' ') - 1) > '2000-01-01' and p1.record_time <= '2017-06-22'  and e1.dept_type = '3'  group by substring(p1.record_time,1, instr(p1.record_time, ' ') - 1), p1.bid_no, e1.dept_type,e1.org_name, e1.org_no union  select substring(p1.record_time, 1,instr(p1.record_time, ' ') - 1) dt, e1.org_name, e1.org_no, p1.bid_no, e1.dept_type, count(distinct p1.`identity`) worker_count, count(distinct ( case when e1.personal_type like '%17%' then p1.`identity` when e1.personal_type like '%18%' then p1.`identity` else null end )) user_count  from personal_inout p1 left join personal_info p2 on p1.`identity` = p2.`identity`  left join v_employment_info e1 on e1.personal_info_id = p2.id  inner join prj_info prj on p1.bid_no = prj.bid_no where substring(p1.record_time,1, instr(p1.record_time, ' ') - 1) > '2000-01-01' and p1.record_time <= '2017-06-22'  and e1.dept_type = '2'  group by substring(p1.record_time,1, instr(p1.record_time, ' ') - 1), p1.bid_no, e1.dept_type,e1.org_name, e1.org_no
+  //推送，也存到：t_gather_sgjl_res_daily里。  //每天各个公司施工和监理单位（部门）人力资源投入情况（干活的和管理的）的统计。
+
+19.推送分包单位资源投入统计数据 
+   select substring(p1.record_time,1, instr(p1.record_time, ' ') - 1) dt,e1.org_name, e1.org_no, p1.bid_no,e1.contract_no, count(distinct p1.`identity`) sub_worker_count, count(distinct (case when e1.personal_type like '%05%' then p1.`identity` else null end)) sub_spe_worker_count  from personal_inout p1 left join personal_info p2 on p1.`identity` = p2.`identity`  left join v_employment_info e1 on e1.personal_info_id = p2.id  inner join prj_info prj on p1.bid_no = prj.bid_no where substring(p1.record_time,1, instr(p1.record_time, ' ') - 1) > '2000-01-01' and p1.record_time <= '2017-06-22'  and e1.dept_type = '4' group by substring(p1.record_time,1, instr(p1.record_time, ' ') - 1), p1.bid_no, e1.dept_type,e1.org_name, e1.org_no
+  //推送，也存到t_gather_fb_res_daily里。   //每天各个分包单位部门的公司的人力资源投入情况（干活的和管理的）的统计。
+
+20.推送区域名称数据
+  SELECT `ID`, `SINGLE_NO`, `BID_NO`, `AREA_NAME`, `AREA_TYPE`, `AREA_SHAPE`, `AREA_REMARK`, CAST( DATE_FORMAT( UPDATE_TIME, '%Y-%m-%d %H:%i:%S' ) AS CHAR ) `UPDATE_TIME` FROM `t_position_area` WHERE send_flag='0' or send_flag is null 
+21.推送区域定点数据
+ "SELECT `ID`, `AREA_ID`, `DEV_NO`, `ORDER_NO`, `LONGITUDE`, " +
+				"`LATITUDE`, `RADIUS`, CAST( DATE_FORMAT( UPDATE_TIME, '%Y-%m-%d %H:%i:%S' ) AS CHAR ) `UPDATE_TIME` FROM `t_position_area_detail` WHERE send_flag='0' or send_flag is null 
+
+ 

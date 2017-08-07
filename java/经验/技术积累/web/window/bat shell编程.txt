@@ -1,0 +1,47 @@
+1.bat方式注册服务：如Tomcat服务和MYSql服务
+  顺序：停止（call shutdown.bat// stop SGISM） 、
+	卸载（call service.bat uninstall SGISM） 、 
+	安装 (call service.bat install SGISM)、
+	配置（sc config SGISM start=delayed-auto ）、 
+	启动 (sc start SGISM depend= UAP) //依赖另一个服务而启动
+
+
+2.bat 方式运行程序启动服务：如在cmd中输入命令一样(如执行一个可执行jar包)。
+	echo Set ws = CreateObject("Wscript.Shell") >>updateClient.vbs
+	echo ws.run "cmd.exe /C java -jar %jarPath%",vbhide >>updateClient.vbs
+	start updateClient.vbs
+ 2.2 如果要隐藏黑窗口，可以执行另一个bat脚本来设置：reg add （修改注册表配置）
+
+3.进入目录，调动程序：
+ cd %~dp0\Data
+ call uap_service.bat
+
+4.当前系统所有可执行程序以管理员身份运行：
+ reg add  HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers
+
+
+5.快捷方式生成：
+  makelnk.vbs
+
+
+
+7.一个系统的安装：
+  java 环境变量配置：(将环境变量写入注册表，和写到path里不一样，---执行命令也不一样) reg add "HKCU\Enviroment" /v JAVA_HOME /t_reg_sz /d "%dg0\0..\Java\jdk" /f    
+			   setx JAVA_HOME "%dp0\..\Java\jdk"
+  mysql ini配置、注册服务、启动、登录并执行脚本
+  tomcat 注册服务和启动服务（可以联动另一个服务方式）、配置tomcat运行时占用的内存大小（reg add 注册表对应该tomcat软件该服务的参数可以配置）
+  浏览器安全级别设置： reg add (同理到相应软件可以设置)
+
+ 
+8.浏览器安全级别设置：reg add (同理到相应软件可以设置)
+   
+9.基本命令：
+  echo "sss"
+  reg add HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers
+  rem  xxx
+  move "path1" "path2"
+  set   A=B
+  call   xx.bat install name     !A!   
+  setx   env_v_name "path"
+  net start servicename
+  sc config serviceName start=auto

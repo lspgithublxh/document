@@ -1,0 +1,20 @@
+
+CREATE TABLE `attence_finger` (
+  `id` varchar(32) NOT NULL COMMENT 'id',
+  `identity` varchar(32) NOT NULL COMMENT '身份证',
+  `hand_type` char(1) NOT NULL COMMENT '指纹来源(1-左手;2-右手)',
+  `finger_type` char(1) NOT NULL COMMENT '指纹来源(1-大拇指;2-食指;3-中指;4-无名指;5-小拇指)',
+  `finger_print` text COMMENT '指纹特征',
+  `finger_img` mediumblob COMMENT '指纹图像',
+  `update_time` datetime NOT NULL COMMENT '更新时间',
+  `send_state` char(2) default NULL COMMENT '发送状态(0或者空-未推送；1-已推送)',
+  `send_time` datetime default NULL COMMENT '发送时间',
+  `modify_status` char(1) default '1' COMMENT '状态(1-新增；2-修改；3-删除)',
+  `data_src` char(1) default '1' COMMENT '来源(1-本地;2-外部)',
+  PRIMARY KEY  (`id`),
+  KEY `identity` (`identity`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+[INSERT INTO T_POSITION_AREA(SINGLE_NO,ID,BID_NO,AREA_NAME,AREA_REMARK,AREA_TYPE,UPDATE_TIME) SELECT SINGLE_NO,'0ef8b3f402264bc6a81f11eeb3da22f7','13193313502J0201','厂区','总厂区,面积大小为100m*100m','1', str_to_date('1900-01-01 00:00:00','%Y-%m-%d %T') FROM PRJ_INFO LIMIT 1, INSERT INTO T_POSITION_AREA_DETAIL(ID,AREA_ID,ORDER_NO,LONGITUDE,LATITUDE,UPDATE_TIME) VALUES('9bec1d0dd3e8411b874419671cc05043','0ef8b3f402264bc6a81f11eeb3da22f7','1','76.123','87.23', str_to_date('1900-01-01 00:00:00','%Y-%m-%d %T'), INSERT INTO T_POSITION_AREA_DETAIL(ID,AREA_ID,ORDER_NO,LONGITUDE,LATITUDE,UPDATE_TIME) VALUES('30c0935cde384469a53179c3faef4206','0ef8b3f402264bc6a81f11eeb3da22f7','2','65.12','88.23', str_to_date('1900-01-01 00:00:00','%Y-%m-%d %T')]
+
+
+INSERT INTO T_POSITION_AREA_DETAIL(ID,AREA_ID,ORDER_NO,LONGITUDE,LATITUDE,UPDATE_TIME) VALUES('9bec1d0dd3e8411b874419671cc05043','0ef8b3f402264bc6a81f11eeb3da22f7','1','76.123','87.23', str_to_date('1900-01-01 00:00:00','%Y-%m-%d %T'), INSERT INTO T_POSITION_AREA_DETAIL(ID,AREA_ID,ORDER_NO,LONGITUDE,LATITUDE,UPDATE_TIME) VALUES('30c0935cde384469a53179c3faef4206','0ef8b3f402264bc6a81f11eeb3da22f7','2','65.12','88.23', str_to_date('1900-01-01 00:00:00','%Y-%m-%d %T')]

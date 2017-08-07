@@ -1,0 +1,9 @@
+---资源包括？
+    scripts/ css/images/icons
+1.来自jar包里，共享的。
+2.来自项目sgism_mxframework里面。覆盖了原始的。
+3.来自于本项目本weblet里面resources目录下。
+
+
+---js资源来源：
+1.可以在一个js中引入另一个js文件的内容：$include("~/psm/common/TableMerge.js"); (当然就包括了它的方法)

@@ -1,0 +1,3 @@
+1.criteria方式
+2.动态生成sql string
+3.sql.xml配置文件。hibernate调用执行。本uap平台是将sql.xml写在src/sqls/里面

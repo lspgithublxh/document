@@ -1,0 +1,2 @@
+1.load()方法可以加参数。datacontrols的load()方法可以加。比如 load("1")。datacontainer的load()也可以加参数。
+  

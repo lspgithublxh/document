@@ -1,0 +1,3 @@
+1.mx对象（函数）通过.$e就是访问到自己这个整体的jquery对象（即标签的javascript对象--dom对象的封装的对象）
+ 2. 不同类型，可以用.$head   .$body访问到自己的不同部分。
+  3. 更一般的，用.$className就可以访问到自己内部有className这个class属性的标签的dom元素的jquery对象。（每一个类就定义这样的属性？）

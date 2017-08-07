@@ -1,0 +1,4 @@
+1.meta-inf里面依赖加进来。日志里面应该有启动模块失败如workspace失败。
+  Require-Bundle
+  Import-Package
+

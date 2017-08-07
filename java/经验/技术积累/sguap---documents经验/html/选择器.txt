@@ -1,0 +1,13 @@
+//空格选择器
+1.$("table tbody tr td#d").css("background-color","yellow");
+2.$("table").find("tbody tr td#s").css("background-color","blue");
+  但是注意：$("table").children("tbody tr td#s").css("background-color","blue");这样是不行的，因为children只会在第一个子元素中去找。而不会依次找直至找完。--甚至第一个也不行。只能是一级选择器。
+		可以的：$("table").children("tbody").css("background-color","blue");
+                          $("tbody").children("tr#ss").css("background-color","blue");
+   也不能越级，到下下子节点。
+  但是find()方法可以。级联和越级查询都可以！！
+   _form.$e.find("td#goodsSupplyName input").val("供应商1");
+   _form.$e.find("td#goodsTypeName input").val("食品类");
+
+//>选择器。
+   也是可以级联，可以全部的元素。

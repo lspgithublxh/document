@@ -1,0 +1,28 @@
+1.主页面form 模板/skins/regApply.html,数据请求路径：rest/prjinfo/getMAC/ --- 获取机器的MAC。一旦加载该form，将mac放在相应的input里。
+
+   
+
+
+2.sendMail()
+   通过发邮件来请求获取注册码：/psm/rest/prjinfo/sendMailToPersonCar   ；；发送用户注册的信息到一个专门的网易邮箱。
+
+3.getRegisterCode() 获取注册码：略
+
+ 
+4.register() 注册：
+   /psm/rest/prjinfo/register/   1）传项目部名称、mac、注册码三个信息
+ 			  	 2）看注册码是否过期：即重新解开注册码来检查日期、构造注册码看完整性。
+				 3) 看serial_number表中有无这个mac和deptname，有则插入无则更新serial_number。
+	
+
+5.向autoserver请求注册码：
+     这个获取注册码方式是根据：项目部名称、mac地址和过期日期 生成注册码，返回。PrCodeUtil.getRegister这个类方法。
+
+6.autoserver上upload的regCode页面：生成和查看注册码页面：
+  		1)保存（会生成注册码）：要根据项目部名称、mac地址和计算出过期日期，再和项目部名称、mac地址一起生成注册码。
+		2)更新（会生成新的注册码）：	根据修改的项目名称、mac地址和计算出的过期日期，在和项目部名称、mac地址一起生成注册码。
+
+         -----生成注册码：
+			1）四串数中间部分：直接MD5（三大信息）
+			2) 四串数两旁部分：过期日期分成4部分，每部分当作整数变成16进制格式。
+			上述组合就是结果。

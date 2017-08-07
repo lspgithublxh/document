@@ -1,0 +1,19 @@
+1.@ColumnResponseBody  List<ViewAttributeData> 
+   返回一个视图属性ViewAttributeData数据格式的数据的列表。没有属性，只是对列本身的特征描述。
+
+2.@VoidResponseBody Object 
+   返回一个专门格式的json对象，同时Object被封装到其中一个属性中。
+
+3.@RawResponseBody Object
+   返回一个自己定义的对象，而这个对象就直接转为json返回到前端。这就是返回的数据的数据结构、数据格式。
+    事实上，返回一个字符串、json字符串时却不是原生的，而是有successful:,url:,之类对象的元素了。
+
+4.@ItemResponseBody List
+  返回{items:[{},{},{}],itemCount:0,,,,}格式的数据。如果itemCount要设置值，那么就要改为注解：@ItemResponseBody QueryResultObject
+
+5.@TreeResponseBody List<TreeNode>
+  返回{successful:true, resultVlaue:{nodes:[{id:'',text:'',hasChildren:true,childNodes:[]},{}]}}格式的数据。
+
+
+6.@ResponseBody原生的，spring的返回类型。。当做json string返回的。
+  

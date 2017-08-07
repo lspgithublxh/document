@@ -1,0 +1,12 @@
+1.查看被锁的表,建表时间
+  select * from v$locked_object v, dba_objects d where v.OBJECT_ID = d.object_id
+  锁表用户：查看被锁的日期
+  select * from v$locked_object v ,v$session s where v.session_id = s.sid;
+  查看所有的锁：
+  select * from v$session s, v$lock l where s.sid = l.sid and s.username is not null order by s.sid
+
+2.杀死锁：
+  alter system kill session'sid, serial#'
+  
+3.所表者：
+  pl/sql developer.exe 或者java进程。

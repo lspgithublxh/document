@@ -1,0 +1,42 @@
+1.基本的存储过程：
+DELIMITER $$
+DROP PROCEDURE IF EXISTS `my_procedure` $$
+CREATE PROCEDURE `my_procedure`(OUT resu VARCHAR(32))
+BEGIN
+DECLARE result VARCHAR(32) DEFAULT '';
+DECLARE i INTEGER DEFAULT 0;
+myLoop:LOOP
+  IF i > 10 THEN
+    LEAVE myLoop;
+   END IF;
+   SET i = i + 1;
+   SET result = CONCAT(result, ',',i);
+ END LOOP myLoop;
+ SET resu = result;
+ END $$
+DELIMITER ;
+
+
+----------------------带参数，并且调用：
+DELIMITER $$
+DROP PROCEDURE IF EXISTS `my_procedure` $$
+CREATE PROCEDURE `my_procedure`(IN num INTEGER, OUT resu VARCHAR(32))
+BEGIN
+DECLARE result VARCHAR(32) DEFAULT '';
+DECLARE i INTEGER DEFAULT 0;
+myLoop:LOOP
+  IF i > 10 THEN
+    LEAVE myLoop;
+   END IF;
+   SET i = i + 1;
+   SET result = CONCAT(result, ',',i);
+ END LOOP myLoop;
+ SET resu = result;
+ END $$
+DELIMITER ;
+
+-------下面是调用：
+SET @b = 4;
+CALL my_procedure(@b, @s);
+SELECT @s AS nam_;
+

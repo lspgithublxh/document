@@ -1,0 +1,8 @@
+1.构建swf容器--即标签（就像画布功能<canvas>一样）（<object><embed><param>），并且将数据转换为xml格式放入。生成实际的引入swift文件。
+  
+2.构建图表三种方法：
+  2.1 标签法：html xml文档描述法：svg方法。
+  2.2 容器法（提供对应的javascript对象来操作画布）(不会生成层次的html标签) canvas方法。swf方法
+
+
+3.mx框架下的图表构造。不用直接和swf传输数据。

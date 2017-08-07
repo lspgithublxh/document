@@ -1,0 +1,5 @@
+1.sql不能解决的地方。
+  一般是要求select 列的地方 输出另一张表的数据，且条件上要利用到 from后面所筛选处理的表中的数据。
+   如 select (case when 1=1 then (select id from t1 where name = p.name) end) from t2  --这种sql是不能完成的。
+  --------利用结果表作为条件一一进行过滤（而不是作为一个整体，而是一一进行过滤）。
+   

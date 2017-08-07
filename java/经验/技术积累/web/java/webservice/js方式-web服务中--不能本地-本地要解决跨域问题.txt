@@ -1,0 +1,26 @@
+function requestXML(){
+ // $.post("http://127.0.0.1:9000/sgism/psm/services/ProjectServices",{"bid_no":"ssssss"}, function(response){
+ //  alert();
+//  console.log(response);
+//
+//});
+  $.ajax({
+	url:"http://127.0.0.1:9000/sgism/psm/services/ProjectServices",
+	dataType:"jsonp",
+	data:{"bid_no":"1223444322221"},
+	type:"POST",
+	beforeSend:function(xhr){
+  	    xhr.setRequestHeader("X-Custom-Header1","Bar");
+	    xhr.setRequestHeader("Origin":"localhost");
+	},
+	success:function(response){
+		alert("success");	
+		console.log(response);	
+	},
+	error:function(response){
+		alert("error");
+		console.log(response);
+	}	
+});
+
+}

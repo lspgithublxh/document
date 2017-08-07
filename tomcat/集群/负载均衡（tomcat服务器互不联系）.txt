@@ -24,3 +24,40 @@
      服务端代理方式：  Apache + JK2   。Apache server + tomcat server
                   前端处理器：  apache server上的httpd服务
 
+
+
+5.问题描述：
+	>预知：
+	# 加载器：mod_jk-1.2.14-apache-2.0.54.so这样一个动态库文件（动态链接库-函数已经编译好，只是没有和具体的程序相关，即没有一个入口点--没有main函数；；就像没有main函数的类）。
+	# apache加载“加载器”而根据的配置文件：
+						1.   httpd.conf
+						    >存放位置：apache的conf目录下。
+						2.   workers2.properties
+						    >存放位置：apache的conf目录下。
+			
+	# apache:apache_2.0.54-win32-x86-no_ssl.exe这样一个可执行文件---在windows下运行的。
+
+
+       >新的负载均衡器：mod_proxy_balancer，取代mod_jk
+       >新的http代理服务器：nginx,反向代理
+		
+	
+
+
+
+
+
+
+
+
+
+参考资料：
+1.http://ibadboy.iteye.com/blog/945022/（mod_jk2.3）
+2.http://blog.csdn.net/navy_xue/article/details/39030879（proxy方式）
+3.http://www.codeweblog.com/windows下apache-tomcat实现应用集群/   （实现session复制,最佳）
+
+
+
+
+
+

@@ -1,0 +1,25 @@
+1.总共：dom动态操作、样式修饰、绑定事件、后台访问。
+	不常用的：window操作。
+
+2.不常用对象：
+  navigaor：浏览器对象，navigator.geolocation。地理位置
+  window:窗口对象，可以绑定事件。
+  document:文档对象，可以绑定事件。事件如：DOMContentLoaded
+
+
+3.插件：
+ aop
+ cookie
+ debug
+ mousewheel
+ swfobject
+ upload
+
+4.语法
+ try{}catch(e){}
+
+5.ActiveObject
+  启动本地的一个应用程序，或者启动远端服务器上的一个程序。
+  本质上是构建一个javascript对象，它的方法中可以调用本地引用程序来创建该程序的对象（或者文件）。
+  --不仅可以描述，而且可以实际创建。
+  //相当于java中的一个一般应用程序类。
