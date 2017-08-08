@@ -36,18 +36,77 @@
 						    >存放位置：apache的conf目录下。
 			
 	# apache:apache_2.0.54-win32-x86-no_ssl.exe这样一个可执行文件---在windows下运行的。
+	>集群通信协议：传输层TCP,应用层：ajp13
 
 
        >新的负载均衡器：mod_proxy_balancer，取代mod_jk
        >新的http代理服务器：nginx,反向代理
 		
 	
+6.实际顺序：
+ 	>下载软件：
+		1)apache http web服务器
+		2)mod_jk
+		3)apache tomcat web服务器
+		#第一个第二个软件直接在linux上用命令安装：sudo apt-get install apache2 libapache2-mod-jk。。若失败，则事先执行sudo apt-get update。然后分两步执行前面的命令，一个一个的安装。
+		#第三个软件，（每个worker节点）先下载到本地再到ubuntu上，后执行安装：
+			sudo tar -zxvf apache-tomcat-8.5.16.tar.gz -C /opt
+			再给文件增加权限和添加环境变量： sudo chmod +r /opt/apache-tomcat-8.5.16/conf/或者sudo chmod 777 /opt/apache-tomcat-8.5.16/conf/
+							增加环境变量：CATALINA_HOME=/opt/apache-tomcat-8.5.16
+		
+
+		
+	>修改配置文件：
+		     >apache http服务器节点上：/etc/apache2/mods-enabled/jk.conf文件：
+						根节点下增加mod_jk的相关配置：   JkMount /* loadbalancer
+   					 					JkMount /jk-status jkstatus
+										扩展的配置：JkOptions +RejectUnsafeURI（安全性）
+						/etc/apache2/sites-available/000-default.conf下也要配置：JkMount /* loadbalancer
+		     >mod_jk对应配置文件路径上：etc/libapache2-mod-jk/workers.properties
+						里面增加tomcat的相关配置：worker.tomcat2......等四大分支配置。
+						增加java_home配置：workers.java_home=/user/local/java
+						增加tomcat_home配置：workers.tomcat_home=/opt/apache-tomcat-8.5.16
+						>配置项解释：keepalive=true:防止防火墙切断JK和tomcat之间闲置的链接。值还可以是数字
+							     ping_mode=I空闲一段时间后检测和tomcat之间的连接
+								worker.tomcat3.type=lb那么这个tomcat3就是一个虚拟的worker，它管理其他若干个的worker（需要在它属性下的节点上配置）
+		     >tomcat服务器节点上：（catalina.sh配置JAVA_HOME环境变量）
+					>修改conf/server.xml，在<Engine>下增加<Cluster>节点配置。<Engine>修改为：<Engine name="Catalina" defaultHost="192.168.1.100” jvmRoute="tomcat1"> 
+					
+//等待配置：/etc/apache2/apache2.conf.这个是对应于普通apache发行版本配置文件http.conf的配置文件（ubuntu专门）。
+
+					
+
+	>依次启动：
+		>直接浏览器中输入apache http服务器的地址:http://192.168.130.128/看到安装成功apache httpserver的页面。
+		>apache http server的启动： /etc/init.d/apache2 start    即可。或者：sudo apache2ctl -k start  如果已经安装为linux服务的话，那么直接：service httpd start 就可以了。
+		 启动查看：ps -aux | grep apache
+			  删除进程： sudo kill -9 17676
+		  	  查看监听的端口： sudo netstat -apn | grep 80
+
+7.问题：
+	1)http服务器如何利用mod_jk将请求转发到某个tomcat?即路由给哪个tomcat？如果一个程序能够实现路由，那么它接收的数据是什么，而它的功能是实现什么（数据处理，数据发送）？它需要知道哪些数据？即哪些条件？
 
 
+8.tomcat集群配置内容：
+	>每个tomcat:server.xml:
+      <Cluster className="org.apache.catalina.ha.tcp.SimpleTcpCluster" channelSendOptions="8">
 
-
-
-
+        <Manager className="org.apache.catalina.ha.session.DeltaManager"
+        expireSessionsOnShutdown="false"
+        notifyListenersOnReplication="true"/>
+         <Channel className="org.apache.catalina.tribes.group.GroupChannel">
+                <Sender className="org.apache.catalina.tribes.transport.ReplicationTransmitter">
+                        <Transport className="org.apache.catalina.tribes.transport.nio.PooledParallelSender"/>
+                </Sender>
+                <Receiver className="org.apache.catalina.tribes.transport.nio.NioReceiver" address="auto"       port="4000" autoBind="100" selectorTimeout="5000" maxThreads="50"/>
+                <Interceptor className="org.apache.catalina.tribes.group.interceptors.TcpFailureDetector"/>
+                <Interceptor className="org.apache.catalina.tribes.group.interceptors.MessageDispatch15Interceptor"/>
+        </Channel>
+        <Valve className="org.apache.catalina.ha.tcp.ReplicationValve" filter=""/>
+        <Valve className="org.apache.catalina.ha.session.JvmRouteBinderValve"/>
+        <ClusterListener className="org.apache.catalina.ha.session.JvmRouteSessionIDBinderListener"/>
+        <ClusterListener className="org.apache.catalina.ha.session.ClusterSessionListener"/>
+     </Cluster>
 
 
 
@@ -55,9 +114,10 @@
 1.http://ibadboy.iteye.com/blog/945022/（mod_jk2.3）
 2.http://blog.csdn.net/navy_xue/article/details/39030879（proxy方式）
 3.http://www.codeweblog.com/windows下apache-tomcat实现应用集群/   （实现session复制,最佳）
-
-
-
-
-
-
+4.http://tomcat.apache.org/tomcat-8.0-doc/cluster-howto.html(集群官方文档)
+5.http://blog.csdn.net/just_young/article/details/47280607（ubuntu安装tomcat jk集群；较好）
+6.http://os.51cto.com/art/201406/444014.htm（安装tomcat-jk，ubuntu上，非常好）
+7.http://ask.xmodulo.com/install-apache-tomcat-ubuntu-debian.html（ubuntu上，纯tomcat安装）
+8.https://zhidao.baidu.com/question/873772086790398452.html（简单正确的ubuntu tomcat集群）
+9.http://wiki.bsdn.org/pages/viewpage.action?pageId=2621465（windows tomcat集群）
+10.https://www.server110.com/apache/201404/9499.html（windows tomcat集群）
