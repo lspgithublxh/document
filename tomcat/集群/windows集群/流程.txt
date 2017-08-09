@@ -1,0 +1,44 @@
+1.下载软件：并安装
+	>apache http server2.2.25	:	httpd-2.2.25-win32-x86-no_ssl.msi直接安装。或者官网找到httpd-2.4.27-x64.zip下载：
+						后一种方式安装方法（需要手动安装为服务）：
+							>解压，修改http.conf，将首行改为Define SRVROOT "Apache24的实际地址，且分割符号为/"
+											还可以修改：Listen 88
+											修改服务名：ServerName localhost:88
+											修改资源路径如存html：
+													DocumentRoot "${SRVROOT}/htdocs"
+													<Directory "${SRVROOT}/htdocs">
+														可修改为自己的站点目录
+													DocumentRoot "${XXXX }"
+													<Directory "${XXXX }">
+											使得局域网其他用户可以访问：<Directory />
+    															Options Indexes
+   															 AllowOverride all
+														     </Directory>
+							      修改conf/extra/httpd-vhosts.conf:
+											
+							  关闭虚拟机，因为上面和windows下都共享443端口，services.msc中停止5大虚拟机服务，右键属性调整为手动启动方式（启动参数不管）。
+							>以管理员方式打开cmd
+							>进入bin目录，执行：httpd -k install安装为服务（那么在ApacheMonitor.exe产生的菜单中就看得到了）httpd -k install -n Apache24也可以
+									    httpd -k start 启动服务（这是最好的，可以看到日志，也可以用ApacheMonitor.exe来启动：start，，或者windows服务）
+
+2.文件配置：
+	>http server :
+		# httpd.conf（可修改侦听端口）
+		//# mod-jk.conf
+		//# workers.properties
+	>Tomcat :对应上述修改
+		
+3.依次启动：
+	>先tomcat，后apache
+
+
+
+
+
+1.http://cuisuqiang.iteye.com/blog/2073329（较好）
+2.http://www.apachelounge.com/download/（下载地址）
+3.https://www.apachehaus.com/cgi-bin/download.plx（下载地址3 ，选择正确的没有vc的版本httpd-2.4.27-x64.zip，从官网的推荐下找到）
+4.https://jingyan.baidu.com/article/29697b912f6539ab20de3cf8.html（下载安装运行测试）
+5.http://www.cnblogs.com/alex-13/p/4963830.html（虚拟机网络的停止）
+6.http://blog.csdn.net/luenxin/article/details/48969909（完整的，很好的windows安装）
+7.http://blog.csdn.net/maguanghui_2012/article/details/50635243（配合上述）
