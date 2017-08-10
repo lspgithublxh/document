@@ -45,4 +45,8 @@
 6.http://blog.csdn.net/luenxin/article/details/48969909（完整的，很好的windows安装）
 7.http://blog.csdn.net/maguanghui_2012/article/details/50635243（配合上述）
 8.http://blog.csdn.net/zhuying_linux/article/details/6590700（详细原理）
-9.http://www.jianshu.com/p/2fb7cc1f0b8f（最佳的tomcat8,windows, apache24集群）
+9.http://www.jianshu.com/p/2fb7cc1f0b8f（最佳的tomcat8,windows, apache24集群）类似较差的：http://www.cnblogs.com/gsls200808/p/4508586.html
+10.http://limingnihao.iteye.com/blog/1934548（httpd原理）
+11.http://zyycaesar.iteye.com/blog/296606（集群原理）
+12.http://blog.csdn.net/lenolong/article/details/51090002（集群架构图，nosql在内）
+13.http://harisxiong.blog.51cto.com/7513022/1304746（tomcat原理和集群原理）
