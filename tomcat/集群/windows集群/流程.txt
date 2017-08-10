@@ -32,8 +32,10 @@
 	>先tomcat，后apache
 
 
-
-
+4.问题描述--详细原理：
+	>session复制：当session改变时，该节点服务器如Tomcat的SimpleTcpcluster类，会组播（固定端口、TCP）发送session信息传递session信息。且sessionID后面会附加.tomcat的engine名。Session Replication.
+	>心跳组播：每隔一定时间，集群内的任何一个节点都会发送组播包，来表明它还存活，如果其他节点没有收到，那么其他节点会认为这个节点已经死去--挂了。
+	
 
 1.http://cuisuqiang.iteye.com/blog/2073329（较好）
 2.http://www.apachelounge.com/download/（下载地址）
@@ -42,3 +44,5 @@
 5.http://www.cnblogs.com/alex-13/p/4963830.html（虚拟机网络的停止）
 6.http://blog.csdn.net/luenxin/article/details/48969909（完整的，很好的windows安装）
 7.http://blog.csdn.net/maguanghui_2012/article/details/50635243（配合上述）
+8.http://blog.csdn.net/zhuying_linux/article/details/6590700（详细原理）
+9.http://www.jianshu.com/p/2fb7cc1f0b8f（最佳的tomcat8,windows, apache24集群）
