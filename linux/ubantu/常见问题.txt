@@ -1,0 +1,2 @@
+1.虚拟机的IP改变：
+  重启5个vmvare服务时，会改变ip。---导致hostname，hosts要跟着修改。
