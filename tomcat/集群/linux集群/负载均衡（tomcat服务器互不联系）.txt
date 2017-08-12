@@ -39,16 +39,18 @@
 	>集群通信协议：传输层TCP,应用层：ajp13
 
 
-       >新的负载均衡器：mod_proxy_balancer，取代mod_jk
+       >新的负载均衡器：mod_proxy_balancer，取代mod_jk。。使用mod_proxy.so和mod_proxy_http.so
        >新的http代理服务器：nginx,反向代理
-		
+       >Tomcat集群和apache分发不是一回事：
+		>Tomcat集群是Tomcat之间的事，它们之间通过ajp协议在端口中通信，在同一个局域网中，如果在同一台机器上，尽管是运行在不同的jvm上，但是仍然有固定的类会在局域网中使用ajp协议搜索其他tomcat，找到，则互相session复制和心跳发送。
+		>apache分发是apache http server按照一定的算法选出tomcat集群中的某个tomcat，向它转发apache http server自己收到的客户端的http请求，然后将结果再返回到客户端（所以，其实利用http-client或者自己写http通信程序，也能实现这个功能--实现转发功能。。。同理，甚至可以实现tomcat集群的功能：---当然这是插件方式集群或者说项目方式集群而不是tomcat内部自带的集群）。	
 	
 6.实际顺序：
  	>下载软件：
 		1)apache http web服务器	
 		2)mod_jk
 		3)apache tomcat web服务器
-		#第一个第二个软件直接在linux上用命令安装：sudo apt-get install apache2 libapache2-mod-jk。。若失败，则事先执行sudo apt-get update。然后分两步执行前面的命令，一个一个的安装。
+		#第一个第二个软件直接在linux上用命令安装：sudo apt-get install apache2 libapache2-mod-jk。。若失败，则事先执行sudo apt-get update。然后分两步执行前面的命令，一个一个的安装。第二个其实不用安装
 			安装查看：httpd -v  和 apache2ctl -v  和/etc/init.d/apache2
 		#第三个软件，（每个worker节点）先下载到本地再到ubuntu上，后执行安装：
 			sudo tar -zxvf apache-tomcat-8.5.16.tar.gz -C /opt
@@ -83,8 +85,16 @@
 		     >tomcat服务器节点上：（catalina.sh配置JAVA_HOME环境变量）
 					>修改conf/server.xml，在<Engine>下增加<Cluster>节点配置。<Engine>修改为：<Engine name="Catalina" defaultHost="192.168.1.100” jvmRoute="tomcat1"> 
 	>注意apache http server的lib所在路径：	比如 /usr/lib/apache2/modules/mod_slotmem_shm.so
-
-				
+	>注意额外配置：apache转发到tomcat:（linux下）
+					#<VirturalHost *:80>中配置：（三大核心关键，第一个二个可以配置多组）
+							ProxyPassReverse / balancer://cluster/（第一个参数是拦截的请求，第二个参数是转发到的url,这个url可以是配置的一个<proxy url>也可以直接是一个常见的url路径，第三个四个参数暂不解释）或者ProxyPreserveHost On 或者增加配置ProxyRequests Off在httpd.conf里
+							ProxyPass / localhost 或者说一个具体url比如http://www.域名.com:8080/system/。apache正是通过ProxyPass将请求转发URL给Tomcat（ProxyPass有转发功能）
+							ServerName localhost
+					# LoadModule加载项中需要的能力模块：
+							LoadModule proxy_module modules/mod_proxy.so
+							LoadModule proxy_http_module modules/mod_proxy_http.so
+	>ssl配置：则对apache的访问变为https://方式	
+		  还可以对apache配置http请求自动转https请求。			
 //等待配置：/etc/apache2/apache2.conf.这个是对应于普通apache发行版本配置文件http.conf的配置文件（ubuntu专门）。
 
 					
@@ -95,12 +105,18 @@
 		 启动查看：ps -aux | grep apache
 			  删除进程： sudo kill -9 17676
 		  	  查看监听的端口： sudo netstat -apn | grep 80
-
+			  启动服务状态查看：systemctl status apache2.service
+		
 7.问题：
 	1)http服务器如何利用mod_jk将请求转发到某个tomcat?即路由给哪个tomcat？如果一个程序能够实现路由，那么它接收的数据是什么，而它的功能是实现什么（数据处理，数据发送）？它需要知道哪些数据？即哪些条件？
-
-
-8.tomcat集群配置内容：
+	2)apache http server转发请求到tomcat有几种方式？
+	3）下载apache源码编译:./configure --enable-so --with-mpm=prefork && make && make install
+			或者：./configure --prefix=/usr/local/apache --enable-so --enable-mods-shared=most --enable-rewrite --enable-forward
+	4）方便加载模块：apt-get install apache2.2-common
+			从而可以使用a2enmod指令加载模块，比如：sudo a2enmod rewrite 开启Rewrite模块 sudo /etc/init.d/apache2 restart
+			
+	5）看行数：可以直接在右下方看到鼠标所在文件行数
+8.tomcat集群配置内容：（其实可以只配置Engine+Cluster就可以了）
 	>每个tomcat:server.xml:
       <Cluster className="org.apache.catalina.ha.tcp.SimpleTcpCluster" channelSendOptions="8">
 
@@ -120,6 +136,31 @@
         <ClusterListener className="org.apache.catalina.ha.session.JvmRouteSessionIDBinderListener"/>
         <ClusterListener className="org.apache.catalina.ha.session.ClusterSessionListener"/>
      </Cluster>
+8.2apache的核心加载模块：
+	#提供基础的代理功能
+	LoadModule proxy_module modules/mod_proxy.so
+	#提供负载均衡的功能
+	LoadModule proxy_balancer_module modules/mod_proxy_balancer.so
+	#代理http协议
+	LoadModule proxy_http_module modules/mod_proxy_http.so
+	#负载均衡的算法模块
+	LoadModule lbmethod_byrequests_module modules/mod_lbmethod_byrequests.so
+	LoadModule slotmem_shm_module modules/mod_slotmem_shm.so
+	#兼容低版本访问
+	LoadModule access_compat_module modules/mod_access_compat.so
+	#扩展的模块
+	
+LoadModule proxy_ajp_module modules/mod_proxy_ajp.so
+
+	LoadModule rewrite_module modules/mod_rewrite.so
+
+	LoadModule proxy_connect_module modules/mod_proxy_connect.so
+
+	LoadModule proxy_ftp_module modules/mod_proxy_ftp.so
+	LoadModule speling_module modules/mod_speling.so
+
+	LoadModule ssl_module modules/mod_ssl.so
+
 
 9.拓展研究：软件解压后的配置文件，等等中注释的大段文字，价值巨大！！！！基本就是一种说明书。可以说软件中有文字的地方都是价值。另一部分就是源代码。这两部分就是最大价值的部分。相当于官方文档！！：
 
@@ -137,3 +178,9 @@
 https://jingyan.baidu.com/article/d45ad148b52bac69552b8022.html（windows方式的worker.properties方式的apache2.4集群实现方式）
 10.https://www.server110.com/apache/201404/9499.html（windows tomcat集群）
 11.http://httpd.apache.org/docs/2.4/（apache服务器文档）
+12.http://www.cnblogs.com/dule/p/5849941.html（apache转发，最佳文章）
+13.http://blog.csdn.net/leshjmail/article/details/6163581（apache转发，补充文章）
+14.http://leeyan.blog.51cto.com/8379003/1696347（http协议，过程，和httpd过程）
+15.http://httpd.apache.org/docs/2.4/mod/mod_proxy.html#proxy（apache官方对<Proxy>标签等配置说得最好的文档）
+16.http://mirrors.hust.edu.cn/apache/httpd/（httpd下载,而不是用sudo apt-get install安装的方式，或者下载源码来编译的方式。。用wget方式也可以wget http://mirrors.hust.edu.cn/apache//httpd/httpd-2.4.12.tar.gz）http://blog.csdn.net/delphiwcdj/article/details/43883159
+17.http://blog.csdn.net/yingxiake/article/details/51408203（非常不错的apache2.4 + mod_proxy方式负载均衡）
