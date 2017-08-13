@@ -163,7 +163,7 @@ LoadModule proxy_ajp_module modules/mod_proxy_ajp.so
 
 
 9.拓展研究：软件解压后的配置文件，等等中注释的大段文字，价值巨大！！！！基本就是一种说明书。可以说软件中有文字的地方都是价值。另一部分就是源代码。这两部分就是最大价值的部分。相当于官方文档！！：
-
+----连续5个小时攻克Linux中的tomcat和apache的集群。
 
 参考资料：
 1.http://ibadboy.iteye.com/blog/945022/（mod_jk2.3）

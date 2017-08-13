@@ -158,5 +158,6 @@
     	insert into tt1 select 1,'wu'; 
 	insert into tt1 select 2,'ku';  
 
-   参考资料：http://www.linuxdown.net/install/soft/2016/0219/4777.html和我的文档
+参考资料：
+1.http://www.linuxdown.net/install/soft/2016/0219/4777.html和我的文档
    //如此，实现负载均衡。

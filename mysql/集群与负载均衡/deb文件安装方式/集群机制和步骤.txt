@@ -1,0 +1,119 @@
+1.问题描述：
+	>软件下载：
+		  >管理节点运行的软件： 在windows中从浏览器中下载比较快，mysql-cluster_7.5.7-1ubuntu16.04_amd64.deb-bundle.tar   但是mysql-cluster-gpl-7.5.7-linux-glibc2.12-x86_64.tar.gz这个文件也可以只是因为太大而不好（但是这种方式方便多了）。
+		  >数据节点运行的软件：同上
+		  >sql节点运行的软件（数据访问程序）：同上
+		  >管理节点安装：tar -xvf mysql-cluster_7.5.7-1ubuntu16.04_amd64.deb-bundle.tar -C ./opt/ 
+				 sudo dpkg -i * 同时把依赖都补安装上。
+				 补上依赖：sudo apt-get -f install python-paramiko libaio1 libclass-methodmaker-perl libmecab2
+					   sudo apt-get -f install
+				 	查看安装位置： dpkg -L mysql-server （安装位置的指定是一个问题）但是这些deb被分散安装到了多个文件夹中。并不好查看。
+						      可以看到8大mysql服务都安装在：/usr/share/lintian/overrides目录下：
+								mysql-client
+ 								mysql-cluster-community-client
+ 								mysql-cluster-community-server
+ 								mysql-cluster-community-source
+ 								mysql-cluster-community-test
+ 								mysql-common
+ 								mysql-server
+ 								mysql-testsuite
+							另外：/usr/share/man/man8/ndbd.8.gz（数据节点）
+							      /usr/share/man/man8/ndbmtd.8.gz
+							      /usr/share/man/man8/ndb_mgmd.8.gz（管理节点）
+							      /usr/lib/x86_64-linux-gnu/libndbclient.so.6.1.0
+							      /usr/lib/x86_64-linux-gnu/ndb_engine.so
+							      /usr/lib/x86_64-linux-gnu/libmysqlclient.so.20
+							      /usr/lib/x86_64-linux-gnu/libmysqlclient.a
+
+							      /usr/share/mysql/memcache-api/sandbox.sh
+							      /usr/share/mysql/nodejs/run-jones-test-suite.js
+
+							      /usr/share/mysql/java/clusterj-api-7.5.7.jar
+							      /usr/share/lintian/overrides/mysql-cluster-community-client（客户端）
+							      /usr/share/lintian/overrides/libmysqlclient-dev
+							      /usr/share/man/man1/ndb_show_tables.1.gz
+							      /usr/share/mysql/mcc/frontend/dojo/dojox/charting/widget/Chart2D.js（都是cluster-community里的内容）
+							      /usr/share/lintian/overrides/libmysqld-dev（属于sqld节点的内容）
+							      /usr/share/lintian/overrides/libmysqlclient20
+								
+
+		  >数据节点集群和sql节点的安装：
+		
+		---------------此外，三个服务可以独立安装（从archetype artifact，archeticture图可以看到）
+				>比如mysql cluster的独立服务:tar -zxvf mcm-1.4.3-cluster-7.5.6-linux-sles11-x86-64bit.tar.gz或者mysql-5.7.19-ndb-7.5.8-linux2.6-i686.tar.gz解压后，取出/ndb_mgm 和/ndb_mgmd两部分内容。
+				>比如ndb cluster的独立服务：tar -zxvf mysql-5.7.19-ndb-7.5.8-linux-i686-glibc23.tar.gz  ，取出其中/ndbd 和/ndbdmtd两个内容：它运行中取配置从管理节点，发日志到管理节点。
+				>比如sql节点的独立服务：tar -C /usr/local -xzvf mysql-cluster-gpl-7.5.8-linux2.6.tar.gz 解压之后，加用户组用户后，需要初始化：mysqld --initialize  或者mysqld --initialize-insecure
+
+
+	>参数配置：
+		  >deb安装方式，文件是规范的存放的，所以位置存放在/etc/mysql/my.cnf  （还有mysql.cnf，而另外的文件夹里面的文件则不是考虑的范围内，虽然有默认配置--但几乎就没有。可见不需要）
+		  >非集群的配置项：即在my.ini中的配置，一般只有两段配置项：
+					#客户端（未使用的段[client]这是配置客户端连接服务端时使用的端口、占用的端口）
+					[mysql] （设置客户端使用的字符集之类）
+					#服务端
+					[mysqld]（设置服务端监听端口、数据库文件所在目录，字符集，默认存储引擎，最大连接数，内存中每个临时表最大大小，缓存大小等服务端配置，另外还有myisam和innodb的相关参数）
+
+		  >集群的基本配置项：
+		    1）管理节点上的my.cnf：
+			#管理节点
+			[ndb_mgmd]（节点ip,id,日志路径）
+			#数据节点
+			[ndbd default]（满足多个节点）（数据内存和索引内存，每个表保存的拷贝数，最大并发连接数）
+			[ndbd]（节点ip,id,日志路径）
+			#数据响应和操作节点（定义mysql服务器）
+			[mysqld]（节点ip,id）
+		    
+		   2) 数据节点和数据响应和操作节点上的my.cnf:
+			#数据响应和操作节点
+			[mysqld]（管理节点ndbcluster,管理节点的ip:port地址，其他保持默认，比如最大连接数，连接超时时间，默认存储引擎）
+			#客户端
+			[client]（客户端发送的端口和sokcet信息路径）
+			#集群段（默认）
+			[mysql_cluster]（管理节点的ip:port地址）
+		-----查看配置信息：
+			>数据节点的： ndb_config --configinfo --xml
+
+	>依次启动：
+		  >管理节点：ndb_mgmd -f /var/lib/mysql-cluster/config.ini（顺便可以启动ndb_mgm这个管理节点的客户端）
+		  >数据节点：ndbd
+		  >sql节点： mysql -u root -p （因为本质上是个接口服务）
+
+	>卸载和清除安装痕迹：
+			>sudo apt-get autoremove --purge mysql-server
+2.原理和机制：
+	>管理节点：2个：Mysql-MGM（主备）进程即运行的服务为：ndb_mgmd（也是一个进程） ndb_mgm是管理节点客户端（也是一个进程，服务）
+		>功能：对其他两类节点进行配置、管理、仲裁，所以运行着队两类节点的监控服务。
+
+	>sql节点：2个：Mysql-LB:进程即运行的服务为myssqld（也是一个进程）
+		>功能：是api，其他的软件连接到它，而它连接到数据节点，所以运行着响应客户端处理请求的服务（而该服务可以连接访问到数据节点而已）。
+
+	>数据节点：2个：DB-Node：进程即运行的服务为ndbd（是集群的一个节点上运行的进程，单进程）    ndbmtd也是一种数据节点服务--多进程
+		>功能：彼此集群通信-进行数据同步等，每个节点都存储数据和日志，运行着响应sql节点数据处理请求的数据管理的api服务（也和管理节点通信，获取配置等）。
+			每个节点上都有数据库的完整备份-----相当于只是数据库的集群实现负载均衡而已。没有做到说数据分片，一处存一点--这个是hdfs之类的分布式文件存储系统的事情了。
+			----只有数据节点是集群的，互相通信的同步的，心跳的。mysql server只是连接数据节点集群而已，管理节点也是只连接数据节点集群和mysql server而已。
+
+	>内存集群存储引擎NDB：
+	>标准的Mysql服务器：
+	>架构图：
+		>一个机器上可以有多个ndbd进程（服务），且必须有一个mcm代理服务（mysql cluster manager 代理服务，启动数据节点有用）
+		>一个机器上可以有一个mysql server服务（sqld服务），一个ndb_mgmd服务，和一个mcm代理服务
+
+n.问题：
+   1）集群软件和一般的mysql服务器有什么区别？
+	三大块的准确称呼：MySQL Cluster Manager, MySQL Server, and MySQL NDB Cluster
+   2）deb文件的安装：sudo dpkg -i dep文件完整路径名
+   3）两种集群方式：InnoDB Cluster和NDB Cluster（网络数据库，内存数据库）		
+   4) ubuntu启动脚本位置：/etc/init.d
+   5）debian方式安装包：dpkg -i mysql-cluster-gpl-7.5.8-debian7-i686.deb
+参考资料：
+1.http://blog.csdn.net/pucao_cug/article/details/65449076（ubuntu下载源替换）
+2.https://dev.mysql.com/downloads/cluster/（选择linux-generic下载一般的mysql集群包--比较大）
+3.http://www.cnblogs.com/vincent4code/p/5873646.html（deb文件的安装）
+4.http://www.cnblogs.com/feichexia/archive/2012/11/27/mysqlconf.html（mysql参数配置段）
+5.http://blog.csdn.net/yang1982_0907/article/details/21090437（mysql集群参数配置段）
+6.https://dev.mysql.com/doc/mysql-cluster-manager/1.4/en/mcm-terminology.html（基本概念介绍-官方文档）
+7.1https://dev.mysql.com/doc/refman/5.7/en/mysql-cluster-install-linux-binary.html（ndbcluster集群官方安装）
+7.2https://dev.mysql.com/doc/refman/5.7/en/mysql-cluster-install-configuration.html（ndbcluster集群官方配置，最简配置）
+7.3https://dev.mysql.com/doc/refman/5.7/en/mysql-cluster-install-configuration.html（ndbcluster集群官方初始化，启动）
+7.4https://dev.mysql.com/doc/refman/5.7/en/mysql-cluster-install-example-data.html（ndbcluster集群官方测试，登录sql节点和建表和查询）
+8.http://www.linuxidc.com/Linux/2016-04/130099.htm（卸载和去除安装痕迹，同时也是deb方式安装集群）

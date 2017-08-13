@@ -1,0 +1,67 @@
+1.问题描述：
+	
+
+2.流程：
+	# 安装：
+	     >sql节点：
+		1）下载搜狐上的安装包、解压：
+		2）安装必须的依赖： sudo apt-get install libaio1
+		3) 创建必要的文件夹：	sudo mkdir -p /usr/local/mysql/data
+					#sudo mkdir -p /usr/local/mysql/share/
+					sudo touch errmsg.sys
+					整体移动到/usr/local/mysql目录下
+		3）初始化sql节点： sudo ./mysqld --initialize		
+		3）
+	     >ndbd节点：
+		1)由于sql节点安装时解开的包里面就有ndbd的服务程序，而两个节点现在共用一个服务器，所以不用安装了。
+	     >ndbd_mgmd管理节点：
+		1)同上的包瞎子安装：在另一台机器上。
+		   >创建必要文件夹：mkdir /usr/local/mysql/mysql-cluster
+
+	# 配置：%B3<fSvXwQ!>
+	      >数据节点：
+	      >mysqld节点：建立文件：sudo touch /etc/my.cnf,添加内容如下：
+			[mysqld]
+			# options for mysqld process:
+			ndbcluster                      # run NDB storage engine
+			[mysql_cluster]
+			#	 Options for NDB Cluster  processes:
+			ndb-connectstring=192.168.130.132  # location of management server
+	      >ndbd_mgmd节点：建立文件：sudo touch /var/lib/mysql-cluster/config.ini进入编辑：
+					[ndbd default]
+					NoOfReplicas=2      
+					DataMemory=80M      
+					IndexMemory=18M                
+					ServerPort=2202  
+					   
+					[ndb_mgmd] 
+					HostName=192.168.130.132             
+					DataDir=/var/lib/mysql-cluster    
+
+					[ndbd]                                
+					HostName=192.168.130.131             
+					NodeId=2                          
+					DataDir=/usr/local/mysql/data     
+
+					[ndbd]
+					HostName=192.168.130.133             
+					NodeId=3                          
+					DataDir=/usr/local/mysql/data     
+
+					[mysqld]
+					HostName=192.168.130.133             
+
+	# 启动：（一般不能用root启动，必须要mysql, 否则要强制设置使用root来启动）
+		>先ndbd_mgmd管理节点：从而好监听数据节点和mysql节点：
+			 ./ndb_mgmd --skip-config-cache -config-file /var/lib/mysql-cluster/config.ini（越过权限）
+			或者sudo  ./ndb_mgmd  -config-file /var/lib/mysql-cluster/config.ini
+			或者：sudo ./ndb_mgmd  -f /var/lib/mysql-cluster/config.ini（必须要创建好文件夹，足够，配置正确nodeid）
+		>再启动ndbd:（两台机器上进行）
+			sudo ./ndbd
+		>初始进入mysqld:
+			先明确mysql整体移动到/user/local/mysql/下，和里面的data目录并列，同时/usr/loca/mysql/data整个路径都是有权限的---对于mysql用户，再执行：
+			 sudo ./mysqld_safe --user=root &
+			sudo ./mysqld_safe --user=mysql &
+
+2.特殊移动方法：
+		 sudo mv mysql/*  ./  下级移动到上级。
