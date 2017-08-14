@@ -11,7 +11,12 @@
 					sudo touch errmsg.sys
 					整体移动到/usr/local/mysql目录下
 		3）初始化sql节点： sudo ./mysqld --initialize		
-		3）
+				   sudo ./mysqld 
+		4）必要的创建组合给账户授权：
+					groupaddd mysqll
+					useradd -g mysqll -s /bin/false mysqll
+					sudo chown -R mysqll data
+				     	sudo chgrp -R mysqll
 	     >ndbd节点：
 		1)由于sql节点安装时解开的包里面就有ndbd的服务程序，而两个节点现在共用一个服务器，所以不用安装了。
 	     >ndbd_mgmd管理节点：
@@ -56,12 +61,34 @@
 			 ./ndb_mgmd --skip-config-cache -config-file /var/lib/mysql-cluster/config.ini（越过权限）
 			或者sudo  ./ndb_mgmd  -config-file /var/lib/mysql-cluster/config.ini
 			或者：sudo ./ndb_mgmd  -f /var/lib/mysql-cluster/config.ini（必须要创建好文件夹，足够，配置正确nodeid）
+		     为了查看集群情况：
+			启动管理服务：sudo ./ndb_mgm
+				查看：	>show
 		>再启动ndbd:（两台机器上进行）
 			sudo ./ndbd
 		>初始进入mysqld:
 			先明确mysql整体移动到/user/local/mysql/下，和里面的data目录并列，同时/usr/loca/mysql/data整个路径都是有权限的---对于mysql用户，再执行：
 			 sudo ./mysqld_safe --user=root &
 			sudo ./mysqld_safe --user=mysql &
+			bin/mysqld --initialize-insecure --user=mysql
+			>最正确的完整流程：
+			1）sudo ./bin/mysqld --initialize-insecure --user=mysqll --datadir=./cluster-data  这个是初始化
+			2）后执行sudo ./bin/mysqld --skip-grant-tables --user=mysqll这个不行，那么：
+				正确的方式：sudo ./bin/mysqld --skip-grant-tables --user=mysqll --datadir=./cluster-data  这最后的数据路径参数必须加，否则不能找到数据的路径（因为并没有在配置文件里配）。	
+			3）打开新窗口-登录：mysql -u root --skip-password
+					>切换进入mysql数据库：update user set authentication_string = password('admin') where user='root';
+								>flush privileges;
+								>quit;
+					>重新登录：sudo ./bin/mysql -uroot -p 输入密码admin登入数据库。
+					>建表： create table prj_info( id varchar(32) not null, name varchar(32) not null,primary key('id'))engine=ndbcluster default charset=latin1;
+					>加数据： insert into prj_info values('lixiaohai','china beijing');	
 
+			sudo ./mysqld 不同的程序，启动读的配置段不同，但都有[mysqld]
+			>可选参数： --log-error=/usr/local/mysql/error.log
+
+	#mysqld启动日志查看：在data/S1PA222.err里。
+				
 2.特殊移动方法：
 		 sudo mv mysql/*  ./  下级移动到上级。
+
+3.宝贵找错经验：一定要看日志，把所有的错误找出来。一定注意配置是否不够？命令参数来凑。依赖是否不够？安装依赖。权限是否不够？赋予权限。
