@@ -1,0 +1,15 @@
+1.问题描述:
+	>并发性：好。
+	>本质：jEE容器，而tomcat仅仅是jsp/servlet容器。即jbose处理的范围更广。容器所装的种类更多。
+	>数据库连接池服务：提供。
+	>支持其他web技术：PHP和.NET两大阵营。CGI也可以。
+	>j2ee标准不仅包括jsp/servlet在内的标准，还有其他标准。比如webservice\ejb\jms等等。不止web标准。
+	>技术底层：使用了操作系统的线程技术和事件技术。使得静态资源的访问非常快。（0拷贝传送）
+	>SSL性能：集成了OpenSSL，提供高效的安全传输服务。（不同于OpenSSH）
+	>
+
+
+
+
+参考资料：
+1.https://jingyan.baidu.com/article/7c6fb42848b20480652c9054.html（概览）

@@ -1,0 +1,8 @@
+1.问题描述：
+
+
+
+
+参考资料：
+1.http://www.cnblogs.com/wuhuacong/p/4757984.html（实际有效的参考资料，大量手把手）
+2.http://www.metronic.com/（官方文档）http://metronic.kp7.cn/

@@ -4,3 +4,9 @@
 
 
 4.安装的时候，最好直接D:\eclipse下为安装路径，不要弄很长的--默认的那个。几分钟就可以了。
+
+5.选择javaee版本安装，否则没有tomcat插件。
+
+6.全部导入，只需要parent下面没有settins文件即可。只有pom.xml
+
+7.优化配置：不要build中xml验证。直接window---preference下validation下关闭两个xml验证即可。

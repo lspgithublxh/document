@@ -17,3 +17,11 @@
       应用：集合操作、文件操作、网络编程、多线程编程。
   2.7 模块（很像javascript里面的js文件）
       一个模块就是一个.py文件。
+
+
+
+
+
+参考资料：
+1.http://python.jobbole.com/category/project/（python项目，大量例子）
+2.https://www.zhihu.com/question/29372574（知乎经典，厉害同行前辈）
