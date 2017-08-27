@@ -28,10 +28,16 @@
 三、
 
 
-4.打eclipse工程：mvn eclipse:eclipse
+4.打eclipse工程：mvn eclipse:eclipse     或者新的：mvn eclipse:eclipse -Dwtpversion=1.0
    ---对于多项目，可以直接在最外层进行执行mvn eclipse:eclipse打包命令，则下面的项目全部都打包好了。
    ---对于改变了pom.xml中的jar依赖，在.classpath中是不会更新的，需要重新执行mvn eclipse:eclipse来改变.classpath文件。或者手动修改。（因为eclipse编译会使用到这个）
   在eclipse中引入项目，也可以直接引用最外层的parent，则下面的工程全部直接引入进来了。
   tomcat中时，甚至要在deployment assembly下配置进依赖的jar进来到lib下。
 
 5.查看项目的依赖树（是否冲突）：mvn dependency:tree。
+
+
+6.变动自动更新：mvn -U eclipse:clean eclipse:eclipse
+   maven多项目时的热部署：
+    参考资料：http://blog.csdn.net/laoshuisheng/article/details/6420003
+	

@@ -1,1 +1,19 @@
-1.server locations配置为安装路径。而不要为第一个选项的工作空间路径。
+1.server locations
+	>配置为安装路径。第一个选项为工作空间路径。
+
+2.配置项详细解析：
+	>server path:
+	>deploy path:
+	>server options:
+	>publishing:选择自动publish当资源改变
+
+3.maven多模块项目，部署在eclipse中独立的tomcat上，进行开发。
+	>注意点：一是先用mvn -U eclipse:clean eclipse:eclipse对整个项目进行重新构建eclipse环境。
+		 二是对于其中的web项目，右键properties配置，在deployment Assembly选项中， 增加其他依赖的非web项目。相当于增加资源环境范围，从而tomcat启动时会从这些路径下找资源---比如这些项目里的xml配置文件。而其他jar依赖则完全不必了。因为这些项目本身已经依赖了。
+			（同时也增加了监听范围，使得这些项目有变化，那么会被tomcat监听到，从而重新部署reload）
+		 三是tomcat本身，保持配置：
+				>一是server.xml中：<Context reloadable="true">
+				>二是双击tomcat本身，而产生的配置环境中：Publishing项：Automatically publish when resources
+									 Serverlocations项目：选择第一个：工作空间。同时server path选择工作空间里。
+									 Server options:选择第三个：Modules auto reload by default
+
