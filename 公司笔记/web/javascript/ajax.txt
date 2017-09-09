@@ -1,0 +1,12 @@
+1.文件上传：
+  >对于form对象，$(form).ajaxSubmit(json对象);
+   其中json对象的dataType:html
+  >后台接收文件：
+       >网络流到后台：先放在当前账户的缓存文件中（往往在c盘当前用户的temp文件夹下，也是同类型的文件）
+       >请求的方法中：ServletFileUpload这个类通过从HttpServletRequest 中可以解析出文件List<FileItem>出来。
+       >压缩图片：输入一个byte[],输出一个byte[].长度是一样的。
+		>ImageIO可以从一个字节数组输入流中建立一个Image对象，此对象有高度和宽度,此对象输出到BufferedImage对象里，BufferedImage对象再放到IIOImage对象，IIOImage对象通过ImageWriter写到输出流里，输出流可以取出byte数组。
+        	>而byte[]数组可以转换为base64编码的字符串，从而放到前端img标签的src上可以访问（src="data:image/jpeg;base64,编码后的字符串"）。
+
+
+ 

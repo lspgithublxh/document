@@ -1,0 +1,14 @@
+1.window就是bom对象
+2.ActivexObject也是bom对象。 bom对象是浏览器厂商对dom的实现。
+  ---而安装多个activex插件，那么就会有多个ActivexObject对象可以被访问到了。
+  
+  
+3.js对浏览器的一切操作都是通过访问bom对象来实现的。（访问文档对应的dom对象就是从bom对象中的window中的document来实现的）
+  window之中的对象：
+  > history:网站历史记录
+  >document:可以获取到html本身到里面的每个标签的dom对象。dom对象就是数据实体（是一个数据结构，有样式有事件），而页面显示也是根据这个实体进行的。
+  
+4.浏览器存储
+  >浏览器数据库：websql  。。 为js提供了openDatabase()这个方法,返回浏览器数据库对象。
+  >window对象的indexedDB属性。是一个数据结构对象。
+  >window.document.cookie。浏览器关闭，cookie消失。 （但是安全机制，已经访问不到了。）

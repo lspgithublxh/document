@@ -1,0 +1,1 @@
+1.java comiler的版本问题。在org.eclipse.wst.common.project.facet.core里面修改。同时有个服务区配置可以修改！！

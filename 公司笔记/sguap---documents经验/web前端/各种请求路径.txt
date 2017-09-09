@@ -1,0 +1,16 @@
+1.请求路径1：
+ mappath()方法处理的参数：
+  > ~/../psm/rest/basedata/testClient.call
+  > ~/开头是获取根目录路径：http://localhost:9000/sgism/psm/这种。例如后台请求：~/rest/reg
+  > $/是resources静态资源路径：http://localhost:9000/sgism/psm/reg/resources/这种 比如$/skins/rule_add.html     
+  > ./是face下的模块的名称路径： http://localhost:9000/sgism/psm/reg/这种   所以应用：./resources/skins/registerJiJian.html
+    
+  ../这种是普通的，就是当前路径url左进一个。
+  后台的数据请求要/position/rest/请求名这种风格。
+  
+  
+
+2.请求路径2：
+ 直接请求的话：
+ >baseUrl : '~/workspace/rest/workspace/proinfoTree'  即~/是主项目路径：
+   ajax请求：url : "~/../../../psm/rest/basedata/getJGDW.call?va="+va

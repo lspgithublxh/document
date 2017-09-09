@@ -1,0 +1,7 @@
+1.登录时设置在session中的bid_no是t_sys_user里的user_flag。这个用户的user_flag的设置-----在添加用户的时候没有设置。
+
+
+2.双击树节点标段时，更新sesison默认标段和t_sys_user里的user_flag
+
+
+3.其他地方如何利用到默认标段----session里取。

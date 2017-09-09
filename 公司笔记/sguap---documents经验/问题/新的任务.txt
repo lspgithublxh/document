@@ -1,0 +1,10 @@
+1.searchbox用访问后台来实现。ComplexGrid 的columns也用访问后台来实现。
+
+2.后端用QueryCriteria进行查询时的数据封装。（对单表还可以，增加page,sorter,where这些条件，但是多表是不行的）
+
+3.查列名，及其类型。
+  建立一个RowMapper.使得把数据查的结果封装到List<Bean>里面，然后可以用什么来直接放到JSONArray里面。当然加上过滤器filter，来对某些列设置值。返回希望的列的JSONArray。
+
+
+
+4.用ui,om生成新的模块。用dm生成新的模块。构造新的模块出来完！！

@@ -1,0 +1,33 @@
+1.JPDA体系
+  1) jvm中有jpda TI 实现（即c语言实现），这个直接是控制虚拟机执行程序的（暂停和继续运行，跳出方法等）
+  2) jvm外层包裹有jpda JDI后端实现(debuggee实现，是动态库dll实现，是工具,且可以直接读取传输层的packet，或者封装packet传给传输层，即它实现了socket的功能。这是传输层实现，其实也有应用层实现，这个就是java实现的),这个实现一手和jpda TI打交道，一手和jpda JDI前端（debugger）打交道。
+  3）专门隔离出来的（不在jvm里或者外层）jdpa JDI客户端(java实现，是一个一般的工具类包)
+
+   jdpa JDI客户端和后端通过发送JDWP协议包来通信。
+ ----TCP上层还是Socket方式。
+
+
+2.只要一个jvm以调试器server方式启动，那么就可以远程调试，即启动另一个jvm，它以默认的客户端方式启动，而且通过配置的地址接口链接到服务端，从而开始控制服务端的执行，为了将返回的信息可视化，所以在eclipse中，eclispe专门呈现的代码视图上，会有执行实时状态标记（eclispe只要知道源代码工程，等信息，比如配置成socket attach （主动找客户端）还是socket listen（等待客户端连接），目标jvm的地址，那么就可以直接链接到目标jvm进行debug了）。
+  ----所以服务端完全可以运行在另一个系统上，如虚拟机VM中的linux，而客户端运行在windows下。
+
+
+
+3.windows下直接配置java运行参数：（非环境变量的方式），》控制面板》java》面板中进行配置。
+
+
+4.jvm以debugee方式启动：
+  java -agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=8001  com.gongsi.hahha
+  java -Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=8001 com.gongsi.hahha
+  E:\web\java\网络\soket程序>java -Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=8001 -jar server.jar 此项运行成功,可以在eclispe中新增一个远程调试命令（配置源工程项目source，host, port, attach type, ）。
+  如果是debug方式启动tomcat，可以将上述对虚拟机的命令加到startup.bat里。比如Set JAVA_OPTS=-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=8001
+
+   
+
+
+5.jvm以debuger方式启动：
+  java -agentlib:jdwp=transport=dt_socket,server=n,suspend=n,address=192.168.1.12:8001 com.gongsi.hahha
+  
+
+
+http://blog.csdn.net/kangkangwanwan/article/details/52933737（tomcat启动,debug方式）
+https://www.ibm.com/developerworks/cn/java/j-lo-jpda3/

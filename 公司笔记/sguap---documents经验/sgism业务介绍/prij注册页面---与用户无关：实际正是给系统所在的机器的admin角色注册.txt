@@ -1,0 +1,40 @@
+1.从登录页面跳转至注册页面，原因是：prj_info里没有内容。
+ 1）确认prj_info没有数据：~/rest/prjinfo/checkRegInit/
+    确实没有：则开始初始化注册页面：
+				1)请求数据:~/rest/reg/,加载到skinform的页面：/skins/registerJiJian.html
+				    其请求的数据是一个后台构造的PrjInfo对象的信息，这个对象很随意。
+		-------这个skinform页面上有各个方法：
+					1)省公司下拉改变事件函数（联动）：
+						发送请求：psm/rest/basedata/getJGDW.call?va='省公司编码'
+							 该请求的内容：发起一个webservice，url路径是：http://基建系统host:ip/sgcis/sm_localPersonCar/services/IQueryData？相应的参数是省公司编码，方法是：getJgdw
+						    	 返回的数据加到建管单位select里面。
+					2)建管单位下拉改变事件：
+						发送请求：psm/rest/basedata/getPrj.call?val='建管单位编码'
+							 该请求在后端：也发起webservice，请求路径一样，方法为：getPrj
+						 	 返回加到项目select里。
+					3)项目名称改变事件：/psm/rest/basedata/getSin.call?val='项目名称编码'
+					4）单项工程名称改变事件：/psm/rest/basedata/getBid.call?va='单项名称' （此功能已经未使用了）
+					5)注册事件：
+						请求路径：psm/rest/basedata/setBid.call，传递参数是：项目、单项、标段
+							后台事件：
+								1)保存到prj_info里面（一条记录）。
+								2）同步任务：
+									  1)单项同步：从prj_info里查一个记录，用它single_no从基建上getSinInfos方法找出全部的工程-单项-标段等信息-----后先删除prj_info后全部插入prj_info：
+									 		(但是当前没这么做，暂时不动作)
+									  2)项目部同步：用singleNo直接从基建获取项目部相关信息，清除dept_info，再存入dept_info。
+									  3）参建单位。同理
+									  4）合同：同理。
+									  5）花名册：--不是采用删除的方式（而是更新或者增加）
+											比较特殊，先从基建取到一个单项下的所有人员信息，对每个人，封装到personal_info和employee_info对象里，如果在personal_info表里没有这个人，那么直接存进去，同时存employee_info.（二者有personal_id关联）
+											如果有，那么就用从基建取到的这个人员信息来更新到personal_info里，在从employee_info里找用工信息，有，那么就更新为从基建取到的用工信息，否则就直接插入用工信息。
+								
+								          6）注册mac，直接构造prj,sinNo,bid,mac四大信息调webservice:registBid方法传过去。
+					6）账户初始化（密码输入）创建事件：
+						请求路径：../psm/rest/basedata/createUser.call
+							后台事情：更新数据库：t_sys_user 其中admin账户的密码更新一下而已。
+						完成之后跳转至主页面/sgism/workspace/main/index.jsp。
+						
+    有：则跳转至主页面  workspace/main/index.jsp
+
+
+---------本模块本质上是获取五大表信息。

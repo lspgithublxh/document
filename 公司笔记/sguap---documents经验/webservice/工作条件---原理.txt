@@ -1,0 +1,7 @@
+1.服务器必须启动。服务器会自动识别某个接口为Webservice。可以通过注解：@WebService来实现。
+                  但是服务器找到这个接口。需要在spring中配置一个bean（org.codehaus.xfire.spring.ServiceBean），它的属性就是上述接口和实现类。
+      那么服务器会对外提供这个webservice协议请求的接口：。
+      客户端就可以根据url地址和要请求的方法来请求某个方法了（不同于spring controller的映射方式，但是类似于）。。
+
+2.客户端请求方式：
+  服务端定义webservice和启动发布webservice方式。

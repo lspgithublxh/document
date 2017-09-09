@@ -1,0 +1,6 @@
+1.时间差：TIMESTAMPDIFF
+ 问题： TIMESTAMPDIFF(
+          SECOND,
+          `e`.`in_date`,
+          DATE_FORMAT(NOW(), _utf8 '%Y-%m-%d %H:%i:%s')
+        ) >= 0

@@ -1,0 +1,13 @@
+1.eclipse中直接设置：JAVA_OPTS=-Xms256m -Xmx1024m -XX:MaxNewSize=256m -XX:MaxPermSize=428m -Duser.timezone=Asia/Shanghai
+----可以直接在path下设置。
+
+2.tomcat环境下在catalina.bat中添加JAVA_OPTS参数。
+  例如：set JAVA_OPTS=-Xms512m -Xmx1024m -XX:PermSize=256m -XX:MaxPermSize=512m
+
+3.远程debug：在catalina.bat中：CATALINA_OPTS=-server -Xdebug -Xnoagent -Djava.compiler=NONE -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=1021 
+  里面还有一个默认的：JPDA_OPTS=-agentlib:jdwp=transport=%JPDA_TRANSPORT%,address=%JPDA_ADDRESS%,server=y,suspend=%JPDA_SUSPEND%
+ 默认是8000的侦听端口。
+
+
+
+

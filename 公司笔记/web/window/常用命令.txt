@@ -1,0 +1,18 @@
+1.关闭防火墙：netsh advfirewall set publicprofile state off..功能不佳，直接windows里面设置。
+
+
+2.services.msc
+  mstsc
+  cmd
+  taskmgr
+  regedit
+  
+
+
+3.根据端口查看占用：
+   netstat -ano|findstr "9000"
+
+4.根据任务id查看任务：
+   tasklist|findstr "19116"
+
+

@@ -1,0 +1,25 @@
+1.datacontainer容器数据的加载,在entityContainer里完成的--里面load方法里。。（自己还有load事件回调方法）。。
+
+  这个load()方法，有输入参数。
+
+  这里面获取url 和需要的参数
+
+
+
+2.DataGrid里也有load()；方法，也是间接调用entityContainer里的load方法
+----但是已经传入了很多参数,传入的是一个对象型参数：{params:{metaParams:, dataParams:},回调函数，}。
+
+DataGrid里也有load()中设置的参数
+参数来源：一是load()方法传入的。结构是：{metaParams:{},dataParams:{}}的对象
+           二是searchBox中getJson得到。
+           三是filter中得到。filter就是&key=value&key=value的形式。应该是设置进来的。me.filter。（认为可以手工设置）。setFilter()
+           四是分页、延时加载、排序、显示列。分别会在一中的dataParams对象里加属性($.extend(增加，父)方式得到子对象) pageIndex:,pageSize:，filter:,sorter:,
+调用entityContainer load()方法之后：
+
+entityContainer里的load方法：详细解释：
+ 后用entityContainer的_getClientCallMode("meta")
+    _getClientPostMode("data")  加载数据。
+    ajax使用的参数正是dataGrid传过来的参数--上述。
+               url正是配置中的baseUrl。。
+
+加参数的位置：load方法处、datacontrols里面，datacontainer里面。

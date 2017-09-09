@@ -1,0 +1,22 @@
+1.前端：
+  1.1 基础控件control
+  1.2 数据控件controls
+  1.3数据容器datacontainers
+  1.4.一般容器container
+    //各种容器之间的区别是什么？
+    mx.views.View是一种containers容器（继承了containers），。。这是一种可以增加绑定了数据容器dataconainers的数据控件datacontrols的容器。一种一般的容器，内部结构几乎没有的。很简洁的容器。
+	mx.containers.Accrodion也是一种containers容器（继承了containers）。一般的容器。是一种具体的容器。一种样式、格式、类型已经确定了的容器。
+  
+  
+ 2.mx框架所在包：D:\tool\UAP\sguap-server\WEB-INF\repository\platform\Version2.0.0\infrastructure\com.sgcc.uap.mxframework_2.8.0.v201602011551.jar
+ 
+
+ 3.weblet的运行过程：
+   因为本质上是javascript，只是封装了一些功能。
+   可看视频和文档。
+   ---mx标签库在解析mx:标签的时候，应该是找到weblet.js文件，逐步加载各个View\ViewController的过程，然后运行
+    weblet的onload方法完毕，接着执行onstart方法。
+    然后会执行的是weblet的其他什么方法呢？会找ViewController,再找View,将View描述的控件及其样式加到html位置。
+
+
+  4.如果遇到  is  not construcor 。一般是有控件没有import就使用，就会导致这个view构造失败。或者任何一个自己构造的东西的构造的失败。

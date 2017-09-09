@@ -1,0 +1,9 @@
+1.http协议用socket来实现。
+
+
+2.使用httpclient实现一个爬虫。
+
+
+
+
+好的文章：http://www.cnblogs.com/siqi/archive/2013/12/15/3475222.html

@@ -1,0 +1,9 @@
+1.空与非空的判断：IFNULL
+
+2.有条件删除：Delete from dept_info  where exists( select count(*) from prj_info p where p.bid_no=bid_no and p.single_no=?)
+   ---即被删除表不能够用别名。
+
+3.增删改列：
+  ALTER TABLE tools_checkout_record ADD COLUMN bid_no VARCHAR(255) COMMENT '项目标段'
+  alter table tools_checkout_record modify 列 新列名 列类型
+  alter table tools_checkout_record drop column bid_no;

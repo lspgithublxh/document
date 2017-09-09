@@ -1,0 +1,3 @@
+1.RESTClient的拓展。只要使用RESTClient的向后台取数据的方法都会重定向。
+	本系统加过滤器不行--weblet不能形成，
+	在servlet加过滤器也不行---重定向失效。况且只会对本serlvet的请求拦截。范围太小。

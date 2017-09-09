@@ -1,0 +1,69 @@
+----------ws服务端实现类和前端请求的wsdl文件内容的关系：
+
+1.?wsdl文件的作用：
+  描述：服务地址、调用方式、具体可用的方法。
+
+2.wsdl文件的内容结构：第一级：
+  1) wsdl:definations
+      wsdl:types   各个操作方法及其response
+      wsdl:message   各个操作方法的request和response （传入参数和输出参数）
+      wsdl:portType  各个操作方法（内的输入输出--描述tns）
+      wsdl:binding  各个操作方法（内含输入输出）
+      wsdl:service  服务的地址
+        
+
+3.wsdl属性：
+  1) targetNamespace="http://service.sgism.sgcc.com"  值和服务所在的工程的java包路径对应（即是反过来：com.sgcc.sgism.service）
+  2）xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns是要遵守的命令空间的schema文件，相当于java里的import,。xsd是别名。
+  
+
+4.对应之2：
+  >后端服务的方法的参数---前端xml文档片段----soap消息格式
+	传入的消息格式：
+               <方法名>
+		    <第一个参数名如arg0>
+                      <参数对象属性名1>
+		      <参数对象属性名2>
+	返回的消息格式：
+	 	<方法名Response>
+		     <return>
+			<第一个对象的属性值1>
+			<第一个对象的属性值2>
+ 		     <return>
+			<第二个对象的属性值1>
+			<第二个对象的属性值2>
+  >前端传xml文档，后端解析xml文档，返回xml文档。
+
+5.后端接收到的html-soap消息格式：
+ Headers:  {http报头键值对}
+ Payload: <?xml version="1.0" ?>
+           <s:envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/">
+             <s:body>
+                 <ns2:方法名 xmlns:ns2="http://sgism.sgcis.com">
+			<参数1名如arg0>
+
+   
+6.后端返回的html-soap消息格式：
+  Headers: {http报头键值对}
+  Payload:
+          <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+		<soap:Body>
+                      <ns2:方法名Response xmlns:ns2="http://sgism.sgcis.com">
+			 <return> <第一个元素的第一个属性名>
+
+
+-----------其中：<soap:header> 可以省略。
+
+ 错误消息例子：
+ <soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" 
+ xmlns:xsd="http://www.w3.org/2001/XMLSchema" 
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+ <soap:Body>
+ <soap:Fault>
+ <faultcode>soap:Client</faultcode>
+ <faultstring>A JSONArray text must start with '[' at character 1 of 1223345</faultstring>
+ </soap:Fault>
+ </soap:Body>
+ </soap:Envelope>
+
+http://blog.csdn.net/zhongguomao/article/details/51733161

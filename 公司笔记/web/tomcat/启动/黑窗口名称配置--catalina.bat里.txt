@@ -1,0 +1,1 @@
+if "%TITLE%" == "" set TITLE=BD_WEB

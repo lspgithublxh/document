@@ -1,0 +1,7 @@
+1.java.lang.IllegalArgumentException: object is not an instance of declarig class 。一般是jar包冲突，即出现了多个版本---而老版本的类的某个方法参数已经变动了。
+
+
+
+
+
+

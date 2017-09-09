@@ -1,0 +1,26 @@
+他的思想：是从前端json数据结构中再次提取出信息出来。往往是params键的值是一种混合值的string形式，而后端注解就把这种混合值封装到一种数据结构中。
+----实际上通用性特别差！！
+
+1. @ColumnRequestParam("params") String[] columns      
+   前端data: {params : JSON.stringify({columns:"id,name,sex,age"})}
+   把拼接的字符串重新分割到字符串数组中。
+
+2.@IDRequestObject IDRequestObject ojb
+    前端 JSON.stringify({primaryKey:'',"ids":['','','','']})
+    把两个键的值封装到后台的IDRequestObject对象里面，构成它的两个属性值。
+
+3.@ItemRequestParam("params") String itemType
+  前端data:{params:JSON.stringify({itemType:"uuid"})}
+  仅仅就是取出一个键值，而且是字符串类型
+
+4.@ItemsRequestBody List<Map> list
+   前端是：{parentID:"",items:[{},{}]}固定两个键， post报文方式
+   把items里的每一个item封装到各自的Map中，形成一个List<Map>
+
+5.@QueryRequestParam RequestCondition condition
+  前端：JSON.stringify({columns:',,,',pageIndex:1,pageSize:20,filter:"name='123'",sorter:"name"})
+  把查询条件封装到RequestCondition对象里面。
+   
+
+  
+

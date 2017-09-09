@@ -1,0 +1,3 @@
+1.到tomcat下，直接到bin下，service install TomcatServeName
+  > 条件：tomcat在关闭的条件下。
+    条件2：tomcat7以上（否则会报错：NonAlpha95,或者安装不上--即在services.msc里看不到）

@@ -1,0 +1,35 @@
+1.一般的：样式变换，数据读传。
+
+2.ActiveObject：本地对象，本地方法。如何映射到js中，使得js中可以调用？安装过程中发生了什么？
+  和<object>的id有什么关系？
+  》会产生一个dom对象。且属性及其丰富
+  》activeObject就是一个本地库，浏览器通过<object id>标记会访问到这个本地库，调用对应方法执行，且初始化时会绑定库的全部方法到这个<object id>对应的本地库。用户可以通过<object id>获取dom对象，而这个对象因为有很多对应懂啊本地库的api方法，可以访问成功。
+
+3.浏览器内置对象window和ActiveObject有关系。
+
+
+4.JS ACTIVEX 控件的利用
+  比如flash的控件的类在注册表中的位置：HKEY_CLASSES_ROOT\CLSID\{D27CDB70-AE6D-11cf-96B8-444553540000}
+
+5.ActiveX控件的制作：
+  新建MFC ActiveX工程：工程下在某写文件夹下可以添加方法，在该方法内可以写代码。而这个方法就是对外的函数。
+  编译链接后，在js中可以用控件的id.该函数名来访问到该ActiveX控件的函数。
+
+  ---实现js调用前，需要将ActiveX控件（.ocx）注册到windows:  regsvr32 控件路径  （先将控件放到C:\系统盘相应位置，然后才注册）
+ --- <script for="" event="" >
+ 
+
+6.常用的ActiveXObject对象(servername.typename)：
+  >Scripting.FileSystemObject
+		var fileSize = 0;
+		var ie = /msie/i.test(navigator.userAgent) && !window.opera;
+		if(ie){
+			var fileSystem = new ActiveXObject("Scripting.FileSystemObject");
+			var file = fileSystem.GetFile(e.value);
+			fileSize = file.Size;
+		}else{
+			fileSize = e.files[0].size;
+		}
+
+
+     

@@ -1,0 +1,7 @@
+1.服务器中配置的对象，可以通过JNDI发布给web项目。
+2.OSGI平台(equinox)的服务对象发布对象到JNDI。。通过LifecycleListener监听器知道server组件的启动，从而在这个时候将osgi服务发布到JNDI。
+ （而可以通过BundleActivator的实现来把用户接口服务发布到OSGI平台）
+  （其他用户接口可以用OsgiServiceFacade来获取用户接口服务）
+3.OSGI平台：
+   类似一个spring容器。里面放的是用户接口（服务），及其他的接口服务。
+  //但是这个容器，可以跨项目。

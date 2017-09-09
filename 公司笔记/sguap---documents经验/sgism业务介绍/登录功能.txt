@@ -1,0 +1,45 @@
+1.初始化（main主页面不是登录窗口页面，是进入系统的首页）：
+  0) 直接请求：~/rest/workspace/checkLoginStatus 
+	后台操作：
+		1) 查看prj_info是否有数据 
+		-- 没有：返回前端并跳转到prj注册页面：psm/reg/index.jsp
+		    有：再看session是否存有用户信息。
+			没存有：返回前端，并跳转至登录窗口--重输用户名密码。
+      			存有： 取出信息，返回前端，将信息存到页面上，进入主页面main/index.jsp
+    				信息包括：标段(就是之前存的t_sys_user里的user_flag)、用户、系统版本信息。
+  1）重新登录：即重新构造main.views.LoginWindow窗口，绑定login事件---成功后做初始化用户信息_initUeserCtrls和初始化控件_initControls的事情（和正常登录一样），放到本weblet。
+	#1： 重新构造LoginWindow
+            *1： 返回的是htmlContainer容器对象（/main/login.jsp），非view。
+	    	  a:_initStoreInfo：加载这个对象时，从cookie里取用户名密码直接存到临时变量。//以便输入用户名时展示输入过的所有的用户名。
+                  b:给四个按钮绑定事件，给me.$e这个htmlContainer对象绑定事件（keydown,click）。只有登录点击、密码Input回车有意义。
+        #2： 绑定的登录点击事件：
+	     调用后台：/rest/workspace/login
+	     后台做法：a:从serial_number表找序列号--注册码，
+				没有：则认为授权码过期，返回。返回后跳转至获取授权码获取页面：
+					psm/regist/index.jsp
+			 	有：先大略判断注册码的一些性质是否对，再用公司名、mac、查出的注册码中四串数首尾码（16进制数转10进制数字符串，firstyear-lastyear-month-day,如1992-10-01）再次生成一个注册码（MD5.encode（公司名-mac-前面的日期），长于32截取，短于32补D）来和查出的注册码比较，相同（和四串数中间部分联合相同，可见注册码中间部分的实质：MD5加密的结果）且未过期（lastyear与当前）才认为是同一个--返回true.
+		       b:验证用户：据用户名从t_sys_user，prj_info中找出用户信息
+				   无：则认为用户名或密码错
+				   有：查出的密码和前端传来的password在md5加密后比较，不同则认为用户名或密码错。
+				       同:则对，且存储用户信息：用户名、标段名与号（t_sys_user里的user_flag字段,只有前端标段树可以更新user_flag值,注册初始化不会动这个）、工程名与号与允许的工程号，且返回这些信息
+			         
+			
+		成功：1.1）存储到cookie: setCookie
+		      1.2) 激活从main主页面绑定给这个htmlContainer对象的login事件。	
+ 		失败：原因1：注册码过期：跳转注册页面：psm/regist/index.jsp
+		      原因2：用户名/密码错误：直接结束。
+
+  ---后台确认登录成功后，前端做：
+    1）初始化用户信息：取用户信息、标段信息、版本信息。
+    2）初始化控件：
+    	  *1： _initPTreeView：标段选择树变量--初始化构造（查根级项目、单项、标段时都没有考虑用户，最后返回标段时考虑了用户，即在allowbidnolist里过滤，且如果某个标段是user_flag这个，就会特殊标记显示）。(点击事件会先加载后端数据/proinfoTree，再点击窗口中的item会确定默认标段,即设置t_sys_user表中的user_flag字段)
+			 	treeListView特征：会先从后台获取根节点,如果其expended为true，再根据每个id取子节点：~/workspace/rest/workspace/proinfoTree, ~/workspace/rest/workspace/proinfoTree/{id}/children
+	  *2： _initVsiptWindow：设置主页面下半部分：左（也包括上Label下树）右（tabcontrol，加全屏按钮）、绑定tabcontrol右键菜单initContextMenu--showTabContextMunu
+	  *3：_initHsplitWindow：添加主界面上半部分中的下拉、功能菜单（_initMainMenu：/rest/workspace/getmenu）、用户功能、tabcontrol清楚全部page后添加首页page（这个page里面加的是/sgism/psm/firstPage/index.jsp）。
+	  *4：myInterval():定期从pcode中找update_tag键对应的版本，并且显示。
+
+2.注销：
+   发送/rest/workspace/loginOut请求，后台去除用户信息后前端直接转到登录页面：/main/index.jsp
+
+
+3.版本更新：

@@ -1,0 +1,1 @@
+1.从核心bundle开始，一个一个的resovled----install ----- start --active---end--卸载

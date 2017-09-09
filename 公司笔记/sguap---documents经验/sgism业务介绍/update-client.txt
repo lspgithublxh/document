@@ -1,0 +1,6 @@
+1.download类的服务：
+   1）getNewVer()方法，调用webservice接口（即发送http请求），获取新的版本。
+		    * 要从本地mysql中找出升级服务器地址和端口：使用java直接链接数据库（不用中间件hibernate之类,java.sql.DriverManager）：DriverManager.getConnection() ,并可以发送sql让其执行，从而返回结果。 
+		    
+   2）downloadFile()方法，调用webservice接口（即发送http请求）若干次---直到没有读到数据，不断刷入一个文件中，这个文件，但是不是先删除和后建，所以必须先清空同名，否则会续写。
+			 * 进度条更新的方法：Timer定时查看下载的文件的长度， 比上文件的总长度，将这个结果值设置到一个有值改变激活事件的JProgressBar对象上，而这个激活事件执行的就是更新显示。

@@ -1,0 +1,1 @@
+1.比如require-bundle没有，比如bundle-claspath:下面没有。

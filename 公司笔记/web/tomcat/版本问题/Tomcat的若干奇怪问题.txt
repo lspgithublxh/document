@@ -1,0 +1,15 @@
+1.Tomcat的若干版本问题：
+  > 如果conf里面server.xml配置没问题,context.xml没有问题，catalina.properties,web.xml没有被修改。
+    如果bin下面有的bat(startup.bat),dll没有被改变（比如tcnative-1.dll）
+    如果项目本身也没有问题
+    那么一般最大可能就是tomcat的版本问题。。换新版本的tomcat试试，不要在配置上或者甚至源码上纠结。
+
+   >应用：比如tomcat起不来（osgi环境；；尽管是eclispe里可以启动）
+         //server和项目服务器都要是18以上的版本。
+
+
+2.版本也无效，系统本身的问题也有可能。重启试试。
+  -----试过重启，在打开最少程序下启动两个tomcat,之后就可以了。服务端：162个jar。
+
+
+3.对于osgi环境，还可能的问题是server服务端的问题。

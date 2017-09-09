@@ -1,0 +1,8 @@
+1.请求的实际路径。
+   比如getPubKey:  http://localhost:9000/sgism/workspace/rest/workspace/getPubKey?rnd=0.34642146911387406&_=1500260828379
+   比如获取菜单树getmenu：http://localhost:9000/sgism/workspace/rest/workspace/getmenu?rnd=0.336385109608043&_=1500260828570
+   ------即mx插件要求一般的ajax---get请求要求发送随机数rnd参数和_参数，，，，但是没有也没有影响。	
+   ---主要是mx插件会在请求路径上加东西：rest这个字符串。
+      
+    
+  

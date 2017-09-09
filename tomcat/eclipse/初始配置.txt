@@ -8,12 +8,39 @@
 	>publishing:选择自动publish当资源改变
 
 3.maven多模块项目，部署在eclipse中独立的tomcat上，进行开发。
-	>注意点：一是先用mvn -U eclipse:clean eclipse:eclipse对整个项目进行重新构建eclipse环境。
-		 二是对于其中的web项目，右键properties配置，在deployment Assembly选项中， 增加其他依赖的非web项目。相当于增加资源环境范围，从而tomcat启动时会从这些路径下找资源---比如这些项目里的xml配置文件。而其他jar依赖则完全不必了。因为这些项目本身已经依赖了。
+	>注意点：一是先在pom.xml指明build配置，再用mvn -U eclipse:clean eclipse:eclipse对整个项目进行重新构建把build信息告知eclipse，即将build命令和配置输出到.classpath中，.project中也有部分。它的关键作用是利用pom.xml中的配置生成.classpath环境----这里面会告知eclipse怎么打jar包---比如配置文件在哪里，输出到哪里。所以，pom.xml中也必须要对<build><resources>进行配置，因为这个会输出到.classpath中。
+		 二是对于其中的web项目，右键properties配置，在deployment Assembly选项中， 增加其他依赖的非web项目，来一一匹配资源路径和发布路径（而把jar模块当作了资源进行了发布路径的匹配），从而资源路径下的资源发生了改变，会触发改变事件，从而自动重新编译和部署。。相当于增加资源环境范围，从而tomcat启动时会从这些路径下找资源---比如这些项目里的xml配置文件。而其他jar依赖则完全不必了。因为这些项目本身已经依赖了。
 			（同时也增加了监听范围，使得这些项目有变化，那么会被tomcat监听到，从而重新部署reload）
 		 三是tomcat本身，保持配置：
 				>一是server.xml中：<Context reloadable="true">
 				>二是双击tomcat本身，而产生的配置环境中：Publishing项：Automatically publish when resources
 									 Serverlocations项目：选择第一个：工作空间。同时server path选择工作空间里。
 									 Server options:选择第三个：Modules auto reload by default
+				
+	>注意点2：当改变web的pom.xml时，会重新编译，此时jar模块会带上版本号了。
 
+4.多web项目共享jar的配置:jar放到公共目录，而web项目的pom.xml中可以配置jar的路径：（参考资料：https://my.oschina.net/noahxiao/blog/173499）
+     <build>
+        <plugins>
+            <plugin>
+                <artifactId>maven-war-plugin</artifactId>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <addClasspath>true</addClasspath>
+                            <classpathPrefix>../lib/</classpathPrefix>
+                            <useUniqueVersions>false</useUniqueVersions>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+
+5.使用maven启动tomcat插件方式运行项目，速度慢，而直接部署到启动的原生tomcat上，速度快。
+
+
+
+参考资料：
+1.http://www.cnblogs.com/dashuai01/p/6739173.html （eclipse中编译路径和源路径和发布路径的匹配。)

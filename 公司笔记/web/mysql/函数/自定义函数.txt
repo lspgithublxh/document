@@ -1,0 +1,749 @@
+1.简单的：
+DELIMITER $$
+DROP FUNCTION IF EXISTS `menu`.`getdate` $$
+CREATE FUNCTION `menu`.`getdate`(gdate DATETIME) RETURNS VARCHAR(255)
+BEGIN
+DECLARE X VARCHAR(255) DEFAULT '';
+SET X = DATE_FORMAT(gdate,'%Y-%m-%d %T----hahahahha');
+RETURN X;
+END $$
+DELIMITER ;
+
+---------调用：SELECT getdate('2014-01-11 00:00:00');
+
+2.分支结构的：
+DELIMITER $$
+DROP FUNCTION IF EXISTS `menu`.`test1` $$
+CREATE FUNCTION `menu`.`test1`(s VARCHAR(255), n INT) RETURNS VARCHAR(255)
+BEGIN
+IF(ISNULL(s)) THEN RETURN '';
+ELSEIF CHAR_LENGTH(s) < n THEN RETURN s;
+ELSEIF CHAR_LENGTH(s) = n THEN RETURN '相等';
+ELSE RETURN CONCAT(LEFT(s,n), '...');
+END IF;
+END $$
+DELIMITER ;
+
+SELECT test1('xxxx', 2);
+
+
+3.循环结构的：
+DELIMITER $$
+DROP FUNCTION  IF EXISTS `menu`.`test2` $$
+CREATE FUNCTION `menu`.`test2`(n INT) RETURNS TEXT
+BEGIN
+DECLARE i INT DEFAULT 0;
+DECLARE s TEXT DEFAULT '';
+myloop:LOOP
+SET i = i + 1;
+SET s = CONCAT(s, '*');
+IF i > n THEN LEAVE myloop;
+END IF;
+END LOOP myloop;
+RETURN s;
+END $$
+DELIMITER ;
+
+SELECT test2(4) FROM DUAL
+
+4.内部进行了查询的
+DELIMITER $$
+DROP  FUNCTION IF EXISTS `menu`.`queryxxx` $$
+CREATE FUNCTION `menu`.`queryxxx`(sta VARCHAR(10), en VARCHAR(10)) RETURNS TEXT
+BEGIN
+DECLARE s VARCHAR(255) DEFAULT '';
+SET s = sta;
+-- select @s = bid_name from prj_info where id = sta; -- 返回可以是多行结果，取最后一个。。但是在muysql里总是报错。即这个返回的总是多个结果，是不同的数据类型了。
+  SELECT bid_name INTO s FROM prj_info WHERE id = sta;
+RETURN s;
+END $$
+DELIMITER ;
+
+SELECT queryxxx('64', '') FROM DUAL
+
+
+5.内部复杂查询的：
+DELIMITER $$
+DROP FUNCTION IF EXISTS history $$
+CREATE FUNCTION history(sta VARCHAR(10), en VARCHAR(10)) RETURNS VARCHAR(255)
+BEGIN
+DECLARE s VARCHAR(255) DEFAULT '';
+SELECT bid_name INTO s FROM prj_info WHERE id = sta;
+SELECT GROUP_CONCAT( CONCAT(tm.ty,',', tm.cou) SEPARATOR ';') FROM
+(
+SELECT p.dept_type ty ,COUNT(DISTINCT p.identity) cou
+FROM personal_inout p 
+WHERE p.record_time  > sta AND p.record_time < en AND p.type = '0'
+	AND EXISTS(SELECT 1 FROM (SELECT t.identity identity, MAX(t.record_time) record_time FROM personal_inout t  WHERE t.record_time  > sta AND t.record_time < en GROUP BY t.identity) t2 WHERE p.record_time = t2.record_time AND t2.identity = p.identity AND p.type = '0' )
+GROUP BY p.dept_type  
+) tm ;
+RETURN s;
+END $$
+DELIMITER ;
+
+
+6.游标---临时表：
+简单游标定义：（必须要用另一个表名，必须在select 中使用到这个别名.来取列）
+DELIMITER $$
+
+DROP FUNCTION IF EXISTS `cursor_test`$$
+
+CREATE  FUNCTION `cursor_test`() RETURNS VARCHAR(255) CHARSET utf8
+BEGIN
+DECLARE result VARCHAR(255) DEFAULT '';
+DECLARE id VARCHAR(32) DEFAULT '==';
+DECLARE bid_no VARCHAR(32) DEFAULT '1,';
+DECLARE create_time VARCHAR(32) DEFAULT 'oo';
+DECLARE record_not_found INTEGER DEFAULT 0;
+DECLARE cursor_my CURSOR FOR SELECT DISTINCT p.id  FROM personal_inout p LIMIT 1,10;  
+DECLARE CONTINUE HANDLER FOR NOT FOUND SET record_not_found = 1;
+OPEN cursor_my;
+myLoop:LOOP
+FETCH cursor_my INTO id;
+IF record_not_found THEN 
+	LEAVE myLoop;
+END IF;
+ SET result = CONCAT(result ,'',id,',');
+ END LOOP myLoop;
+ CLOSE cursor_my;
+ RETURN result;
+ END$$
+
+DELIMITER ;
+
+SELECT cursor_test() FROM DUAL; 
+
+-------------------------------多列游标
+DELIMITER $$
+
+DROP FUNCTION IF EXISTS `cursor_test`$$
+
+CREATE  FUNCTION `cursor_test`() RETURNS VARCHAR(255) CHARSET utf8
+BEGIN
+DECLARE result VARCHAR(255) DEFAULT '';
+DECLARE id VARCHAR(32) DEFAULT '==';
+DECLARE bid_no VARCHAR(32) DEFAULT '1,';
+DECLARE create_time VARCHAR(32) DEFAULT 'oo';
+DECLARE record_not_found INTEGER DEFAULT 0;
+DECLARE cursor_my CURSOR FOR SELECT  p.id, p.bid_no,p.create_time  FROM personal_inout p LIMIT 1,10;  
+DECLARE CONTINUE HANDLER FOR NOT FOUND SET record_not_found = 1;
+OPEN cursor_my;
+myLoop:LOOP
+FETCH cursor_my INTO id, bid_no, create_time;
+IF record_not_found THEN 
+	LEAVE myLoop;
+END IF;
+ SET result = CONCAT(result ,'',id,',',create_time, ',',bid_no);
+ END LOOP myLoop;
+ CLOSE cursor_my;
+ RETURN result;
+ END$$
+
+DELIMITER ;
+-----------------------------------
+
+
+DELIMITER $$
+DROP FUNCTION IF EXISTS history $$
+CREATE FUNCTION history(sta VARCHAR(10)) RETURNS VARCHAR(255)
+BEGIN
+DECLARE s VARCHAR(255) DEFAULT '';
+DECLARE result VARCHAR(255) DEFAULT '--';
+DECLARE s1 VARCHAR(255) DEFAULT '-';
+DECLARE s2 VARCHAR(255) DEFAULT '-';
+DECLARE hour_ VARCHAR(255) DEFAULT '-';
+DECLARE e1 VARCHAR(255) DEFAULT '-';
+DECLARE e2 VARCHAR(255) DEFAULT '-';
+DECLARE record_not_found INTEGER DEFAULT 0;
+DECLARE hour_cursor CURSOR FOR SELECT DISTINCT SUBSTRING(DATE_FORMAT(t.record_time, '%Y-%m-%d %T'), 12, 2) hours  FROM (
+SELECT * FROM personal_inout p WHERE p.record_time  > sta AND p.record_time < CONCAT(sta, ' 23:59:59') ) t ;
+DECLARE CONTINUE HANDLER FOR NOT FOUND SET record_not_found = 1;
+DROP TEMPORARY TABLE IF EXISTS `my_table`;
+CREATE TEMPORARY TABLE `my_table`(`dept` VARCHAR(255),`num` INT) DEFAULT CHARSET=utf8;
+-- 根据小时查询每小时的高峰人数
+ OPEN hour_cursor;
+    myLoop:LOOP
+     FETCH hour_cursor INTO hour_;
+     IF record_not_found THEN
+			LEAVE myLoop;
+     END IF;
+     SET s = '0';
+    SET s1 = CONCAT(sta, ' ',hour_ ,':00:00');
+    SET s2 = CONCAT(sta, ' ',hour_ ,':59:59');
+ INSERT INTO `my_table`(`dept`,`num`) SELECT p.dept_type ty ,COUNT(DISTINCT p.identity) cou 
+  FROM personal_inout p 
+  WHERE p.record_time  > s1 AND p.record_time < s2 AND p.type = '0'
+ 	AND EXISTS(SELECT 1 FROM (SELECT t.identity identity, MAX(t.record_time) record_time FROM personal_inout t  WHERE t.record_time  > s1 
+ 	AND t.record_time < s2 GROUP BY t.identity) t2 WHERE p.record_time = t2.record_time AND t2.identity = p.identity AND p.type = '0' )
+  GROUP BY p.dept_type  ;
+  
+  IF (SELECT COUNT(*) FROM `my_table`) > 0 THEN 
+    SELECT GROUP_CONCAT(CONCAT(`dept`,'=',`num`) SEPARATOR ';')  INTO s FROM `my_table`; -- CONCAT(COUNT(*),'..')
+  END IF;
+-- 查找出有记录的小时
+  SET result = CONCAT(result,'--',hour_,':', s,'--');
+  DELETE FROM `my_table` WHERE 1 = 1 ;
+  END LOOP myLoop;
+  CLOSE hour_cursor;
+RETURN result;
+END $$
+DELIMITER ;
+--------------------------------------------------------------------
+
+DELIMITER $$
+DROP FUNCTION IF EXISTS history $$
+CREATE FUNCTION history(sta VARCHAR(10)) RETURNS VARCHAR(255)
+BEGIN
+DECLARE s VARCHAR(255) DEFAULT '';
+DECLARE result VARCHAR(255) DEFAULT '';
+DECLARE s1 VARCHAR(255) DEFAULT '-';
+DECLARE s2 VARCHAR(255) DEFAULT '-';
+DECLARE hour_ VARCHAR(255) DEFAULT '-';
+DECLARE e1 VARCHAR(255) DEFAULT '-';
+DECLARE e2 VARCHAR(255) DEFAULT '-';
+DECLARE record_not_found INTEGER DEFAULT 0;
+DECLARE hour_cursor CURSOR FOR SELECT DISTINCT SUBSTRING(DATE_FORMAT(t.record_time, '%Y-%m-%d %T'), 12, 2) hours  FROM (
+SELECT * FROM personal_inout p WHERE p.record_time  > sta AND p.record_time < CONCAT(sta, ' 23:59:59') ) t ;
+DECLARE CONTINUE HANDLER FOR NOT FOUND SET record_not_found = 1;
+DROP TEMPORARY TABLE IF EXISTS `my_table`;
+CREATE TEMPORARY TABLE `my_table`(`dept` VARCHAR(255),`num` INT) DEFAULT CHARSET=utf8;
+-- 根据小时查询每小时的高峰人数
+ OPEN hour_cursor;
+    myLoop:LOOP
+     FETCH hour_cursor INTO hour_;
+     IF record_not_found THEN
+			LEAVE myLoop;
+     END IF;
+     SET s = '0';
+    SET s1 = CONCAT(sta, ' ',hour_ ,':00:00');
+    SET s2 = CONCAT(sta, ' ',hour_ ,':59:59');
+  -- 第一个数据
+ INSERT INTO `my_table`(`dept`,`num`) SELECT p.dept_type ty ,COUNT(DISTINCT p.identity) cou 
+  FROM personal_inout p 
+  WHERE p.record_time  >= s1 AND p.record_time <= s2 AND p.type = '0'
+ 	AND EXISTS(SELECT 1 FROM (SELECT t.identity identity, MAX(t.record_time) record_time,t.type ty FROM personal_inout t  WHERE t.record_time  >= s1 
+ 	AND t.record_time <= s2 GROUP BY t.identity) t2 WHERE p.record_time = t2.record_time AND t2.identity = p.identity AND t2.ty = '0' )
+  GROUP BY p.dept_type  ;
+  -- 第二个数据
+  
+   INSERT INTO `my_table`(`dept`,`num`) SELECT p.dept_type ty ,COUNT(DISTINCT p.identity) cou
+    FROM personal_inout p WHERE p.record_time  >= s1 AND p.record_time <= s2 AND p.type = '1'
+    AND NOT EXISTS( SELECT 1 FROM ( SELECT t.identity identity, MAX(t.record_time) record_time,t.type ty FROM personal_inout t  WHERE t.record_time  >= s1 
+ 	AND t.record_time <= s2 GROUP BY t.identity )p2 WHERE p2.identity = p.identity AND p2.ty = '0' )
+    GROUP BY p.dept_type  ;
+  -- 组合数据
+  IF (SELECT COUNT(*) FROM `my_table`) > 0 THEN 
+    SELECT GROUP_CONCAT(CONCAT(`dept`,'=',`num`) SEPARATOR ';')  INTO s FROM (SELECT `dept`, SUM(`num`) num FROM`my_table` GROUP BY `dept`) t; -- CONCAT(COUNT(*),'..')
+  END IF;
+-- 查找出有记录的小时
+  SET result = CONCAT(result,'--',hour_,':', s);
+  DELETE FROM `my_table` WHERE 1 = 1 ;
+  END LOOP myLoop;
+  CLOSE hour_cursor;
+  -- 处理数据，插入数据库
+  
+RETURN result;
+END $$
+DELIMITER ;
+
+-------------------------------------------------------------------------
+DELIMITER $$
+DROP FUNCTION IF EXISTS history $$
+CREATE FUNCTION history(sta VARCHAR(10), bid_no VARCHAR(32)) RETURNS VARCHAR(255)
+BEGIN
+DECLARE s VARCHAR(255) DEFAULT '';
+DECLARE result VARCHAR(255) DEFAULT '';
+DECLARE s1 VARCHAR(255) DEFAULT '-';
+DECLARE s2 VARCHAR(255) DEFAULT '-';
+DECLARE hour_ VARCHAR(255) DEFAULT '-';
+DECLARE year_ INT(2) DEFAULT '2017';
+DECLARE month_ INT(2) DEFAULT '01';
+DECLARE day_ INT(2) DEFAULT '01';
+DECLARE record_not_found INTEGER DEFAULT 0;
+DECLARE hour_cursor CURSOR FOR SELECT DISTINCT SUBSTRING(DATE_FORMAT(t.record_time, '%Y-%m-%d %T'), 12, 2) hours  FROM (
+SELECT * FROM personal_inout p WHERE p.record_time  > sta AND p.record_time < CONCAT(sta, ' 23:59:59') ) t ;
+DECLARE CONTINUE HANDLER FOR NOT FOUND SET record_not_found = 1;
+DROP TEMPORARY TABLE IF EXISTS `my_table`;
+CREATE TEMPORARY TABLE `my_table`(`dept` VARCHAR(255),`num` INT) DEFAULT CHARSET=utf8;
+DROP TEMPORARY TABLE IF EXISTS `my_table_bid`;
+CREATE TEMPORARY TABLE `my_table_bid`(`year` INT(4),`month` INT(2),`day` INT(2),`hour` INT(2),`bid_no` VARCHAR(32)) DEFAULT CHARSET=utf8;
+SET year_ = CAST(SUBSTRING(sta,1,4) AS UNSIGNED);
+SET month_ = CAST(SUBSTRING(sta,6,2) AS UNSIGNED);
+SET day_ = CAST(SUBSTRING(sta,9,2) AS UNSIGNED);
+INSERT INTO  `my_table_bid`(`year` ,`month`,`day` ,`hour`,`bid_no`) VALUES(year_, month_, day_, 0, bid_no);
+
+-- 根据小时查询每小时的高峰人数
+ OPEN hour_cursor;
+    myLoop:LOOP
+     FETCH hour_cursor INTO hour_;
+     IF record_not_found THEN
+			LEAVE myLoop;
+     END IF;
+     SET s = '0';
+    SET s1 = CONCAT(sta, ' ',hour_ ,':00:00');
+    SET s2 = CONCAT(sta, ' ',hour_ ,':59:59');
+  -- 第一个数据
+ INSERT INTO `my_table`(`dept`,`num`) SELECT p.dept_type ty ,COUNT(DISTINCT p.identity) cou 
+  FROM personal_inout p 
+  WHERE p.record_time  >= s1 AND p.record_time <= s2 AND p.type = '0'
+ 	AND EXISTS(SELECT 1 FROM (SELECT t.identity identity, MAX(t.record_time) record_time,t.type ty FROM personal_inout t  WHERE t.record_time  >= s1 
+ 	AND t.record_time <= s2 GROUP BY t.identity) t2 WHERE p.record_time = t2.record_time AND t2.identity = p.identity AND t2.ty = '0' )
+  GROUP BY p.dept_type  ;
+  -- 第二个数据
+  
+   INSERT INTO `my_table`(`dept`,`num`) SELECT p.dept_type ty ,COUNT(DISTINCT p.identity) cou
+    FROM personal_inout p WHERE p.record_time  >= s1 AND p.record_time <= s2 AND p.type = '1'
+    AND NOT EXISTS( SELECT 1 FROM ( SELECT t.identity identity, MAX(t.record_time) record_time,t.type ty FROM personal_inout t  WHERE t.record_time  >= s1 
+ 	AND t.record_time <= s2 GROUP BY t.identity )p2 WHERE p2.identity = p.identity AND p2.ty = '0' )
+    GROUP BY p.dept_type  ;
+   -- 其他列数据
+   UPDATE `my_table_bid` SET `hour` = CAST(hour_ AS UNSIGNED);
+  -- 组合数据
+  IF (SELECT COUNT(*) FROM `my_table`) > 0 THEN 
+  --  SELECT GROUP_CONCAT(CONCAT(`dept`,'=',`num`) SEPARATOR ';')  INTO s 
+    INSERT INTO `t_gather_present_daily` (`id`, `year` ,`month`,`day` ,`hour`,`bid_no`,`yz_num` ,`jl_num`,`sg_num` ,`fb_num`,`ls_num`,`create_time`,`send_state`)
+     SELECT REPLACE(UUID(),'-','') id, `year`, `month`,`day`,`hour`,`bid_no`,yz_num,jl_num,sg_num,fb_num,ls_num,NOW(),'0'
+    FROM (
+	SELECT CASE WHEN `dept` = '1' THEN SUM(`num`) ELSE 0 END yz_num , CASE WHEN `dept` = '2' THEN SUM(`num`) ELSE 0 END jl_num,
+		CASE WHEN `dept` = '3' THEN SUM(`num`) ELSE 0 END sg_num,CASE WHEN `dept` = '4' THEN SUM(`num`) ELSE 0 END fb_num,
+		CASE WHEN `dept` = '5' THEN SUM(`num`) ELSE 0 END ls_num
+	  FROM`my_table` GROUP BY `dept`) t INNER JOIN `my_table_bid` ON 1 = 1; -- CONCAT(COUNT(*),'..')
+  END IF;
+-- 查找出有记录的小时
+  SET result = CONCAT(result,'--',hour_,':', s);
+  DELETE FROM `my_table` WHERE 1 = 1 ;
+  END LOOP myLoop;
+  CLOSE hour_cursor;
+  -- 处理数据，插入数据库
+  
+RETURN result;
+END $$
+DELIMITER ;
+
+----------------------------------------------------------------------
+DELIMITER $$
+DROP FUNCTION IF EXISTS history $$
+CREATE FUNCTION history(sta VARCHAR(10), bid_no VARCHAR(32)) RETURNS VARCHAR(255)
+BEGIN
+DECLARE s VARCHAR(255) DEFAULT '';
+DECLARE result VARCHAR(255) DEFAULT '';
+DECLARE s1 VARCHAR(255) DEFAULT '-';
+DECLARE s2 VARCHAR(255) DEFAULT '-';
+DECLARE hour_ VARCHAR(255) DEFAULT '-';
+DECLARE year_ INT(2) DEFAULT '2017';
+DECLARE month_ INT(2) DEFAULT '01';
+DECLARE day_ INT(2) DEFAULT '01';
+DECLARE record_not_found INTEGER DEFAULT 0;
+DECLARE hour_cursor CURSOR FOR SELECT DISTINCT SUBSTRING(DATE_FORMAT(t.record_time, '%Y-%m-%d %T'), 12, 2) hours  FROM (
+SELECT * FROM personal_inout p WHERE p.record_time  > sta AND p.record_time < CONCAT(sta, ' 23:59:59') ) t ;
+DECLARE CONTINUE HANDLER FOR NOT FOUND SET record_not_found = 1;
+DROP TEMPORARY TABLE IF EXISTS `my_table`;
+CREATE TEMPORARY TABLE `my_table`(`dept` VARCHAR(255),`num` INT) DEFAULT CHARSET=utf8;
+DROP TEMPORARY TABLE IF EXISTS `my_table_bid`;
+CREATE TEMPORARY TABLE `my_table_bid`(`year` INT(4),`month` INT(2),`day` INT(2),`hour` INT(2),`bid_no` VARCHAR(32)) DEFAULT CHARSET=utf8;
+SET year_ = CAST(SUBSTRING(sta,1,4) AS UNSIGNED);
+SET month_ = CAST(SUBSTRING(sta,6,2) AS UNSIGNED);
+SET day_ = CAST(SUBSTRING(sta,9,2) AS UNSIGNED);
+INSERT INTO  `my_table_bid`(`year` ,`month`,`day` ,`hour`,`bid_no`) VALUES(year_, month_, day_, 0, bid_no);
+
+-- 根据小时查询每小时的高峰人数
+ OPEN hour_cursor;
+    myLoop:LOOP
+     FETCH hour_cursor INTO hour_;
+     IF record_not_found THEN
+			LEAVE myLoop;
+     END IF;
+     SET s = '0';
+    SET s1 = CONCAT(sta, ' ',hour_ ,':00:00');
+    SET s2 = CONCAT(sta, ' ',hour_ ,':59:59');
+  -- 第一个数据
+ INSERT INTO `my_table`(`dept`,`num`) SELECT p.dept_type ty ,COUNT(DISTINCT p.identity) cou 
+  FROM personal_inout p 
+  WHERE p.record_time  >= s1 AND p.record_time <= s2 AND p.type = '0'
+ 	AND EXISTS(SELECT 1 FROM (SELECT t.identity identity, MAX(t.record_time) record_time,t.type ty FROM personal_inout t  WHERE t.record_time  >= s1 
+ 	AND t.record_time <= s2 GROUP BY t.identity) t2 WHERE p.record_time = t2.record_time AND t2.identity = p.identity AND t2.ty = '0' )
+  GROUP BY p.dept_type  ;
+  -- 第二个数据
+  
+   INSERT INTO `my_table`(`dept`,`num`) SELECT p.dept_type ty ,COUNT(DISTINCT p.identity) cou
+    FROM personal_inout p WHERE p.record_time  >= s1 AND p.record_time <= s2 AND p.type = '1'
+    AND NOT EXISTS( SELECT 1 FROM ( SELECT t.identity identity, MAX(t.record_time) record_time,t.type ty FROM personal_inout t  WHERE t.record_time  >= s1 
+ 	AND t.record_time <= s2 GROUP BY t.identity )p2 WHERE p2.identity = p.identity AND p2.ty = '0' )
+    GROUP BY p.dept_type  ;
+   -- 其他列数据
+   UPDATE `my_table_bid` SET `hour` = CAST(hour_ AS UNSIGNED);
+  -- 组合数据
+  IF (SELECT COUNT(*) FROM `my_table`) > 0 THEN 
+  --  SELECT GROUP_CONCAT(CONCAT(`dept`,'=',`num`) SEPARATOR ';')  INTO s 
+    INSERT INTO `t_gather_present_daily` (`id`, `year` ,`month`,`day` ,`hour`,`bid_no`,`yz_num` ,`jl_num`,`sg_num` ,`fb_num`,`ls_num`,`create_time`,`send_state`)
+     SELECT REPLACE(UUID(),'-','') id, `year`, `month`,`day`,`hour`,`bid_no`,yz_num,jl_num,sg_num,fb_num,ls_num,NOW(),'0'
+    FROM (
+    SELECT MAX(yz_num) yz_num,MAX(jl_num) jl_num ,MAX(sg_num) sg_num,MAX(fb_num) fb_num, MAX(ls_num) ls_num FROM (
+	SELECT CASE WHEN `dept` = '1' THEN SUM(`num`) ELSE 0 END yz_num , CASE WHEN `dept` = '2' THEN SUM(`num`) ELSE 0 END jl_num,
+		CASE WHEN `dept` = '3' THEN SUM(`num`) ELSE 0 END sg_num,CASE WHEN `dept` = '4' THEN SUM(`num`) ELSE 0 END fb_num,
+		CASE WHEN `dept` = '5' THEN SUM(`num`) ELSE 0 END ls_num
+	  FROM`my_table` GROUP BY `dept`) tt) t INNER JOIN `my_table_bid` ON 1 = 1; -- 可以使用max的方式实现合并	  
+  END IF;
+-- 查找出有记录的小时
+  SET result = CONCAT(result,'--',hour_,':', s);
+  DELETE FROM `my_table` WHERE 1 = 1 ;
+  END LOOP myLoop;
+  CLOSE hour_cursor;
+  -- 处理数据，插入数据库
+  
+RETURN result;
+END $$
+DELIMITER ;
+-------------------------------------------------------history_每个小时都统计,没有补0
+DELIMITER $$
+DROP FUNCTION IF EXISTS history_ $$
+CREATE FUNCTION history_(sta VARCHAR(10), bid_no VARCHAR(32)) RETURNS VARCHAR(255)
+BEGIN
+DECLARE s VARCHAR(255) DEFAULT '';
+DECLARE result VARCHAR(255) DEFAULT '';
+DECLARE s1 VARCHAR(255) DEFAULT '-';
+DECLARE s2 VARCHAR(255) DEFAULT '-';
+DECLARE hour_ VARCHAR(255) DEFAULT '-';
+DECLARE year_ INT(2) DEFAULT '2017';
+DECLARE month_ INT(2) DEFAULT '01';
+DECLARE day_ INT(2) DEFAULT '01';
+DECLARE i INTEGER DEFAULT 0;
+DECLARE hour_count INTEGER DEFAULT 23;
+DROP TEMPORARY TABLE IF EXISTS `my_table`;
+CREATE TEMPORARY TABLE `my_table`(`dept` VARCHAR(255),`num` INT) DEFAULT CHARSET=utf8;
+DROP TEMPORARY TABLE IF EXISTS `my_table_bid`;
+CREATE TEMPORARY TABLE `my_table_bid`(`year` INT(4),`month` INT(2),`day` INT(2),`hour` INT(2),`bid_no` VARCHAR(32)) DEFAULT CHARSET=utf8;
+SET year_ = CAST(SUBSTRING(sta,1,4) AS UNSIGNED);
+SET month_ = CAST(SUBSTRING(sta,6,2) AS UNSIGNED);
+SET day_ = CAST(SUBSTRING(sta,9,2) AS UNSIGNED);
+INSERT INTO  `my_table_bid`(`year` ,`month`,`day` ,`hour`,`bid_no`) VALUES(year_, month_, day_, 0, bid_no);
+
+-- 根据小时查询每小时的高峰人数
+    myLoop:LOOP
+     IF i > hour_count THEN
+			LEAVE myLoop;
+     END IF;
+     SELECT CASE WHEN i <= 9 THEN CONCAT('0', i) ELSE CONCAT('', i) END INTO hour_ FROM DUAL;
+     SET i = i + 1;
+     SET s = '0';
+    SET s1 = CONCAT(sta, ' ',hour_ ,':00:00');
+    SET s2 = CONCAT(sta, ' ',hour_ ,':59:59');
+  -- 第一个数据
+ INSERT INTO `my_table`(`dept`,`num`) SELECT p.dept_type ty ,COUNT(DISTINCT p.identity) cou 
+  FROM personal_inout p 
+  WHERE p.record_time  >= s1 AND p.record_time <= s2 AND p.type = '0'
+ 	AND EXISTS(SELECT 1 FROM (SELECT t.identity identity, MAX(t.record_time) record_time,t.type ty FROM personal_inout t  WHERE t.record_time  >= s1 
+ 	AND t.record_time <= s2 GROUP BY t.identity) t2 WHERE p.record_time = t2.record_time AND t2.identity = p.identity AND t2.ty = '0' )
+  GROUP BY p.dept_type  ;
+  -- 第二个数据
+  
+   INSERT INTO `my_table`(`dept`,`num`) SELECT p.dept_type ty ,COUNT(DISTINCT p.identity) cou
+    FROM personal_inout p WHERE p.record_time  >= s1 AND p.record_time <= s2 AND p.type = '1'
+    AND NOT EXISTS( SELECT 1 FROM ( SELECT t.identity identity, MAX(t.record_time) record_time,t.type ty FROM personal_inout t  WHERE t.record_time  >= s1 
+ 	AND t.record_time <= s2 GROUP BY t.identity )p2 WHERE p2.identity = p.identity AND p2.ty = '0' )
+    GROUP BY p.dept_type  ;
+   -- 其他列数据
+   UPDATE `my_table_bid` SET `hour` = CAST(hour_ AS UNSIGNED);
+  -- 组合数据
+  IF (SELECT COUNT(*) FROM `my_table`) > 0 THEN 
+  --  SELECT GROUP_CONCAT(CONCAT(`dept`,'=',`num`) SEPARATOR ';')  INTO s 
+    INSERT INTO `t_gather_present_daily` (`id`, `year` ,`month`,`day` ,`hour`,`bid_no`,`yz_num` ,`jl_num`,`sg_num` ,`fb_num`,`ls_num`,`create_time`,`send_state`)
+     SELECT REPLACE(UUID(),'-','') id, `year`, `month`,`day`,`hour`,`bid_no`,yz_num,jl_num,sg_num,fb_num,ls_num,NOW(),'0'
+    FROM (
+    SELECT MAX(yz_num) yz_num,MAX(jl_num) jl_num ,MAX(sg_num) sg_num,MAX(fb_num) fb_num, MAX(ls_num) ls_num FROM (
+	SELECT CASE WHEN `dept` = '1' THEN SUM(`num`) ELSE 0 END yz_num , CASE WHEN `dept` = '2' THEN SUM(`num`) ELSE 0 END jl_num,
+		CASE WHEN `dept` = '3' THEN SUM(`num`) ELSE 0 END sg_num,CASE WHEN `dept` = '4' THEN SUM(`num`) ELSE 0 END fb_num,
+		CASE WHEN `dept` = '5' THEN SUM(`num`) ELSE 0 END ls_num
+	  FROM `my_table` GROUP BY `dept`) tt) t INNER JOIN `my_table_bid` ON 1 = 1; -- 可以使用max的方式实现合并
+   ELSE 
+	INSERT INTO `t_gather_present_daily` (`id`, `year` ,`month`,`day` ,`hour`,`bid_no`,`yz_num` ,`jl_num`,`sg_num` ,`fb_num`,`ls_num`,`create_time`,`send_state`)
+	 VALUES(REPLACE(UUID(),'-',''),year_, month_, day_, CAST(hour_ AS UNSIGNED), bid_no, 0,0,0,0,0, NOW(),'0');
+  END IF;
+-- 查找出有记录的小时
+  SET result = CONCAT(result,'--',hour_,':', s);
+  DELETE FROM `my_table` WHERE 1 = 1 ;
+  END LOOP myLoop;
+ 
+  -- 处理数据，插入数据库
+  
+RETURN result;
+END $$
+DELIMITER ;
+
+
+SELECT history('2017-06-14') FROM DUAL
+
+6.2 游标补充、函数调用方式：
+DELIMITER $$
+DROP  FUNCTION IF EXISTS  syncTheDayNotSync $$
+CREATE FUNCTION syncTheDayNotSync(bid_no VARCHAR(32)) RETURNS VARCHAR(32)
+BEGIN
+DECLARE date_ VARCHAR(16) DEFAULT '2017-01-01';
+DECLARE result VARCHAR(32) DEFAULT '';
+DECLARE record_not_found INTEGER DEFAULT 0;
+DECLARE date_cursor CURSOR FOR SELECT DISTINCT SUBSTRING(record_time,1,10) ti  -- substring(record_time,1,4) `year`, SUBSTRING(record_time,6,2) `month`,SUBSTRING(record_time,9,2) `day`
+FROM personal_inout p
+WHERE NOT EXISTS(
+	SELECT  1 FROM `t_gather_present_daily` WHERE CONCAT(`year`,'-',CASE WHEN `month` <= 9 THEN CONCAT('0',`month`) ELSE `month` END,'-', CASE WHEN `day` <= 9 THEN CONCAT('0',`day`) ELSE `day` END) = SUBSTRING(p.record_time, 1,10)
+);
+DECLARE CONTINUE HANDLER FOR NOT FOUND SET record_not_found = 1;
+
+OPEN date_cursor;
+myLoop:LOOP
+ FETCH date_cursor INTO date_;
+ IF record_not_found THEN
+		LEAVE myLoop;
+ END IF;
+ SELECT history(date_,bid_no) INTO result FROM DUAL;
+ END LOOP;
+ CLOSE date_cursor;
+RETURN date_;
+END $$
+DELIMITER ; 
+-----------------------------------------------------------------
+
+DELIMITER $$
+DROP FUNCTION IF EXISTS `syncTheDayNotSync_` $$
+CREATE FUNCTION `syncTheDayNotSync`(bid_no VARCHAR(32), year_sta INTEGER) RETURNS VARCHAR(32)
+BEGIN
+DECLARE result VARCHAR(255) DEFAULT '';
+DECLARE date_ VARCHAR(255) DEFAULT '';
+DECLARE days_amount  INTEGER DEFAULT 30;
+DECLARE months INTEGER DEFAULT 11;
+DECLARE i INTEGER DEFAULT 1;
+DECLARE j INTEGER DEFAULT 0;
+DECLARE days_str VARCHAR(255);
+DECLARE record_not_found INTEGER DEFAULT 0;
+-- declare days_cursor cursor for SELECT 	`year`, `month`, COUNT(DISTINCT `day`), CONCAT(',', GROUP_CONCAT(DISTINCT `day` SEPARATOR ','), ',') 
+-- FROM `t_gather_present_daily` GROUP BY `year`,`month`;
+DECLARE CONTINUE HANDLER FOR NOT FOUND SET record_not_found = 1;
+
+SELECT DATEDIFF(DATE_ADD(CURDATE()-DAY(CURDATE())+1,INTERVAL 1 MONTH ),DATE_ADD(CURDATE(),INTERVAL -DAY(CURDATE())+1 DAY)) INTO days_amount FROM DUAL;
+
+outer_loop:LOOP
+ IF j > months 
+	LEAVE outer_loop;
+ END IF;
+ SET j = j + 1;
+ myLoop:LOOP
+  IF i > days_amount
+	LEAVE myLoop;
+  END IF;
+  SELECT  CONCAT(',', GROUP_CONCAT(DISTINCT `day` SEPARATOR ','), ',') INTO days_str FROM `t_gather_present_daily` WHERE `year` = year_sta AND `month` = j;
+  
+  IF LOCATE( CONCAT(',',i,','), days_str) > 0
+     CONTINUE; -- 不用查询
+  ELSE 
+        SELECT history_('2017-06-14',bid_no) INTO result FROM DUAL;
+  END IF;
+  SET i = i + 1;
+  END LOOP myLoop;
+  END LOOP outer_loop;
+  
+  RETURN result;
+  END $$
+  DELIMITER ;
+  
+  -------------------------------------------------------------------
+DELIMITER $$
+DROP FUNCTION IF EXISTS `syncTheDayNotSync_` $$
+CREATE FUNCTION `syncTheDayNotSync_`(bid_no VARCHAR(32), year_sta INTEGER) RETURNS VARCHAR(32)
+BEGIN
+DECLARE result VARCHAR(255) DEFAULT '';
+DECLARE date_ VARCHAR(255) DEFAULT '';
+DECLARE year_month_day VARCHAR(255) DEFAULT '';
+DECLARE days_amount  INTEGER DEFAULT 30;
+DECLARE months INTEGER DEFAULT 11;
+DECLARE i INTEGER DEFAULT 1;
+DECLARE j INTEGER DEFAULT 0;
+DECLARE days_str VARCHAR(255);
+DECLARE record_not_found INTEGER DEFAULT 0;
+-- declare days_cursor cursor for SELECT 	`year`, `month`, COUNT(DISTINCT `day`), CONCAT(',', GROUP_CONCAT(DISTINCT `day` SEPARATOR ','), ',') 
+-- FROM `t_gather_present_daily` GROUP BY `year`,`month`;
+DECLARE CONTINUE HANDLER FOR NOT FOUND SET record_not_found = 1;
+
+-- SELECT DATEDIFF(DATE_ADD(CURDATE()-DAY(CURDATE())+1,INTERVAL 1 MONTH ),DATE_ADD(CURDATE(),INTERVAL -DAY(CURDATE())+1 DAY)) INTO days_amount FROM DUAL;
+
+outer_loop:LOOP
+ IF j > months THEN
+	LEAVE outer_loop;
+ END IF;
+ SET j = j + 1;
+ SET year_month_day = CONCAT(year_sta , '-' , (CASE WHEN j <= 9 THEN CONCAT('0', j) ELSE CONCAT('', j) END), '-01');
+ -- 计算j月的天数
+ SELECT DATEDIFF(DATE_ADD( year_month_day,INTERVAL 1 MONTH ), year_month_day) INTO days_amount FROM DUAL;
+ -- 初始化每月的第一天
+ SET i = 1;
+myLoop:LOOP
+ IF i > days_amount THEN
+	LEAVE myLoop;
+ END IF;
+SELECT  CONCAT(',', GROUP_CONCAT(DISTINCT `day` SEPARATOR ','), ',') INTO days_str FROM `t_gather_present_daily` WHERE `year` = year_sta AND `month` = j;
+IF LOCATE( CONCAT(',',i,','), days_str) > 0 THEN
+    LEAVE myLoop;-- continue myLoop; -- 不用查询
+ELSE 
+       SET date_ = CONCAT(year_sta , '-' , (CASE WHEN j <= 9 THEN CONCAT('0', j) ELSE CONCAT('', j) END) , '-' , (CASE WHEN i <=9 THEN CONCAT('0', i) ELSE i END));
+       IF (SELECT CURDATE() > date_ FROM DUAL) > 0 THEN 
+       SELECT history_(date_,bid_no) INTO result FROM DUAL;
+       ELSE
+            LEAVE myLoop; 
+            LEAVE outer_loop;
+       END IF;
+END IF;
+ SET i = i + 1;
+END LOOP myLoop;
+END LOOP outer_loop;
+  
+RETURN result;
+END $$
+DELIMITER ;
+
+------没有的天都补上，且当天没有的小时都是0，一年以内开始统计
+
+-----从有记录开始
+
+DELIMITER $$
+DROP FUNCTION IF EXISTS `syncTheDayNotSync_` $$
+CREATE FUNCTION `syncTheDayNotSync_`(bid_no VARCHAR(32), year_sta INTEGER) RETURNS VARCHAR(32)
+BEGIN
+DECLARE result VARCHAR(255) DEFAULT '';
+DECLARE date_ VARCHAR(255) DEFAULT '';
+DECLARE year_month_day VARCHAR(255) DEFAULT '';
+DECLARE days_amount  INTEGER DEFAULT 30;
+DECLARE months INTEGER DEFAULT 11;
+DECLARE i INTEGER DEFAULT 1;
+DECLARE j INTEGER DEFAULT 0;
+DECLARE days_str VARCHAR(255);
+DECLARE record_not_found INTEGER DEFAULT 0;
+-- declare days_cursor cursor for SELECT 	`year`, `month`, COUNT(DISTINCT `day`), CONCAT(',', GROUP_CONCAT(DISTINCT `day` SEPARATOR ','), ',') 
+-- FROM `t_gather_present_daily` GROUP BY `year`,`month`;
+DECLARE CONTINUE HANDLER FOR NOT FOUND SET record_not_found = 1;
+-- 从有刷卡记录开始统计 ,有记录那天作为起始天;初始化月和天
+ SELECT CAST(SUBSTRING(dt, 1, 2)  AS UNSIGNED) , CAST(SUBSTRING(dt, 4, 2) AS UNSIGNED) INTO j, i FROM (
+SELECT MIN(DISTINCT SUBSTRING(record_time,6,5)) dt   FROM personal_inout p  WHERE SUBSTRING(record_time, 1,4) = year_sta) t;
+SELECT CAST(SUBSTRING(CURDATE(),6,2) AS UNSIGNED) INTO months FROM DUAL;
+outer_loop:LOOP
+ IF j > months THEN
+	LEAVE outer_loop;
+ END IF;
+ 
+ SET year_month_day = CONCAT(year_sta , '-' , (CASE WHEN j <= 9 THEN CONCAT('0', j) ELSE CONCAT('', j) END), '-01');
+ -- 计算j月的天数
+ SELECT DATEDIFF(DATE_ADD( year_month_day,INTERVAL 1 MONTH ), year_month_day) INTO days_amount FROM DUAL;
+
+myLoop:LOOP
+ IF i > days_amount THEN
+	LEAVE myLoop;
+ END IF;
+SELECT  CONCAT(',', GROUP_CONCAT(DISTINCT `day` SEPARATOR ','), ',') INTO days_str FROM `t_gather_present_daily` WHERE `year` = year_sta AND `month` = j;
+IF LOCATE( CONCAT(',',i,','), days_str) <= 0 THEN
+       SET date_ = CONCAT(year_sta , '-' , (CASE WHEN j <= 9 THEN CONCAT('0', j) ELSE CONCAT('', j) END) , '-' , (CASE WHEN i <=9 THEN CONCAT('0', i) ELSE i END));
+       IF (SELECT CURDATE() > date_ FROM DUAL) > 0 THEN 
+       SELECT history_(date_,bid_no) INTO result FROM DUAL;
+       ELSE
+            LEAVE myLoop; 
+            LEAVE outer_loop;
+       END IF;
+END IF;
+ SET i = i + 1;
+ SET result = CONCAT('--',i);
+END LOOP myLoop;
+ -- 第二次以后，初始化每月的第一天
+SET i = 1;
+-- 下一月
+SET j = j + 1;
+END LOOP outer_loop;
+  
+RETURN result;
+END $$
+DELIMITER ;
+------------------------------------------------------------------------------------从有数据那一年开始统计
+DELIMITER $$
+DROP FUNCTION IF EXISTS `syncTheDayNotSync_s` $$
+CREATE FUNCTION `syncTheDayNotSync_s`(bid_no VARCHAR(32)) RETURNS VARCHAR(255)
+BEGIN
+DECLARE result VARCHAR(255) DEFAULT '';
+DECLARE date_ VARCHAR(255) DEFAULT '';
+DECLARE year_month_day VARCHAR(255) DEFAULT '';
+DECLARE year_sta INTEGER DEFAULT 2017;
+DECLARE year_amount INTEGER DEFAULT 2017;
+DECLARE days_amount  INTEGER DEFAULT 30;
+DECLARE months INTEGER DEFAULT 12;
+DECLARE i INTEGER DEFAULT 1;
+DECLARE j INTEGER DEFAULT 0;
+DECLARE days_str VARCHAR(255);
+DECLARE record_not_found INTEGER DEFAULT 0;
+-- declare days_cursor cursor for SELECT 	`year`, `month`, COUNT(DISTINCT `day`), CONCAT(',', GROUP_CONCAT(DISTINCT `day` SEPARATOR ','), ',') 
+-- FROM `t_gather_present_daily` GROUP BY `year`,`month`;
+DECLARE CONTINUE HANDLER FOR NOT FOUND SET record_not_found = 1;
+-- 从有刷卡记录开始统计 ,有记录那天作为起始天;初始化月和天
+ SELECT CAST(SUBSTRING(dt, 1, 4)  AS UNSIGNED),CAST(SUBSTRING(dt, 6, 2)  AS UNSIGNED) , CAST(SUBSTRING(dt, 9, 2) AS UNSIGNED) INTO year_sta, j, i FROM (
+SELECT MIN(DISTINCT SUBSTRING(record_time,1,10)) dt   FROM personal_inout p ) t;
+-- select cast(substring(CURDATE(),6,2) as unsigned) into months from dual;
+SELECT CAST(SUBSTRING(CURDATE(),1,4) AS UNSIGNED) INTO year_amount FROM DUAL; 
+-- SET result = CONCAT(result ,'*',year_sta, j,i);
+year_loop:LOOP -- 年循环
+IF year_sta > year_amount THEN 
+	LEAVE year_loop; -- 此句可以有可以无
+END IF;
+
+outer_loop:LOOP -- 月循环
+ IF j > months THEN
+	LEAVE outer_loop;
+ END IF;
+ 
+ SET year_month_day = CONCAT(year_sta , '-' , (CASE WHEN j <= 9 THEN CONCAT('0', j) ELSE CONCAT('', j) END), '-01');
+ -- 计算j月的天数
+ SELECT DATEDIFF(DATE_ADD( year_month_day,INTERVAL 1 MONTH ), year_month_day) INTO days_amount FROM DUAL;
+
+myLoop:LOOP -- 日循环
+ IF i > days_amount THEN
+	LEAVE myLoop;
+ END IF;
+SELECT  CONCAT(',', GROUP_CONCAT(DISTINCT `day` SEPARATOR ','), ',') INTO days_str FROM `t_gather_present_daily` WHERE `year` = year_sta AND `month` = j;
+IF LOCATE( CONCAT(',',i,','), days_str) <= 0 OR days_str IS NULL THEN 
+       SET date_ = CONCAT(year_sta , '-' , (CASE WHEN j <= 9 THEN CONCAT('0', j) ELSE CONCAT('', j) END) , '-' , (CASE WHEN i <=9 THEN CONCAT('0', i) ELSE i END));
+       IF (SELECT CURDATE() > date_ FROM DUAL) > 0 THEN 
+       SELECT history_(date_,bid_no) INTO result FROM DUAL;
+       ELSE
+            LEAVE myLoop; 
+            LEAVE outer_loop;
+            LEAVE year_loop;
+       END IF;
+END IF;
+ SET result = CONCAT(result ,'--',j,'-',i);
+ SET i = i + 1;
+END LOOP myLoop;
+ -- 第二次以后，初始化每月的第一天
+SET i = 1;
+-- 下一月
+SET j = j + 1;
+END LOOP outer_loop;
+SET j = 1;
+SET year_sta = year_sta + 1;
+END LOOP year_loop; 
+RETURN result;
+END $$
+DELIMITER ;
+
+7.数组、记录、记录数组（都可以用临时表实现，而select into 和 fetch into 中into的对象都可以是多个变量）
+
+
+8.map对象
+
+
+
+8.创建临时表
+
+
+
+//经验：
+  一是符号，如分号，$$, 逗号
+  二是赋值： set s = sta; 才行，不能 s = sta;这会报错的。
+  三是日期：内部是不认传过来的精确的日期-时间。或者说复杂sql里不能使用外部的变量
+  四是null,结果为空，那么和所有的数据concat都是空。
+  五是不能有select * from table形式的数据查询，因为这样会 返回结果集，存储过程中可以。但是函数和trigger中不可以。只能是select into from 。insert 和update不影响。
+  六是结束最后的空格，不能开头有空格。delimiter前面不能有空格
+  七if等语法要满足:如then, 如 end if;
+  八还是null,注意没有数据即结果为null,那么这个用在其他函数里都将返回null，产生数据异常。尤其if 判断里如果用到了(select) 语句而返回结果是null，这个要排除。
+  
