@@ -9,6 +9,7 @@
    9月至少中旬开始：python脚本编程，按照语言学习顺序，从特性到基本功能到高复杂功能到第三方调用到大型项目（基本内核和框架和功能编写----一周写一个项目未尝不可）。这部分可能会持续到国庆节结束。
    10月至少中旬开始：linux脚本编程，windows脚本编程，主要是为项目服务，为自动化运维服务---即常见的自动化运维服务功能代码的编写。
    11月开始：继续大数据的开发，开始spark编写程序、上传执行，不仅文件处理，而且数据库处理，叫熟练的spark编程，还有kafka,sgoop,hbase加进来，而且为8月份和9月份开发的系统服务--为它们产生必要的数据--更好的数据。
+		精熟大数据开发：hadoop/hive , spark/storm的开发熟练。
    12月开始：机器学习的案例训练，开始基本的机器学习，比如文字识别、图片识别、声音识别甚至视频识别。也有其他对象识别。并尝试编写棋牌类游戏自动下的机器人。更深的是，游戏的机器人。
    1月开始：大数据基本框架的深入体会、总结：hadoop、spark、sgoop、hbase、kafka、storm，自我描述、自我讲、自我画图（从框架到各种流程）。
    2月开始：再次回归总结：java的基本部件jvm、语言特性（如java8的语言特性）、java关于各种基本功能（网络、数据库、操作系统）的机制。具体的框架：spring,spring-boot,webservice,http编程。微服务，并行编程dubbo。
@@ -19,3 +20,28 @@
     ---新机器学习（新算法、新流程、新观念方法、新识别和新机器人）
     ---新总结（机制、规则、算法、框架、模式、架构）
    （我的五新的轮回）
+
+4.具体开发事项
+  >java功能开发：公司用到的，招聘上需要的，我自己认为重要的---当前网络上重要的软件。
+		------打造一个强大的后台server处理程序-------------
+		>web开发后端构建过程：	
+			#基本项目结构：多模块maven + springmvc/struts + spring + hibernate/mybatis + mysql
+			#事务、切面、缓存（ehcache/redis/memcached/mongo,缓存也集群）、远程调用（webservice/http/rpc）
+			#多线程、socket通信、消息中转(MQ)
+			#负载均衡（高并发，apache + tomcat, mysql）、session复制（tomcat）、数据库分片（海量存储）
+			#分布式环境dubbo\netty\thrift\mina、微服务spring-boot
+			#大数据处理分析环境(hadoop/spark/hbase, kafka/storm/pig/zookeeper,scala/phython)搭建和项目构建
+			#机器学习处理环境（）
+			#搜索引擎环境（Elasticsearch/solr/lucene）
+			#应用服务器环境linux下配置：weblogic/jboss/websphere,脚本编程shell
+			#云计算顶层：SAAS
+		>独立沟通需求、设计、架构、开发的水平（见识、功底、分析）。
+			
+
+  >新语言编程：
+  >大数据开发：
+  >机器学习开发：
+  >原理总结：
+   	>设计模式、设计原则：模式编程和模式析程（已有公认优秀作品）。
+	>
+
