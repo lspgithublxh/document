@@ -38,6 +38,9 @@
 	   >字符串拼接：
 
 
+4.经验--插件
+	>BeautifulSoup就是python的jquery,能够很好的访问到一个html页面中各个层次的内容
+
 
 
 参考资料：
@@ -46,3 +49,5 @@
 3.http://www.cnblogs.com/gongyuhonglou/p/6706559.html（python的封装，继承和多态，私有化）
 4.http://www.jb51.net/article/67699.htm（python3超级新特性，中文名类都可以）
 5.http://www.cnblogs.com/Lands-ljk/p/5447127.html（url访问的深入统一函数和类）
+6.http://www.cnblogs.com/Lands-ljk/p/5444619.html(实战项目，拉钩网站上的职位信息抓取)
+7.http://blog.csdn.net/github_27109687/article/details/53375275(爬虫相关，存到mysql数据库)
