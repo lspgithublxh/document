@@ -19,12 +19,14 @@
 		------：没有分号，没有大括号
 	>类和方法：
 	>变量类型和运算：
+		>对于集合运算非常简便
+
 	>流程控制：
 	>异常处理：
 
 	>实现基本功能：集合操作、文件读存、网络编程、新线程|进程、数据库连接访问操作
 	>如何实现接口编程、职责单一、暴露最终的设计模式：
-
+		>由于没有明确变量类型，所以完全接口编程，而且含义多态。（实际类型多态）
 
 2.实战：小功能计划：
 	>四则运算计算器：
@@ -43,3 +45,4 @@
 2.http://www.cnblogs.com/cocowool/p/6599855.html?utm_source=tuicool&utm_medium=referral（高手讲述资料）
 3.http://www.cnblogs.com/gongyuhonglou/p/6706559.html（python的封装，继承和多态，私有化）
 4.http://www.jb51.net/article/67699.htm（python3超级新特性，中文名类都可以）
+5.http://www.cnblogs.com/Lands-ljk/p/5447127.html（url访问的深入统一函数和类）
