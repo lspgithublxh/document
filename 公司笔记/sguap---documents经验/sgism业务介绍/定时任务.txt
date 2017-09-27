@@ -1,1 +1,9 @@
 1.在同步任务后面有描述。
+
+2.定时执行过程：
+	>首先有一个专门的bean，初始启动执行方法---该方法遍历任务配置文件，启动各个job对象，加入任务列表：开始定时执行了----定期调用job方法。
+          其中，BeanLocator.getContext().getBeansOfType(Job.class)获取到全部的targetName="org.quartz.Job"这样的<module:reference 对象，或者是   任务map：Map<String, Job> jobMap
+          <module:reference中的filter引用其他模块里的 <module:service 对象，targetName是服务接口名：这个标签是引用其他模块里的服务（一个服务bean，有相应的接口，有相应的实现。可以在class里直接调用） 
+	  <module:service的beanId引用<bean ，而这个bean就是Job接口的实现类，同样它的targetName是服务的接口名，从而在java类里可以用注解的方式引用到这个服务（接口引用）。
+
+

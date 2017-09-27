@@ -1,0 +1,2 @@
+1.一个服务bean如果加上事务处理，那么就封装成了<bizc:logic对象：
+        <bizc:service可以加事务处理。

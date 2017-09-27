@@ -1,3 +1,34 @@
 1.java -jar server.jar
 
+2.对于依赖很多lib（eclipse中，且不在lib中）。。只有一个main函数。
+   可以直接打包为runnable的jar包，而执行只需要java -jar xxx.jar即可。 ----还不用指明主类。
+   ----选择第一个或者第二个依赖包方式---全部加到生成的jar包里。
+   ---专门打包方式和共享jar包方式另议。---即使用三级加载器的java参数：三级三个。从而能加载jar外部的jar。而META-INF/MANIFEST-MF里的Class-Path则可以配置加载jar内部的jar包。
+   ---尤其第二种是最简单的。
+    对于这第二种方式，eclipse生成的jar包里的MATA-INF/MANIFEST-MF数据如下：
+	Manifest-Version: 1.0
+        Rsrc-Class-Path: ./ commons-httpclient-3.0.jar stax-1.2.0.jar org.java
+     	.dom_1.0.0.jar org.codehaus.xfire_1.2.6.jar activation-1.1.jar org.ap
+ 	ache.commons.codec_1.3.0.v201005181140.jar wstx-asl-3.2.0.jar mail-1.
+	 4.jar xmlsec-1.3.0.jar sgcis-XmlSchema_1.0.0.201606081118.jar wss4j-1
+	 .5.1.jar stax-api-1.0.1.jar wsdl4j-1.6.1.jar org.apache.commons.loggi
+	 ng_1.1.1.jar xbean-spring-2.8.jar
+	Class-Path: .
+	Rsrc-Main-Class: com.WSClient
+	Main-Class: org.eclipse.jdt.internal.jarinjarloader.JarRsrcLoader
 
+
+    而第一种打包方式，则内容类似为：
+	Manifest-Version: 1.0
+	Class-Path: .
+	Main-Class: com.WSClient
+
+	Name: org/apache/commons/codec/package.html
+	SHA1-Digest: IM3/K5MCXeG4gEjw3nDQyCI6Lic=
+
+	Name: org/apache/commons/codec/net/BCodec.class
+	SHA1-Digest: ZJMl6QGO7uOd9kINQd85uxh0eTM=
+
+	Name: org/apache/commons/codec/binary/BinaryCodec.class
+	SHA1-Digest: X+G48+0rT74WoI2DlI/Xq7F7PVw=
+3.

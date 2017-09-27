@@ -22,7 +22,10 @@
   如果是debug方式启动tomcat，可以将上述对虚拟机的命令加到startup.bat里。比如Set JAVA_OPTS=-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=8001
 
    
-
+6.虚拟机内部机制：
+  >文件句柄：
+  >对象的finalize() 方法的调用：在垃圾回收的时候。所以一般时机不会调用。
+    流对象的关闭。必须。比如finally{}中安静的关闭。	
 
 5.jvm以debuger方式启动：
   java -agentlib:jdwp=transport=dt_socket,server=n,suspend=n,address=192.168.1.12:8001 com.gongsi.hahha

@@ -1,0 +1,56 @@
+ send_state默认都需要，且值不为'1'
+1.人员基本信息 :  需要identity在personal_inout中
+
+2.用工基本信息：同上（且要求人员personal_info内连接）；
+				所以需要加一条信息在personal_info中。来关联。。即需要在personal_info中有关联
+
+3.证卡信息：无更多。
+
+4.资质信息： 需要在personal_info中有关联id。
+
+5.车辆进出场：无更多。
+
+6.常驻车辆信息：无更多。
+
+7.每小时车辆高峰数据：数据来源车辆进出场，忽略send_state值，看modify_status值。但要求在car_info中有关联。
+					  而且要先生成数据插入到t_gather_inout_daily表，后从此表取数据返回， 此表看send_state数据。（但当前没有从此表取出数据推送的方法）
+						
+8.每小时人员高峰数据：数据来自人员进出场，忽略send_state,看modify_status--不为'3'.不管在personal_info中有无关联。
+						数据生成插入到：t_gather_present_daily表，从此表取数据推送，看此表的send_state情况。
+						
+9.临时车辆：无更多。
+
+10.临时用工：关系临时人员表
+
+11.临时人员：无更多
+
+12.参建单位投入资源情况：来自人员进出表，依赖prj_info.需要有关联标段。    --单位类型：dept_type为2，为4分别是施工监理，分包的类型。
+
+13.人员进出场：无更多。
+
+14.设备绑定：无更多。(即不看设备绑定情况)
+15.人员位置信息：来自t_position_recent，关联设备绑定（有效），用工（和设备绑定用标段），人员基本信息(和用工以人员id, identity和recent的identity)
+	
+16.区域：无更多
+
+17.区域顶点：无更多。
+
+18.实时统计数据：依赖当天当标段（在personal_inout中有）的人和车进出刷卡情况：和tools_book.modify_status 和tools_type = '1'
+
+19.施工机具：无更多。
+
+20.施工机具试检：无更多
+
+21.施工机具领用状况：无更多
+
+22.施工机具归还：无更多。
+
+23施工机具进退场：无更多。
+
+
+  DELETE FROM personal_info;
+    DELETE FROM contract_info;
+  DELETE FROM dept_info;
+  DELETE FROM employment_info;
+  DELETE FROM part_army;
+  DELETE FROM prj_info;

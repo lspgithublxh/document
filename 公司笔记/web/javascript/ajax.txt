@@ -10,3 +10,5 @@
 
 
  
+
+2.post方式：$.post("",{},function(){}) 后端：@RequestParam可以取到，@RequestMapping, @RequestResponse为配置参数。

@@ -68,5 +68,9 @@
 
 10.attendance：移动考勤机推送记录：
 	直接插入Personal_inout表中，只要人id、记录时间在表中没有对应记录。包括人的经纬度信息。使用了getPass方法	
+	--本质就是上传某人某天在某个位置刷卡记录
 	
-		   	
+
+11.savePosition：手持设备将人员位置信息上传给现场系统：
+       传来：一个位置信息。	
+	现场系统处理：增加detail里更新或者直接存到t_position_recent， 而这个点信息存到t_position_history里。   	

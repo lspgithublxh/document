@@ -112,6 +112,10 @@ SELECT t.`ID`, t.`REL_ID`, t.`DEV_NO`, t.`IDENTITY`, t.`YEAR`, t.`MONTH`, t.`DAY
 
 5.图片抓拍同步：没任务。
 
+6.监控抓拍的图片入库：取img_store中的监控抓拍的那些记录，和p_code中扎到的file_path里的文件匹配，于是将记录匹配到的文件转base64存到数据库。
+
+
+
 >附加在同步任务上的：
 1.当天过去的一个小时内最多可能在场的人数统计。（通过每小时在场人数统计任务统计出来了，插入了t_gather_present_daily表中）
 

@@ -12,5 +12,5 @@
 
 2.请求路径2：
  直接请求的话：
- >baseUrl : '~/workspace/rest/workspace/proinfoTree'  即~/是主项目路径：
-   ajax请求：url : "~/../../../psm/rest/basedata/getJGDW.call?va="+va
+ >baseUrl : '~/workspace/rest/workspace/proinfoTree'  即~/是主项目路径：这个对mappath不行。。
+   ajax请求：url : "~/../../psm/rest/basedata/getJGDW.call?va="+va

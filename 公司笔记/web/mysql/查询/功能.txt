@@ -1,3 +1,5 @@
 1.基本的链接，子查询，分组，统计函数（聚合函数在内）,分析函数（oracle有 connect by , over() partition by ）
 
 2.逻辑流程：case when 判断表达式(可以是统计函数，not exists等) then 值（可以是select 出来的值）
+
+3.mysql exists子查询可以实现oralce的分组统计，且更好。

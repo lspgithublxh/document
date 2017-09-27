@@ -1,0 +1,5 @@
+1.基本模型：
+    >图片文件转换到Image对象：ImageIO.read()可以。进而获取这个图的高和宽。
+    >计算希望的目标Image的高和宽（往往比较小），其实只根据一个比如宽，根据原图比例计算新的高。
+    >生成目标的Image,通过构造一个新宽高的BufferedImage 对象，取其图形对象的drawImage方法，可以利用原图的Image对象而生成。	
+    >将生成的BufferedImage再次封装为IIOImage对象，从而使用ImageWriter将它写到ByteArrayOutputStream里， 

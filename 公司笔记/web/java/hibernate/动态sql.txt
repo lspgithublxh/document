@@ -1,0 +1,40 @@
+1.目前有两种：	
+	>一是定义bean，而用泛型方法的hibernateDao方法。
+	>二是返回map，定义专门的mapper来处理。
+	>三是利用html模板技术：thymeleaf（spring-boot也会使用）
+	>四是利用freemarker这种模板技术来从综合描述的sql<模板sql>即xml中的sql转换为标准sql。  thymeleaf功能更强，性能更差。实现动态sql的生成。结果的匹配则是一二方法。
+	   （方法，返回，参数，sql模板）
+
+	>类似例子：
+<hibernate-mapping>
+    <sql-query name="queryUser">          
+        <![CDATA[
+            select u.* from "user" u where u.user_name = :userName
+            <#if !userName??> 
+                or 1 = 1
+            </#if>
+        ]]>
+    </sql-query>
+</hibernate-mapping>
+
+	操作过程：
+		# hibernate根据名称获取配置文件中的原生混杂sql： Query query = session.getNamedQuery(name);String queryString = query.getQueryString();
+		# 利用上述原生sql构造一个freemarker的Template模板对象： StringTemplateLoader loader = new StringTemplateLoader(); loader.putTemplate(sqlName, queryString);
+									freeMarkerConfig.setTemplateLoader(loader);Template  template = freeMarkerConfig.getTemplate(sqlName);
+		# 上述模板利用参数对象生成标准sql:StringWriter stringWriter = new StringWriter();template.process(dataModel, stringWriter);String sql = stringWriter.toString();
+
+	---------注：hibernate的mapping配置文件需要在配置文件中配置出来。
+
+2.hibernate新的配置：信息和回话回调拦截器：com.onlineexam.exam.core.common.interceptor.OnlineExamInterceptor
+			lob数据处理：org.springframework.jdbc.support.lob.DefaultLobHandler
+
+		web.xml可以配置过滤器：org.springframework.orm.hibernate3.support.OpenSessionInViewFilter
+
+
+3.freemarker在spring中的配置（如果不是直接在java类中创建freemarker的实例类的话）：
+	org.springframework.web.servlet.view.freemarker.FreeMarkerViewResolver
+	org.springframework.web.servlet.view.freemarker.FreeMarkerConfigurer
+
+
+参考资料：
+1.http://blog.csdn.net/u012735769/article/details/50586531

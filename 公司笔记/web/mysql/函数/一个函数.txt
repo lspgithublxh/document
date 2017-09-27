@@ -1,0 +1,70 @@
+CREATE DEFINER=`root`@`%` FUNCTION `history_`(sta VARCHAR(10), bid_no VARCHAR(32)) RETURNS varchar(255) CHARSET utf8
+BEGIN
+DECLARE s VARCHAR(255) DEFAULT '';
+DECLARE result VARCHAR(255) DEFAULT '';
+DECLARE s1 VARCHAR(255) DEFAULT '-';
+DECLARE s2 VARCHAR(255) DEFAULT '-';
+DECLARE hour_ VARCHAR(255) DEFAULT '-';
+DECLARE year_ INT(2) DEFAULT '2017';
+DECLARE month_ INT(2) DEFAULT '01';
+DECLARE day_ INT(2) DEFAULT '01';
+DECLARE i INTEGER DEFAULT 0;
+DECLARE hour_count INTEGER DEFAULT 23;
+DROP TEMPORARY TABLE IF EXISTS `my_table`;
+CREATE TEMPORARY TABLE `my_table`(`dept` VARCHAR(255),`num` INT) DEFAULT CHARSET=utf8;
+DROP TEMPORARY TABLE IF EXISTS `my_table_bid`;
+CREATE TEMPORARY TABLE `my_table_bid`(`year` INT(4),`month` INT(2),`day` INT(2),`hour` INT(2),`bid_no` VARCHAR(32)) DEFAULT CHARSET=utf8;
+SET year_ = CAST(SUBSTRING(sta,1,4) AS UNSIGNED);
+SET month_ = CAST(SUBSTRING(sta,6,2) AS UNSIGNED);
+SET day_ = CAST(SUBSTRING(sta,9,2) AS UNSIGNED);
+INSERT INTO  `my_table_bid`(`year` ,`month`,`day` ,`hour`,`bid_no`) VALUES(year_, month_, day_, 0, bid_no);
+-- 根据小时查询每小时的高峰人数
+    myLoop:LOOP
+     IF i > hour_count THEN
+            LEAVE myLoop;
+     END IF;
+     SELECT CASE WHEN i <= 9 THEN CONCAT('0', i) ELSE CONCAT('', i) END INTO hour_ FROM DUAL;
+     SET i = i + 1;
+     SET s = '0';
+    SET s1 = CONCAT(sta, ' ',hour_ ,':00:00');
+    SET s2 = CONCAT(sta, ' ',hour_ ,':59:59');
+  -- 第一个数据
+ INSERT INTO `my_table`(`dept`,`num`) SELECT p.dept_type ty ,COUNT(DISTINCT p.identity) cou 
+  FROM personal_inout p 
+  WHERE p.record_time  >= s1 AND p.record_time <= s2 AND p.type = '0'
+     AND EXISTS(SELECT 1 FROM (SELECT t.identity identity, MAX(t.record_time) record_time,t.type ty FROM personal_inout t  WHERE t.record_time  >= s1 
+     AND t.record_time <= s2 GROUP BY t.identity) t2 WHERE p.record_time = t2.record_time AND t2.identity = p.identity AND t2.ty = '0' )
+  GROUP BY p.dept_type  ;
+  -- 第二个数据
+  
+   INSERT INTO `my_table`(`dept`,`num`) SELECT p.dept_type ty ,COUNT(DISTINCT p.identity) cou
+    FROM personal_inout p WHERE p.record_time  >= s1 AND p.record_time <= s2 AND p.type = '1'
+    AND NOT EXISTS( SELECT 1 FROM ( SELECT t.identity identity, MAX(t.record_time) record_time,t.type ty FROM personal_inout t  WHERE t.record_time  >= s1 
+     AND t.record_time <= s2 GROUP BY t.identity )p2 WHERE p2.identity = p.identity AND p2.ty = '0' )
+    GROUP BY p.dept_type  ;
+   -- 其他列数据
+   UPDATE `my_table_bid` SET `hour` = CAST(hour_ AS UNSIGNED);
+  -- 组合数据
+  IF (SELECT COUNT(*) FROM `my_table`) > 0 THEN 
+  --  SELECT GROUP_CONCAT(CONCAT(`dept`,'=',`num`) SEPARATOR ';')  INTO s 
+    INSERT INTO `t_gather_present_daily` (`id`, `year` ,`month`,`day` ,`hour`,`bid_no`,`yz_num` ,`jl_num`,`sg_num` ,`fb_num`,`ls_num`,`create_time`,`send_state`)
+     SELECT REPLACE(UUID(),'-','') id, `year`, `month`,`day`,`hour`,`bid_no`,yz_num,jl_num,sg_num,fb_num,ls_num,NOW(),'0'
+    FROM (
+    SELECT MAX(yz_num) yz_num,MAX(jl_num) jl_num ,MAX(sg_num) sg_num,MAX(fb_num) fb_num, MAX(ls_num) ls_num FROM (
+    SELECT CASE WHEN `dept` = '1' THEN SUM(`num`) ELSE 0 END yz_num , CASE WHEN `dept` = '2' THEN SUM(`num`) ELSE 0 END jl_num,
+        CASE WHEN `dept` = '3' THEN SUM(`num`) ELSE 0 END sg_num,CASE WHEN `dept` = '4' THEN SUM(`num`) ELSE 0 END fb_num,
+        CASE WHEN `dept` = '5' THEN SUM(`num`) ELSE 0 END ls_num
+      FROM `my_table` GROUP BY `dept`) tt) t INNER JOIN `my_table_bid` ON 1 = 1; -- 可以使用max的方式实现合并
+   ELSE 
+    INSERT INTO `t_gather_present_daily` (`id`, `year` ,`month`,`day` ,`hour`,`bid_no`,`yz_num` ,`jl_num`,`sg_num` ,`fb_num`,`ls_num`,`create_time`,`send_state`)
+     VALUES(REPLACE(UUID(),'-',''),year_, month_, day_, CAST(hour_ AS UNSIGNED), bid_no, 0,0,0,0,0, NOW(),'0');
+  END IF;
+-- 查找出有记录的小时
+  SET result = CONCAT(result,'--',hour_,':', s);
+  DELETE FROM `my_table` WHERE 1 = 1 ;
+  END LOOP myLoop;
+ 
+  -- 处理数据，插入数据库
+  
+RETURN result;
+END

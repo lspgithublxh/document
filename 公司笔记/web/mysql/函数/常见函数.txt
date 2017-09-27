@@ -4,3 +4,23 @@
           `e`.`in_date`,
           DATE_FORMAT(NOW(), _utf8 '%Y-%m-%d %H:%i:%s')
         ) >= 0
+    第一个参数是精确度，year,month,还是second。
+    第二个、三个参数是字符串时间，
+    结果：第三个参数减去第二个参数在第一个精确度下的值。
+
+2.CONVERT()字符串、数字转换。convert('2',signed)   convert('454' using gbk)  //编码转换
+  CAST()字符串、数字转换。cast('12e3.4' as signed)   
+
+3.UNIX_TIMESTAMP（）函数是从1970-01-01 8:00:00开始算起到现在的秒数：
+  SELECT UNIX_TIMESTAMP('1970-01-02 8:00:01') FROM DUAL  为1
+  SELECT UNIX_TIMESTAMP('1970-01-02 8:00:01') FROM DUAL  为86401
+
+4.FROM_UNIXTIME（）函数是上述函数的反算。即通过秒数算时间。
+  SELECT FROM_UNIXTIME(1) FROM DUAL 为字符串‘1970-01-01 08:00:01’
+  同时，有参数可以利用：
+  		SELECT FROM_UNIXTIME(57600, _utf8 '%H小时%i分钟') FROM DUAL
+    其中57600是调整到一天的开始。即1970-1-2号0点整。
+
+
+5.时间运算函数：时间增减函数：SELECT SUBDATE(SYSDATE(), INTERVAL 1 MINUTE) FROM DUAL
+   //按时分秒天进行增减。
