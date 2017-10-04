@@ -7,6 +7,7 @@
 
 二、打包项目(jar) //当然要先配置号pom.xml  
  mvn package   //均是在有pom文件的那个层次打开cmd执行。以便知道是对哪个项目进行打包
+mvn package -Dmaven.skip.test=true
    
 三、打包项目(war)//也要配置号pom.xml (包括dependency 和 build)
 
