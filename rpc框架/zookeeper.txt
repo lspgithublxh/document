@@ -83,7 +83,7 @@
 					>
 				>利用zookeeper本质是利用它：
 					>client对zookeeper server创建znode节点是同步的,znode的编号是有序的，创建时可以加watch--常常watch父节点的子节点----从而在该节点消失或改变的时候，父节点会产生一个watch事件，而通知所有watch了这个父节点的client：即返回最新的子节点（它们的编号是有序的，默认以最小的为下一个活跃节点master）
-					>client和zookeeper的连接正常情况下不会断掉。
+					>client和zookeeper的连接正常情况下不会断掉。首次连接会返回一个id,后面会周期向server发送心跳来维持连接。
 					>client一旦崩溃，zookeeper目录上的那个节点会消失，而父节点会生产一个watch事件，通知所有watch了这个节点的client，从而各个活着的节点收到最新的子节点列表，而取编号最小的对应的client为master。从而master产生，继续服务。
 	
 	------外：读写，内：心跳选举
@@ -97,3 +97,5 @@
 1.http://blog.csdn.net/tlk20071/article/details/52028945（安装启动zookeeper）
 2.http://blog.csdn.net/tswisdom/article/details/41522069（对本质有讨论，深刻）
 3.http://www.cnblogs.com/wuxl360/p/5817471.html（图例多）
+4.http://cailin.iteye.com/blog/2014486/（真正说明了集群选master的应用过程）
+5.http://blog.csdn.net/shenlan211314/article/details/6187037（客户端api编程）
