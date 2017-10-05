@@ -23,11 +23,26 @@
 		     >follower和leader的状态同步：促使leader和foller有相同的系统状态。
 		     >事务和提议：
 		     >状态：looking ,leading ,following
-		     >选举线程：
+		     >选举线程：启动、leader崩溃、leader失去大多数follower时候：
 				>选举leader过程：询问每个节点 > 获取提议(id自己, zxid提议是事务有zxid)  >  判断最大zxid的server是否满足leader条件    >  判断结果为符合则设置server为下次推荐的leader    >  更新自身server的状态
 					
 					------询问列表：	
 					------投票记录表：
+
+				>选举过程中每个节点的行为：
+					>内部：判断推荐者信息
+						#判断是否要更新自己的投票情况：即更新自己的投票队列。（算法就是sid最大，zxid最大）
+						#如果收集到了所有服务器的投票结果，则判断能不能确定leader：即看投票数是否>=n + 1,是则能更新自己状态为Following/leading,选举结束，退出；否则不能，继续保持Looking状态。
+						#判断自己状态是否为Looking：不是则选举过程结束，直接返回对方leading是谁--和选举结束的信息。
+					>对外：收发推荐者信息
+						#广播：因为经过内部判断而改变了自己的投票。。每次广播之后收到所有的回复--包括延迟回复（即广播型回复、最新一轮回复）之后，会开始内部判断是否要结束选举。----即看投票列表中：投票结果是否半数以上server都投它；是则结束。开始询问预备leader，准备好没，leader等所有server都问了之后恢复准备好了，正式结束选举，当上leader.
+						#单发：只回复对方一个自己的投票结果---即对方的投票肯定不行--比如轮数低了。
+
+					-------内部数据结构：一个自己当前的投票、一个我广播后大家反馈回来的投票队列、一个自己的状态
+
+				>Paxos算法：
+				>当上leader之后：第一件事：同步逻辑时钟、来同步数据--使得最新和一致。
+
 		     >状态同步：leader和follower之间：目的是使leader知道确定同步点。
 		     >leader的2件事：
 				>恢复数据：
@@ -83,9 +98,11 @@
 					>
 				>利用zookeeper本质是利用它：
 					>client对zookeeper server创建znode节点是同步的,znode的编号是有序的，创建时可以加watch--常常watch父节点的子节点----从而在该节点消失或改变的时候，父节点会产生一个watch事件，而通知所有watch了这个父节点的client：即返回最新的子节点（它们的编号是有序的，默认以最小的为下一个活跃节点master）
-					>client和zookeeper的连接正常情况下不会断掉。首次连接会返回一个id,后面会周期向server发送心跳来维持连接。
+					>client和zookeeper的连接正常情况下不会断掉。首次连接会返回一个id,后面会周期向server发送心跳来维持连接。而对client编程的时候，不用管心跳，只需要保证client一直在运行，比如进入System.in.read()阻塞就可以，会话会同样一直保持。
 					>client一旦崩溃，zookeeper目录上的那个节点会消失，而父节点会生产一个watch事件，通知所有watch了这个节点的client，从而各个活着的节点收到最新的子节点列表，而取编号最小的对应的client为master。从而master产生，继续服务。
 	
+			
+
 	------外：读写，内：心跳选举
 
 *小知识：
@@ -99,3 +116,6 @@
 3.http://www.cnblogs.com/wuxl360/p/5817471.html（图例多）
 4.http://cailin.iteye.com/blog/2014486/（真正说明了集群选master的应用过程）
 5.http://blog.csdn.net/shenlan211314/article/details/6187037（客户端api编程）
+6.http://www.cnblogs.com/ASPNET2008/p/6421571.html（选举过程，更合理的解释）http://blog.csdn.net/zhoulixin8/article/details/51751567
+7.http://blog.csdn.net/yinwenjie/article/details/47613309（推荐过程，通俗易懂）
+8.http://www.cnblogs.com/endsock/p/3480093.html（paxos算法）
