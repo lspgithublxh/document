@@ -119,3 +119,4 @@
 6.http://www.cnblogs.com/ASPNET2008/p/6421571.html（选举过程，更合理的解释）http://blog.csdn.net/zhoulixin8/article/details/51751567
 7.http://blog.csdn.net/yinwenjie/article/details/47613309（推荐过程，通俗易懂）
 8.http://www.cnblogs.com/endsock/p/3480093.html（paxos算法）
+9.http://www.cnblogs.com/jaycekon/p/7553909.html（zookeeper集群配置方法）

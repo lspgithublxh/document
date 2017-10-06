@@ -1,0 +1,35 @@
+1.问题描述：
+	>预备：
+
+
+	>设计目的：简化、加快web应用的开发
+		>尤其：开发单一功能的应用
+		>简化在：只有java代码没xml配置文件(类似python的web开发),直接在类里配置请求路径和处理方法的映射。
+
+		>事务流程：
+			>启动Spring上下文容器：Application Context。处理bean实例化共用的问题。
+			>扫描应用类路径上的依赖jar:即pom.xml中的jar所依赖的jar,
+			>启动Servlet容器：如tomcat。来处理http请求。启动条件：只要发现依赖：spring-boot-starter-web.jar
+					>而Servlet容器具体是交给Servlet来处理，而Servlet又会映射给具体的注解了@Controller的类来处理。
+
+
+
+	>设计实现：
+	>对数据库访问的支持：
+		>抽象出共同的常见的几种操作：
+
+
+2.问题讨论：
+	>spring-boot方式启动web服务，没有显式看到服务器。因为是项目里启动服务器。多项目怎么办？
+	>spring-boot引入时如果报错了，那么全部删除maven包，重新下载。尤其某个注解无法引入，而点开该注解，eclipse无法打开：报错：invalid LOC header (bad signature)，那么删除相关mavenjar，重新下载即可。
+	>非常有用看依赖：mvn dependency:tree	
+	>多对多的hibernate在类里的注解：多对多：两个table都有互相关联的外键，多对一则只有本方即多方有外键，一对一和多对多一样看待。一对多没必要有外键。
+
+
+参考资料：
+1.http://blog.csdn.net/xiaoyu411502/article/details/47864969（比较简单的细致的使用spring-boot手册）
+2.http://www.cnblogs.com/ityouknow/p/5662753.html（完整的开发过程，界面好）
+3.http://www.cnblogs.com/cnmenglang/p/6420940.html（eclipse集成sts,新建spring-boot类型的工程，简易加依赖，以及数据库配置）
+4.http://www.cnblogs.com/liangblog/p/5228548.html(jdbc和mybatis的集成)
+5.http://blog.csdn.net/isea533/article/details/50412212（静态资源的管理和版本控制）
+6.http://blog.csdn.net/isea533/article/details/50359390（和mybatis整合，带上事务）

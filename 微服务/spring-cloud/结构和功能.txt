@@ -1,0 +1,28 @@
+1.问题描述：
+	>预知：
+		>微服务：
+			>对一个应用垂直拆分为多个服务，每个服务独立部署、维护、扩展，服务之间通过RESTFUL API等方式互相调用。
+			>服务注册和访问变成了网络IO。而不是自己写或者在本地JVM上。
+		>Spring Cloud Netflix:设计目的：通过简单的注解，构建庞大的分布式系统。
+		>分布式系统：
+			>常见结构：一个服务注册中心，其他节点是服务发布者，或者服务消费者，最后是服务调用监控者。
+
+		
+	>概念：
+	     >客户端---即服务注册者：会从每个client上接受心跳，没有则删除该client实例。
+			>
+
+
+
+2.小知识：
+	>Dalston.SR4是spring-cloud最新版本，2017.10.3发布。http://spring.io/blog/2017/10.610/03/spring-cloud-dalston-sr4-is-now-available
+		2017.10.6看，网上只有一个官网有资料。
+		
+
+
+
+
+参考资料：
+1.http://blog.didispace.com/springcloud1/（概念介绍）
+2.http://mvnrepository.com/artifact/org.springframework.cloud/spring-cloud-dependencies（spring-cloud最新版本库）https://search.maven.org/#search%7Cga%7C1%7Cg%3A%22org.springframework.cloud%22
+3.http://blog.csdn.net/forezp/article/details/70148833（较完整的内容）

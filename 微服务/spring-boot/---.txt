@@ -1,0 +1,11 @@
+1.spring-boot如何解决web应用的三大问题的？
+  请求数据或者页面已经ok，请求静态资源也ok。对于请求过滤器的实现，是按字母顺序的过滤器调用过程。
+
+2.spring-boot web项目没有了“项目”这个概念。都是服务！！！都是方法。只有服务，只有方法。
+Mvn命令
+
+
+
+
+1.http://blog.csdn.net/xiaoyu411502/article/details/47864969
+2.http://www.cnblogs.com/larryzeal/p/5799195.html
