@@ -6,11 +6,18 @@
 		>Spring Cloud Netflix:设计目的：通过简单的注解，构建庞大的分布式系统。
 		>分布式系统：
 			>常见结构：一个服务注册中心，其他节点是服务发布者，或者服务消费者，最后是服务调用监控者。
+					其中注册中心上的一个服务，可以有多个注册，它们本身没有互相知道，需要调用服务方即服务消费方进行负载均衡---使用Ribbon可以，客户端本身其实也是一个服务也会注册到注册中心，只是它可以调用注册中心的其他服务。
 
+		>
 		
-	>概念：
-	     >客户端---即服务注册者：会从每个client上接受心跳，没有则删除该client实例。
-			>
+	>概念：微服务三方架构
+	     >客户端---服务注册者：会从每个client上接受心跳，没有则删除该client实例。可以很多个，而且本地改变端口就可以启动一个新的服务提供者去注册中心注册服务
+	     >客户端---服务消费者：从注册中心知道服务而调用服务提供者。同样可以多个。
+	     >服务端---注册中心
+	
+	    >断路器：防止调用一个服务阻塞时，层层影响到后面的调用者
+			>而为不每个服务调用者都去判断服务是否阻塞，而共同调用一个阻塞判断和终止服务--断路器
+
 
 
 
@@ -18,7 +25,7 @@
 	>Dalston.SR4是spring-cloud最新版本，2017.10.3发布。http://spring.io/blog/2017/10.610/03/spring-cloud-dalston-sr4-is-now-available
 		2017.10.6看，网上只有一个官网有资料。
 		
-
+	>可以在java类里注解方式注入一个bean，---任何一个bean，@Bean方式。
 
 
 
@@ -26,3 +33,4 @@
 1.http://blog.didispace.com/springcloud1/（概念介绍）
 2.http://mvnrepository.com/artifact/org.springframework.cloud/spring-cloud-dependencies（spring-cloud最新版本库）https://search.maven.org/#search%7Cga%7C1%7Cg%3A%22org.springframework.cloud%22
 3.http://blog.csdn.net/forezp/article/details/70148833（较完整的内容）
+4.https://martinfowler.com/articles/microservices.html(微服务理念英文文档)
