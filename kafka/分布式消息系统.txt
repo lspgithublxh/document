@@ -1,5 +1,21 @@
 1.问题描述：
 	>基本概念：
-	>预知：
+	>预知：知优点容易，说出缺点不容易。不容易在证明，事实证明和预言证明。
 	>架构-结构-功能：
-	
+		>四方构型：
+			>server服务器端：
+			>producer生产者端：
+			>consumer消费者端：
+			>zookeeper同步端：
+
+
+2.特别小知识：
+	>windows下：bin下有一个windows目录，进去才能执行。
+
+参考资料：
+1.http://blog.csdn.net/csolo/article/details/52447392（java开发环境）
+2.http://blog.csdn.net/evankaka/article/details/52421314（windows安装）
+3.https://www.ibm.com/developerworks/cn/opensource/os-cn-kafka/index.html（官方原理）
+4.http://www.infoq.com/cn/articles/kafka-analysis-part-1/（重要图解）
+5.http://www.infoq.com/cn/articles/apache-kafka（重要图解2）
+		
