@@ -15,6 +15,8 @@
 			>发送消息到频道：
 			>推送消息到订阅者：
 		>原子操作：事务建立
+		>redis管道技术：非阻塞方式查询，而可以并行多次查询，一次读取所有服务器的响应（即阻塞到响应完）
+		>redis分区：键之值分redis服务器实例存储。
 
 
 	>性能参数：
@@ -41,3 +43,5 @@
 
 1.参考资料：
 1.http://www.cnblogs.com/M-LittleBird/p/5902850.html（windows下的安装和使用）
+2.http://blog.csdn.net/truong/article/details/46711045(java调用方式，junit,事务，管道，分布式)
+3.http://www.runoob.com/redis/redis-java.html（教程使用案例）
