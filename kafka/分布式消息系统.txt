@@ -1,12 +1,36 @@
 1.问题描述：
 	>基本概念：
 	>预知：知优点容易，说出缺点不容易。不容易在证明，事实证明和预言证明。
+		>使用磁盘的原因：内存用高了，因为垃圾回收，同样会慢。
+				 不用内存重建（如建立对象），尤其10GB这样大的缓存内容-10min消耗
+				安全保存，断电不会丢失。
+		>幂等性：即一次处理跟多次处理是一样的。（可以取出来放到一个地方）
+
+
+
 	>架构-结构-功能：
 		>四方构型：
 			>server服务器端：
 			>producer生产者端：
 			>consumer消费者端：
 			>zookeeper同步端：
+		>broker服务器端：文件层次：
+			>一个topic下的一个partition文件目录下：消息文件和索引文件
+					>消息文件：
+						每条消息格式：json格式对象：offset位置-长度-值
+					>日志段文件：offset
+						一个段消息：是多个offset消息，即一个offset范围内的所有消息
+
+		>处理每条消息：
+			>将一条消息append到partition里，且属于顺序写磁盘---效率比随机写内存还高.（因此高吞吐率）
+			>根据partition文件大小和时间删除数据而不是消费了就删除。
+			>消息写到众多的partition中某个里是一个路由过程、负载均衡过程。而不同的broker上都可能有同一个topic的不同partition，所以可以并发的写入，又提高了吞吐率
+			
+		>consumer消费消息：
+			>按组消费，即 broker会把一个topic的消息发送给每个组，一个消息只会发给每个组的一个consumer，	
+				
+
+	>应用场景：网站活动记录(访问统计)和运营数据处理（cpu,io）
 
 
 2.特别小知识：
@@ -18,4 +42,5 @@
 3.https://www.ibm.com/developerworks/cn/opensource/os-cn-kafka/index.html（官方原理）
 4.http://www.infoq.com/cn/articles/kafka-analysis-part-1/（重要图解）
 5.http://www.infoq.com/cn/articles/apache-kafka（重要图解2）
-		
+6.http://kafka.apache.org/0110/javadoc/index.html?org/apache/kafka/clients/producer/KafkaProducer.html（开发文档api）
+7.http://kafka.apache.org/documentation.html#producerapi（官方介绍文档）
