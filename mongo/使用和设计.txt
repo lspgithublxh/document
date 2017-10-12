@@ -6,4 +6,15 @@
 	>重要的几个为什么问题：
 		>
 	>业务发展使用开发深入的一步一步会遇到的问题：
-		>mongod --dbpath C:\mongodb\db启动服务
+		>mongod --dbpath C:\mongodb\db启动服务    D:\Program Files\MongoDB\Server\3.4\bin
+		>mongo.exe启动   mongo --host 127.0.0.1 --port 27017
+
+	>从使用到思考为什么弄通--引擎机制--即实现机制：
+
+1.参考资料：
+1.http://www.runoob.com/mongodb/mongodb-window-install.html（教程参考资料）
+2.http://blog.csdn.net/hwwzyh/article/details/38945319/（java mongodb较好的例子）
+
+
+
+
