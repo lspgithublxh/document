@@ -1,17 +1,38 @@
 1.问题描述：
 	>预知：
+		>什么需要索引？一条记录？
+			>对文档创建索引和更新索引
+			>对JSON对象创建和更新索引
+			
+		>索引：
+		      >基本观点：
+			>索引是一个树形对象，索引是对一列数据的索引。。索引可以看作是对一列数据的分类--多层分类。
+			>新增一个记录，可以根据索引树而分类到某层索引节点下，更新这个索引树（自动更新了这个索引树）
+			>给定一个具体索引列的数据、或者模糊数据，可以从索引树下确定要查找的范围，将该范围下的记录返回给客户。
+		>查询索引，查询记录
+		>搜索：
+			>查询DSL：表达查询和过滤器
+
+
+
 	>基本概念：
 		>搜索平台：
 		>全文搜索服务器：
+			>对服务器的操作：
+				>RESTFUL API：PUT\
 		>全文搜索引擎：基于分词、分段：同义词；
-		>
+		>课题问题：
+			>可以索引的对象：单个JSON对象
+			>索引的内容：会是JSON对象的每个最终键值：即叶子键值。而完全不用指定对某个属性进行索引---像数据库的表的列一样。
+
 
 	>实现功能：分词、同义词、词干查询
 	>windows安装：对于Head,需要配置elasticsearch.yml文件，加配置行：
-			Head本质上还是一个nodejs工程
-			>安装：npm install -g cnpm --registry=https://registry.npm.taobao.org
+			>Head本质上还是一个nodejs工程
+			  安装：npm install -g cnpm --registry=https://registry.npm.taobao.org
 				npm install -g grunt-cli --registry=https://registry.npm.taobao.org
-
+			>CURL:添加记录---给其中字段添加索引的办法：
+			      >新增一个索引：名称和类型可以任意
 
 
 
@@ -25,3 +46,10 @@
 1.https://github.com/mobz/elasticsearch-head（head的安装）
 2.http://www.cnblogs.com/ljhdo/p/4887557.html（windows下安装和运行，基本过程）
 3.http://blog.csdn.net/mergerly/article/details/53412417（nodejs依赖的安装）
+4.https://www.elastic.co/downloads/elasticsearch(elasticsearch官方网站)
+5.http://www.elasticsearch.org/guide/reference/query-dsl/（查询定义语言）
+6.http://www.yiibai.com/elasticsearch/elasticsearch-getting-start.html（简易教程--索引和搜索操作）
+7.http://blog.csdn.net/jia18703423204/article/details/47040977（curl的安装和使用）
+8.http://www.cnblogs.com/zlslch/p/6619089.html（性能比较）
+9.http://blog.csdn.net/napoay/article/details/53581027（java api）
+10.http://hao.jobbole.com/kibana/（kibana添加索引）
