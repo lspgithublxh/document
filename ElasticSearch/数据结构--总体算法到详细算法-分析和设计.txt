@@ -35,7 +35,19 @@
 			      >新增一个索引：名称和类型可以任意
 
 
+			>kibana:插入文档和更新文档和删除文档：
+				PUT /movies/movie/1
+				{
+ 				 "title":"The Godfather",
+  				"director":"Francis Ford Coppola",
+  				"year":1972,
+  				"genres":["Crime","Drama"]
+				}
 
+				GET /movies/movie/1
+
+
+				
 
 
 
