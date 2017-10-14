@@ -1,0 +1,35 @@
+1.批处理文件：//一行一行地执行
+   >使用dos命令编写的任务执行。（文件删除创建管理，启动程序/windows启动时自动启动任务）
+   >dos命令可以在cmd窗口edite test.bat 进入窗口进行输入创建。
+   >常用批处理命令：
+ 	>@不显示命令地执行：@ECHO what is this line
+  	>%1 %2 %3在批处理文件里的命令，是取运行批处理文件时带的参数：比如:mybat li shao ping  批处理文件名是mybat.bat,里面的内容是echo %1,%2,%3就会输出Hello,li,shao,ping
+ 	
+
+
+
+2.常见dos命令：help
+  tasklist
+  taskkill
+  systeminfo
+  tree
+  start java -version打开新的窗口运行命令。
+  sc start myService 控制服务
+  set 设置环境变量
+  rmdir移除目录
+  mkdir创建目录
+  find
+  findstr
+  erase删除文件
+  echo命令回显打开 ： echo this is a word > 1.txt
+  call调用另一个批处理文件
+  edit是没有的，在win64上，已经不存在。
+
+ -----语法方面：
+  if
+  goto 
+  for  为一套文件中每个文件执行一个指定的命令
+  
+  @避免重现命令：@ECHO OFF
+  
+  

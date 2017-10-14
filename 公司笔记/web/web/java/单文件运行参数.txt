@@ -1,0 +1,2 @@
+1.java ClientTest -classpath D:\\temp\
+  ----还需要把依赖的jar解压到这个D:\temp目录下。

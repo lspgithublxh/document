@@ -1,0 +1,23 @@
+1.创建触发器（提取单元（和不变x）、分类、关联和形象化）：
+  >触发器构成：(不是从sql上，而是从现实逻辑上，逻辑设计上)
+  	在哪个对象上，什么时候，什么条件，对对象整体还是每个元素，执行什么。
+	create trigger t_trigger
+ 	before insert on t_table for each row when 1=1
+	declare
+ 	 	ss number(5);
+  	begin	
+		ss := :new.id;
+   	end
+
+	
+
+2.查看触发器：
+	select * from all_triggers where table_name='T_TABLE';
+	select * from all_source where type='TRIGGER' and name= 'T_TRIGGER';
+
+
+
+
+
+
+3.

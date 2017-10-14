@@ -1,0 +1,23 @@
+1.启动Quick BatchFile Compiler
+ 最简单的例子：将下列批处理内容打包为exe文件。
+  @java -jar   E:\\WSClient23.jar
+  @echo off
+  echo &echo
+  echo
+  pause >nul
+
+2.例子2：
+@echo off
+cd /d "%~dp0"
+del /F my.vbs
+set jarPath=%~dp0.\jar\WSClient23.jar
+echo Set ws = CreateObject("Wscript.Shell")>>my.vbs
+echo ws.run "cmd.exe /C java -jar %jarPath%",vbhide>>my.vbs
+start my.vbs
+
+3.例子3:
+@echo off
+cd /d "%~dp0"
+del /F my.vbs
+set jarPath=%~dp0jar\sh.bat
+call  %jarPath%

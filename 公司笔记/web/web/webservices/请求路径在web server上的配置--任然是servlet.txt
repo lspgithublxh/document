@@ -1,0 +1,2 @@
+1.仍然要将请求路径放到web中，从而服务器启动后启动项目后能够启动webservices相关的组件---class包---其中关键就是提供的一个servlet。（相当于某个人写的新的基于http而高于http的处理协议）
+  通过servlet方式。具体使用：com.sgcc.uap.xfire.spring.XFireSpringServletOSGI

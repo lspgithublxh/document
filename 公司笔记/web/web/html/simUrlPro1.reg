@@ -1,0 +1,10 @@
+Windows Registry Editor Version 5.00
+[HKEY_CLASSES_ROOT\Simu]
+"URL Protocol" = "C:\\Program Files\\feiq\\Recv Files\\Java1.7_x64\\Java\\jdk1.7.0_51_x64\\bin\\jar.exe"
+@="SimuProtocol"
+[HKEY_CLASSES_ROOT\Simu\DefaultIcon]
+@="C:\\Program Files\\feiq\\Recv Files\\Java1.7_x64\\Java\\jdk1.7.0_51_x64\\bin\\jar.exe,1"
+[HKEY_CLASSES_ROOT\Simu\shell]
+[HKEY_CLASSES_ROOT\Simu\shell\open]
+[HKEY_CLASSES_ROOT\Simu\shell\open\command]
+@="\"C:\\Program Files\\feiq\\Recv Files\\Java1.7_x64\\Java\\jdk1.7.0_51_x64\\bin\\jar.exe\"\"%1\""

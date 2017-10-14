@@ -1,0 +1,9 @@
+1.创建ActiveX对象：
+  >Set object = CreateObject("应用程序.类");
+                CreateObject("Wscript.Shell")
+ 		CreateObject("Excel.Sheet")
+
+  >
+
+2.VBScript是脚本语言，可以嵌入到html文档中，而且可以立即执行或者在某事件发生时执行。
+3.可以在window上被Wscript.Shell对象执行。
