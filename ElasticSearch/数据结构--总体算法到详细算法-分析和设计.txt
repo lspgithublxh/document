@@ -22,7 +22,7 @@
 		>搜索平台：
 		>全文搜索服务器：索引、搜索、排序、过滤文档的引擎
 			>对服务器的操作：
-				>RESTFUL API：PUT\DELETE\GET\POST\HEAD
+				>RESTFUL API：PUT\DELETE\GET\POST\HEAD（检查文档存在不存在）
 			>优点：索引比数据库引擎对表的列索引简单
 			>数据结构：
 				>索引：像书的索引页，可以用此找到类型。像数据库
@@ -34,7 +34,7 @@
 				>id方式：GET /索引/类型/文档ID
 				>_search方式：
 					>直接的：GET /索引/类型/_search
-					>插叙字符串：GET /_index/_type/_search?q=key:word
+					>插叙字符串：GET /_index/_type/_search?q=key:word    其中_index和_type是可以多个的也可以是模糊的*,
 					>领域特定语言DSL：
 							GET /_index/_type/_search
 							{"query":{"match":{field:word}}}
@@ -44,8 +44,16 @@
 						即有多个word，搜素引擎会按照相关性排序搜索到的结果，最相关的分值_score最高，排在最前面。相关性：就是匹配度。
 						对于文段型很长内容的匹配效果必然更好----因为它自己就是索引引擎。而一般数据库是不会对一个超长文段进行建立索引（B-TREE多路索引）的----而如果用like或者正则将会非常慢。
 					 段落搜索：match_phase
+					 汇总统计：单词频率统计（似管道聚合）
+			>数据存储：
+				>分片：存储的是索引的部分类的文档（一个分片，是一个装着文档的数据容器|搜索引擎）
+					一个节点上有多个分片，分片可以在节点之间迁移分配。
+					>主分片：每个文档都属于某个主分片
+					>从分片：是主分片的备份、冗余、副本，一个主分片可以有多个从分片
+					>主节点挂了，新的主节点选出来之后其上的从分片会被提升为主分片。
 
-	
+			>文档更新：
+				>文档本身不可变，更新就是替换。整个替换。重新索引，版本提升。
 		>全文搜索引擎：基于分词、分段：同义词；
 		>课题问题：
 			>可以索引的对象：单个JSON对象
@@ -133,3 +141,5 @@
 9.http://blog.csdn.net/napoay/article/details/53581027（java api）
 10.http://hao.jobbole.com/kibana/（kibana添加索引）
 11.http://www.cnblogs.com/Wolfmanlq/p/5984494.html（非常完善的教程式资料）
+12.https://elasticsearch.cn/article/102(聚合查询,group by多个)
+13.https://elasticsearch.cn/explore/category-12（elasticsearch招聘信息）
