@@ -127,7 +127,7 @@
 					附加：
 						>query里面的单词可以是多个，以空格分开，表示满足其中之一
 	>java连接：端口：9300。其他是9200
-		
+	>与hadoop、spark:	
 
 1.参考资料：
 1.https://github.com/mobz/elasticsearch-head（head的安装）
@@ -143,3 +143,4 @@
 11.http://www.cnblogs.com/Wolfmanlq/p/5984494.html（非常完善的教程式资料）
 12.https://elasticsearch.cn/article/102(聚合查询,group by多个)
 13.https://elasticsearch.cn/explore/category-12（elasticsearch招聘信息）
+14.https://www.elastic.co/products/elasticsearch（官网资料--java查询资料，其他语言如python查询资料也有）
