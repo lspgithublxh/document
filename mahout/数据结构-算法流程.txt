@@ -1,0 +1,12 @@
+1.问题描述：
+	>预知：
+	>理论：
+	>使用：
+		>推荐系统：
+
+
+
+
+参考资料：
+1.http://m635674608.iteye.com/blog/2286255（各种推荐算法介绍）
+2.http://blog.csdn.net/cuilanbo/article/details/38315107（实例充分，较好风格）

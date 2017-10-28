@@ -156,9 +156,57 @@
 
 
 41./etc/hosts主机配置文件：局域网内通过域名互相访问时配置这里的文件。
+  /etc/hostname看主机名字
    
 42.环境变量配置和生效
 
 
 43.移动文件：sudo mv 文件路径1 文件路径2， 那么将文件路径1下的内容放到文件路径2下。
  
+
+44.显示所有进程和状态：
+    ps aux|grep java  --含有搜索：grep
+
+45.预备命令--改变了什么数据结构或者启动了什么过程:客观世界的什么改变
+	>预备：设计理论体系
+	>虚拟机操作：编辑--->虚拟网络编辑器
+
+
+	>网络相关：
+		>网卡静态ip、网关、广播地址、子网掩码、dns地址：/etc/network/interface
+			# 配置一个网卡：auto eth0 #开机自动连接，且这个eth0是固定的，采用的
+					iface eth0 inet static #使用固定ip
+					address 192.168.130.131 #一般这个范围可以查看虚拟机配置而得到128-254
+					netmask 255.255.255.0
+					gateway 192.168.130.2
+					broadcast 192.168.130.255 #非必须
+					network 192.168.130.0 #非必须
+					# 配置dns最新的方式
+					dns-nameservers 192.168.130.2
+				>一般默认的：会有一个配置：
+					auto lo
+					iface lo inet loopback
+				>特殊的问题：
+					VMware NAT Service这个服务应当开着，而不是禁用或者停止。
+
+			# 配置网关：route add default gw 192.168.130.2
+			# 重启网络配置：/etc/init.d/networking restart
+					service networking restart
+		>主机-ip映射：/etc/hosts
+		>主机名：/etc/hostname
+
+
+	>文件相关：
+	>服务相关：
+	>线程相关：
+	>系统相关：
+		>系统报错信息：如systemctl status networking.service
+				journalctl -xe
+				dmesg | grep eth
+	>
+
+
+
+参考资料：
+1.http://blog.163.com/wjn_mcu/blog/static/23801601620146161062704/(网关配置，网络配置)
+2.http://blog.csdn.net/nnuljl/article/details/38680107(网卡逻辑名配置，网卡和mac地址)
