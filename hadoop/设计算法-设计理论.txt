@@ -5,7 +5,11 @@
 
 
 	>设计理论：
-
+		>mapreduce:基于对文件一行一行的处理，而且每行之间没有关系。
+			  ---对于每一行的处理函数：
+			   >map():输入一个key-value,输出多个key-value，这多个都设置到context里
+			   >combine():一次map之后，会调用combine()函数，此时context里有的key-list<value>会被一个一个传入作为参数，而输出则是一个key-value放到一个context里
+			   >reduce():是在文件遍历完而多个map-combine也执行完了，生成的多个combine结果已经放到context里的key-list<value>里了，此时每个key-list<value>就作为reduce()的输入，而输出是到context里key-value
 
 
 	>安装和启动运行：
@@ -30,11 +34,18 @@
 			     再启动主节点（主节点远程登录而启动从节点）：./start-all.sh 会启动hdfs和mapreduce两个服务
 							自己启动-->从节点启动-->备用节点启动
 				测试：jps看进程信息
-					看浏览器中看集群节点信息、分布式文件目录信息、mapreduce运行日志信息：http://192.168.130.128:50070/dfshealth.html#tab-overview
+				      看浏览器中看集群节点信息、分布式文件目录信息、mapreduce运行日志信息：http://192.168.130.128:50070/dfshealth.html#tab-overview
 														http://192.168.130.132:19888/
 														http://192.168.130.132:8088/jobhistory（需要在主节点上启动历史任务查看项目服务： mr-jobhistory-daemon.sh start historyserver）
-					   上传文件，运行workcount任务，查看运行结果文件
-		
+				      上传文件，运行workcount任务，查看运行结果文件：
+				      	>查看分布式文件：./hadoop fs -ls /
+					>创建分布式目录：./hadoop fs -mkdir /user
+					>上传和下载分布式文件：
+							>./hadoop fs -put ~/opt/task1/word.txt /user/
+							>./hadoop fs -get /output/part-r-0000 ~/opt/output/
+					>jar包运行：-mapreduce任务： ./hadoop jar ../share/hadoop/mapreduce/hadoop-mapreduce-examples-2.8.0.jar wordcount /li1028/ /output30  输出目录是一个不存在的才可以。
+
 
 参考资料：
-http://blog.csdn.net/u012859691/article/details/44178971（安装、启动、查看）
+1.http://blog.csdn.net/u012859691/article/details/44178971（安装、启动、查看）
+2.http://hadoop.apache.org/docs/r2.8.2/hadoop-mapreduce-client/hadoop-mapreduce-client-core/MapReduceTutorial.html（wordcount例子源码附带解释）
