@@ -5,3 +5,36 @@
 
 
 	>设计理论：
+
+
+
+	>安装和启动运行：
+		>java和hadoop：文件的解压和环境配置：hadoop放到~/opt/hadoop-2.8.0是个习惯
+		>ssh: 主节点创建用户lishaoping下.ssh目录：
+				# 安装：sudo apt-get install ssh   #测试：ssh loccalhost
+			    	        sudo apt-get install openssh-server
+			    	        sudo apt-get install openssh-client  #测试 ps -e | grep ssh
+				# 授权密钥文件生成和将公钥分发给子节点的同样的公钥文件里：
+					ssh-keygen -t rsa
+					scp ...
+					cat ..
+					测试：远程登录ssh lixiaohai@S1PA222 当然可以ping通：ping S1PA222  
+					表明：无密码登录环境的建立
+		>ubuntu:系统配置：/etc/hosts：ip-主机名地址映射配置：
+				  /etc/hostname:主机名配置-本机名配置
+				  /etc/profile:环境变量配置 java的两个和hadoop的若干个
+		>主节点/etc下配置文件：如/etc/hadoop/yarn-site.xml   slaves
+		>建立数据存放目录:如/lixiaohai/dfs/name /lixiaohai/dfs/data 和配置文件中指定一致
+		>主节点启动：先关闭:./stop-all.sh（可以跳过）
+			     再格式化一个新的分布式文件系统（如果已经存在可以跳过）：./hdfs namenode -format
+			     再启动主节点（主节点远程登录而启动从节点）：./start-all.sh 会启动hdfs和mapreduce两个服务
+							自己启动-->从节点启动-->备用节点启动
+				测试：jps看进程信息
+					看浏览器中看集群节点信息、分布式文件目录信息、mapreduce运行日志信息：http://192.168.130.128:50070/dfshealth.html#tab-overview
+														http://192.168.130.132:19888/
+														http://192.168.130.132:8088/jobhistory（需要在主节点上启动历史任务查看项目服务： mr-jobhistory-daemon.sh start historyserver）
+					   上传文件，运行workcount任务，查看运行结果文件
+		
+
+参考资料：
+http://blog.csdn.net/u012859691/article/details/44178971（安装、启动、查看）
