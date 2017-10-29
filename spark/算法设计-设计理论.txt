@@ -8,10 +8,11 @@
 		>Master-Worker结构启动：主节点上：./start-all.sh即可。
 					测试：spark集群情况：http://192.168.130.132:8080/
 										
-		>任务的执行：实例任务： ./bin/spark-submit --class org.apache.spark.examples.SparkPi --master yarn --deploy-mode cluster --driver-memory 1G --executor-cores 1 examples/jars/spark-examples_2.11-2.1.1.jar 40
+		>任务的执行：实例任务--集群上的执行方式： ./bin/spark-submit --class org.apache.spark.examples.SparkPi --master yarn --deploy-mode cluster --driver-memory 1G --executor-cores 1 examples/jars/spark-examples_2.11-2.1.1.jar 40
 			     >另一种执行方式：./bin/run-example SparkPi 10
-			     >自定义任务执行：需要maven打包。
-	
+			     >自定义任务执行：需要maven打包。./bin/spark-submit --class com.construct.spark.SparkTask --master yarn --deploy-mode cluster --driver-memory 1G --executor-cores 1 ../bigData.jar 40
+			     >本地执行方式：--master local[4] 参数配置的不同
+
 
 
 
