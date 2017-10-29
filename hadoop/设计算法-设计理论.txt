@@ -53,7 +53,17 @@
 
 		>新增节点加入或者旧节点重启： ./sbin/hadoop-daemon.sh start datanode
 					      ./sbin/yarn-daemon.sh start nodemanager
+
+
+	>Mahout在hadoop环境中：利用hdfs文件进行推荐-运行数据挖掘算法
+		>Mahout推荐算法：在mapreduce方式下，是一个多阶段的过程，即过程中多次需要汇总，比如用户-对象-评分的汇总，用户的相似用户截取，相似用户的喜好电影的截取，都需要汇总后再计算，所以需要分成多个map-reduce的job任务。而使用spark也可以实现，或许比用map-reduce的job方式更好。
+		
+
+
+
+
 参考资料：
 1.http://blog.csdn.net/u012859691/article/details/44178971（安装、启动、查看）
 2.http://hadoop.apache.org/docs/r2.8.2/hadoop-mapreduce-client/hadoop-mapreduce-client-core/MapReduceTutorial.html（wordcount例子源码附带解释）'
 3.http://blog.csdn.net/dianacody/article/details/39494417(mapreduce个人所见)
+4.http://www.cnblogs.com/yanghuahui/p/3763820.html（任务的编写到运行）

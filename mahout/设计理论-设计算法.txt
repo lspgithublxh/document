@@ -1,5 +1,8 @@
 1.问题描述：
 	>预知：
+		>本质：一个分布式的机器学习算法的集合。（也是数据挖掘算法的集合）
+			即人家已经实现了机器学习的那些算法，你只需要调用使用就可以了。第一阶段，就是会使用，会各种不同的场景下使用，就像开发游戏而要会打游戏一样，造车需要知道开车一样，当然重点是需要想象。第二阶段，就是因为对算法的实现效果可能不太满意，而想改善提高，或者扩展，则要专门看这些算法的实现。
+
 		>hadoop任务的编写：如mapreduce任务的编写。
 		>评估推荐器：查准率和召回率：是一个比例，被搜索的对象，和搜索到的内容。
 		>单机内存算法：只考虑算法、数据结构、内存、cpu而已。不依赖hadoop的单机推荐算法。多节点的关键区别还是文件的分布式存储。
@@ -8,7 +11,16 @@
 
 	>设计理论：
 	>设计算法：
-
+	>安装和配置：
+		>安装：下载测试数据：wget -o synthetic_control.data  http://archive.ics.uci.edu/ml/databases/synthetic_control/synthetic_control.data
+			或者wget  http://archive.ics.uci.edu/ml/databases/synthetic_control/synthetic_control.data
+		>环境变量：export MAHOUT_HOME=/home/lixiaohai/usr/apache-mahout-distribution-0.13.0
+			   export MAHOUT_CONF_DIR=$MAHOUT_HOME/conf
+		>测试keans算法：上传文件到指定目录：/user/lixiaohai/testdata
+				后执行命令： mahout -core org.apache.mahout.clustering.syntheticcontrol.kmeans.Job
+				后大约14min后运行完毕：看到结果：从这个hdfs目录下：/user/lixiaohai/output/data
 
 参考资料：
 1.http://www.52ml.net/527.html（比较简洁的mahout推荐）
+2.http://blog.csdn.net/zdp072/article/details/42653373（mahout高级算法推荐介绍，命令行调用，伯克利大学欧文分校）
+3.http://archive.apache.org/dist/mahout/0.13.0/（Mahout hadoop上运行的版本下载）
