@@ -64,6 +64,7 @@
 
   
 export HADOOP_HOME=/home/lixiaohai/opt/hadoop-2.8.0
+export HADOOP_CLASSPATH=$JAVA_HOME/lib/tools.jar
 export HADOOP_COMMON_HOME=$HADOOP_HOME
 export HADOOP_HDFS_HOME=$HADOOP_HOME
 export HADOOP_MAPRED_HOME=$HADOOP_HOME

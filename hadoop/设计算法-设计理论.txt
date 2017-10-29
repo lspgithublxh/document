@@ -44,8 +44,16 @@
 							>./hadoop fs -put ~/opt/task1/word.txt /user/
 							>./hadoop fs -get /output/part-r-0000 ~/opt/output/
 					>jar包运行：-mapreduce任务： ./hadoop jar ../share/hadoop/mapreduce/hadoop-mapreduce-examples-2.8.0.jar wordcount /li1028/ /output30  输出目录是一个不存在的才可以。
+ 							自己编写任务，eclipse打包运行：注意包里的args[1]开始才是文件路径：./hadoop jar ../../job1.jar com.construct.mapreduce.NWordCount /li1028/ /output31
+									注意2：如果Mapper类和Reducer类写到一个main函数所在类里，那么这两个类都要写成静态类。普通打包就可以了--不用可执行包。这个jar包可以直接上传到hadoop集群执行，方式如上。
+										结果可以看到：http://192.168.130.133:50075/webhdfs/v1/output45/part-r-00000?op=OPEN&namenoderpcaddress=S1PA11:9000&offset=0   替换其中的输出路径就可以了。
+					>附加：不要经常笑，而是安静的、匀速的：
+							>./hadoop com.sun.tools.javac.Main NWordCount.java
+							>jar cf wc.jar NWordCount*.class
 
-
+		>新增节点加入或者旧节点重启： ./sbin/hadoop-daemon.sh start datanode
+					      ./sbin/yarn-daemon.sh start nodemanager
 参考资料：
 1.http://blog.csdn.net/u012859691/article/details/44178971（安装、启动、查看）
-2.http://hadoop.apache.org/docs/r2.8.2/hadoop-mapreduce-client/hadoop-mapreduce-client-core/MapReduceTutorial.html（wordcount例子源码附带解释）
+2.http://hadoop.apache.org/docs/r2.8.2/hadoop-mapreduce-client/hadoop-mapreduce-client-core/MapReduceTutorial.html（wordcount例子源码附带解释）'
+3.http://blog.csdn.net/dianacody/article/details/39494417(mapreduce个人所见)
