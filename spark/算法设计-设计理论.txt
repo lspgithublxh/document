@@ -1,0 +1,20 @@
+1.问题描述：
+	>预知：
+		>spark可以运行在hadoop（通过hadoop yarn 连接到hdfs）上、cloud上，独立运行。Apache Mesos上也可以。
+		
+	>理论：
+
+	>启动spark集群、编写执行任务：
+		>Master-Worker结构启动：主节点上：./start-all.sh即可。
+					测试：spark集群情况：http://192.168.130.132:8080/
+										
+		>任务的执行：实例任务： ./bin/spark-submit --class org.apache.spark.examples.SparkPi --master yarn --deploy-mode cluster --driver-memory 1G --executor-cores 1 examples/jars/spark-examples_2.11-2.1.1.jar 40
+			     >另一种执行方式：./bin/run-example SparkPi 10
+			     >自定义任务执行：需要maven打包。
+	
+
+
+
+参考资料：
+1.http://spark.apache.org/docs/latest/（官方参考资料）
+2.http://spark.apache.org/docs/latest/quick-start.html（官方参考资料，开始编程java api，伯克利大学）

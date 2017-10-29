@@ -18,9 +18,10 @@
 			   export MAHOUT_CONF_DIR=$MAHOUT_HOME/conf
 		>测试keans算法：上传文件到指定目录：/user/lixiaohai/testdata
 				后执行命令： mahout -core org.apache.mahout.clustering.syntheticcontrol.kmeans.Job
-				后大约14min后运行完毕：看到结果：从这个hdfs目录下：/user/lixiaohai/output/data
+				后大约14min后运行完毕：看到结果：从这个hdfs目录下：/user/lixiaohai/output/data/part-m-00000
 
 参考资料：
 1.http://www.52ml.net/527.html（比较简洁的mahout推荐）
 2.http://blog.csdn.net/zdp072/article/details/42653373（mahout高级算法推荐介绍，命令行调用，伯克利大学欧文分校）
 3.http://archive.apache.org/dist/mahout/0.13.0/（Mahout hadoop上运行的版本下载）
+4.http://blog.csdn.net/sun_wangdong/article/details/59483790(亲自写map-reduce方式的mahout算法)

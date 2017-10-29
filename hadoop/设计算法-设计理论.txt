@@ -9,8 +9,22 @@
 			  ---对于每一行的处理函数：
 			   >map():输入一个key-value,输出多个key-value，这多个都设置到context里
 			   >combine():一次map之后，会调用combine()函数，此时context里有的key-list<value>会被一个一个传入作为参数，而输出则是一个key-value放到一个context里
+					其实，获取map()结果是通过http 而fetch到的，所以应该是map执行完了，combine开始执行？或者map()里的方法间隔式的远程调用combine里的方法，来激发combine执行获取数据的操作。
 			   >reduce():是在文件遍历完而多个map-combine也执行完了，生成的多个combine结果已经放到context里的key-list<value>里了，此时每个key-list<value>就作为reduce()的输入，而输出是到context里key-value
+				     >详细过程：
+					>shuffle:获取结果，通过http获取到mappers结果，即是多个mapper的结果
+					>sort:按key排序结果，不同mapper有相同的key，则自然排在了一起,然后进行分组。
+					>reduce:即同key下的集合元素的处理，处理到context里。
 
+			   >编程中：context里可以获取到命令里的-D参数。同时在main中可以设置job的运行参数，就设置到了context里。
+				    # Mapper类里有setup()方法，在map()方法之前执行，可以做一些事情。
+				    # Mapper类里，setup()方法，比如，可以读取hdfs上的文件。同时，Mapper类的实例属性，可以被map()方法所共享。而map()方法可能被异步调用很多次，所以这个setup()方法在map()方法之前调用一次，非常重要有价值，初始化执行用，同时因为读的是分布式文件，所以每个节点上的Mapper类里的实例属性---即存文件内容，是一样的。
+				    >对job配置：
+						>配置OutputKeyClass和OutputValueClass的原因：map()产生的结果到reduce过程获取map结果，是fetch,通过http进行的，所以需要配置序列化传输的class。	
+						>添加缓存文件路径：addCacheFile()
+
+		>map任务和reduce任务：
+			   >都在各自的jvm里执行，即它们是分开的jvm中执行的，而且和Master也是分开的。因为：每个job都可以配置，且配置map和reduce的jvm参数。
 
 	>安装和启动运行：
 		>java和hadoop：文件的解压和环境配置：hadoop放到~/opt/hadoop-2.8.0是个习惯
@@ -47,12 +61,16 @@
  							自己编写任务，eclipse打包运行：注意包里的args[1]开始才是文件路径：./hadoop jar ../../job1.jar com.construct.mapreduce.NWordCount /li1028/ /output31
 									注意2：如果Mapper类和Reducer类写到一个main函数所在类里，那么这两个类都要写成静态类。普通打包就可以了--不用可执行包。这个jar包可以直接上传到hadoop集群执行，方式如上。
 										结果可以看到：http://192.168.130.133:50075/webhdfs/v1/output45/part-r-00000?op=OPEN&namenoderpcaddress=S1PA11:9000&offset=0   替换其中的输出路径就可以了。
+										结果文件直接看：bin/hadoop fs -cat /user/joe/wordcount/output/part-r-00000
+							用了特性的任务-含有自己的参数：./hadoop-2.8.0/bin/hadoop jar job6.jar com.construct.mapreduce.NWordCount2 /li1028/ /output52 -Dwordcount.case.sensitive=false -skip /output29/pattern.txt
 					>附加：不要经常笑，而是安静的、匀速的：
 							>./hadoop com.sun.tools.javac.Main NWordCount.java
 							>jar cf wc.jar NWordCount*.class
 
 		>新增节点加入或者旧节点重启： ./sbin/hadoop-daemon.sh start datanode
 					      ./sbin/yarn-daemon.sh start nodemanager
+
+		>多级map-reduce任务：
 
 
 	>Mahout在hadoop环境中：利用hdfs文件进行推荐-运行数据挖掘算法
@@ -67,3 +85,4 @@
 2.http://hadoop.apache.org/docs/r2.8.2/hadoop-mapreduce-client/hadoop-mapreduce-client-core/MapReduceTutorial.html（wordcount例子源码附带解释）'
 3.http://blog.csdn.net/dianacody/article/details/39494417(mapreduce个人所见)
 4.http://www.cnblogs.com/yanghuahui/p/3763820.html（任务的编写到运行）
+5.http://blog.csdn.net/sun_wangdong/article/details/59483790（任务的mapreduce，多job编写）
