@@ -13,8 +13,31 @@
 			     >自定义任务执行：需要maven打包。./bin/spark-submit --class com.construct.spark.SparkTask --master yarn --deploy-mode cluster --driver-memory 1G --executor-cores 1 ../bigData.jar 40
 			     >本地执行方式：--master local[4] 参数配置的不同
 
+	>java api开发：
+		>RDDS:弹性分布式数据集：
+			>创建、使用、持久化：在内存中。可以被并行的操作。
+					     >数据来源：文件、内存、数据库。
+			>RDD操作：transform和actions:
+				>transform: 将一个RDD转换为新的RDD,且只有有action时才会执行。
+					  > map:
+					  > reduceByKey:
+				>action: 计算这个RDD的一个度量量
+					  > reduce:
+			>持久化RDD在内存中、到磁盘上、到其他节点上：
+				>可以在action方法执行前先执行持久化的方法，这样在第一次计算之后，生成的JavaRDD就会被持久化，而相应可以被直接访问到了，再次被访问到了，即在后面的代码中可以访问了。
 
+		>广播变量和变量：变量分发到worker
+		>分片：最小单位是Block,即128M的内容---对于分布式文件来说。
+		>driver program: 负责将计算分为task任务，而分发到集群中各个节点上去计算运行，而节点将最终计算的结果返回给driver program。即主节点。
+				 这里，分发时刻，就是执行到action动作在JavaRDD的方法时候，在此之前，不会分发任务的。因为之前分发没有必要，浪费资源，不是lazy方式。
 
+		>本地执行模式：--master=local[n]
+		>变量和方法的作用域和生命周期：
+		>闭包：就是对excutor可见的若干变量和方法。--一个大括号里的内容。像是一个JSON对象，一个对象。
+			闭包发给excutor。序列化后的方式发的。
+			driver program将RDD操作任务分成若干个tasks，每个任务又有一个excutor来执行。每个excutor又有一个闭包。一个序列化传给executor的闭包就是一个任务。
+			推论1：序列化后的闭包里的变量，不会再影响到闭包外面的同一个变量的值，因为已经不在一个虚拟机JVM上了。而且worker也不会将闭包里的非最终结果变量返回给driver program 
+			
 
 参考资料：
 1.http://spark.apache.org/docs/latest/（官方参考资料）
