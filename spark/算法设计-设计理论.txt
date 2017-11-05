@@ -19,6 +19,7 @@
 					     >数据来源：文件、内存、数据库。
 			>RDD操作：transform和actions:
 				>transform: 将一个RDD转换为新的RDD,且只有有action时才会执行。
+					   目前有三种类型：一是
 					  > map:
 					  > reduceByKey:
 				>action: 计算这个RDD的一个度量量
@@ -26,19 +27,61 @@
 			>持久化RDD在内存中、到磁盘上、到其他节点上：
 				>可以在action方法执行前先执行持久化的方法，这样在第一次计算之后，生成的JavaRDD就会被持久化，而相应可以被直接访问到了，再次被访问到了，即在后面的代码中可以访问了。
 
+			>spark的文件处理模式：处理招式、处理类型。观念认为，通过这几种动作构成的模式，流程，可以解决一般的文件处理的问题。满足一般文件处理的需求。
+				>a.层层映射：以行为单位，一行为最初的输入元素-即RDD的元素，输出元素类型开始变化，经过一次又一次的转换映射，可以为一个复杂的对象（综合所有行，就是一个RDD集合），这个对象可以是基本的三种：迭代器(flatMap)、元组(mapToPair)、一般Object对象(map)。。这种转换为泛map方式.这是招式1：层层转换
+						所谓平坦化处理，就是在对任意一个RDD元素处理时，由这个RDD元素可以产生若干个元素，而我希望这些生产的元素是新的RDD的最小元素，flatMap方法就可以做到---注入函数返回的是一个集合迭代器，而这个集合中的元素就是新RDD的元素。即新RDD的元素是注入函数的返回值（集合）解散（平坦化）后的值，或说解散集合将全部元素加入到新的RDD中。
+					     #推论1:要注意注入函数的返回值，和新RDD的元素的关系。
+				>b.两两运算：以RDD的元素，两两输入，运算返回一个元素(reduce)，如果是PairRDD，则还可以是同一key下的values两两输入,运算返回一个元素（reduceByKey）
+				>c.排序和收集：对于一般RDD，对其中元素排序，需要专门定义比较函数，对于PairRDD,可以直接用key排序(sortedByKey)。收集结果：collect()则从各个节点上读取当前RDD元素回来-到driver program。
+				>d.过滤器filter：过滤器模式于RDD的元素，过滤函数。
+				>e.统计和持久化：countByKey,count按元素或者按pair进行。持久化RDD在内存中、磁盘中。
+				>f.纵横联合：union,join，从而可以将不同的RDD按键Key而链接起来，对于pairRDD处理非常有意义。
+
+			>spark的数据库处理模式：
+			>广播变量和计数器：广播变量给每个node发一份。计数器只写，在每个node上。
+
 		>广播变量和变量：变量分发到worker
 		>分片：最小单位是Block,即128M的内容---对于分布式文件来说。
 		>driver program: 负责将计算分为task任务，而分发到集群中各个节点上去计算运行，而节点将最终计算的结果返回给driver program。即主节点。
 				 这里，分发时刻，就是执行到action动作在JavaRDD的方法时候，在此之前，不会分发任务的。因为之前分发没有必要，浪费资源，不是lazy方式。
 
 		>本地执行模式：--master=local[n]
+			 >
+
 		>变量和方法的作用域和生命周期：
 		>闭包：就是对excutor可见的若干变量和方法。--一个大括号里的内容。像是一个JSON对象，一个对象。
 			闭包发给excutor。序列化后的方式发的。
 			driver program将RDD操作任务分成若干个tasks，每个任务又有一个excutor来执行。每个excutor又有一个闭包。一个序列化传给executor的闭包就是一个任务。
 			推论1：序列化后的闭包里的变量，不会再影响到闭包外面的同一个变量的值，因为已经不在一个虚拟机JVM上了。而且worker也不会将闭包里的非最终结果变量返回给driver program 
+			推论2: 即便是一个对象被传到序列化后的闭包里了，因为引用在新的JVM里了，所以在worker上的变化也不会影响到driver program上的对象了。
+			推论3：如果需要worker影响到driver program里的对象，那么需要Accumulator，这个可以反传给driver。
+			推论4：driver收集worker里println的结果：collect().foreach(println)或者take(100).foreach(println)
+				带回来的方式还可以是：rdd.collect()
+		>键值对形式的RDD:rdd of key-value
+			:		
+		>Shuffle:洗牌，比如reduceByKey，是一个耗费资源的过程，需要重新汇集结果。
+
+		>filter:过滤器:
+		>DataFrames：将数据集和数据容器关联起来的一个整体，整体提供了一系列像sql的查询操作方法。
+			  >过滤：
+			  >分组：
+			  >排序：
+			  >统计：
+			  >联合：横向联合：union,纵向联合：join。对于javaRDD同样可以。
+		>PageRank：是一种重要性排名。一个url在其他每个url下的页面中出现的比例（次数/总次数 * 分数）之和，再线性映射化，再将这个结果作为分数，进行下一轮的分数计算，次数越多，区分度就会越大，从而把各个页面都区分开来。
 			
 
+
+2.小知识：
+	>使用匿名内部类，不如使用lamda表达式：(a,b) -> {return a * a + b * b}。lamda表达式消除了匿名内部类。且该匿名类只有一个方法
+	>java8特性2：方法引用：lamda表达式中右侧实现体仅仅为方法调用，且输入参数是左边的平行移动，则可以使用方法引用，直接用：类：方法名，实例名：方法名
 参考资料：
 1.http://spark.apache.org/docs/latest/（官方参考资料）
 2.http://spark.apache.org/docs/latest/quick-start.html（官方参考资料，开始编程java api，伯克利大学）
+3.http://spark.apache.org/docs/latest/rdd-programming-guide.html（java编程起步，和原理讲解）
+4.http://spark.apache.org/docs/latest/api/java/index.html(开发文档)
+5.https://repository.cloudera.com/content/repositories/releases/org/apache/spark/spark-assembly_2.10/(目录jar仓库)
+6.http://blog.csdn.net/u012429555/article/details/51346328(一个完整的小哥的安装过程)
+7.https://my.oschina.net/wangzilong/blog/910157(本地独立运行spark任务)
+8.http://www.cnblogs.com/JohnTsai/p/5806194.html（java8方法引用）
+9.http://spark.apache.org/examples.html（编程实例）
