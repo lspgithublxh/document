@@ -63,14 +63,28 @@
 
 		>filter:过滤器:
 		>DataFrames：将数据集和数据容器关联起来的一个整体，整体提供了一系列像sql的查询操作方法。
-			  >过滤：
-			  >分组：
+			  >过滤：filter
+			  >分组：groupBy
 			  >排序：
-			  >统计：
+			  >统计：count
 			  >联合：横向联合：union,纵向联合：join。对于javaRDD同样可以。
+			  >select：选列，和对列处理（列是一个类，有方法和属性）
 		>PageRank：是一种重要性排名。一个url在其他每个url下的页面中出现的比例（次数/总次数 * 分数）之和，再线性映射化，再将这个结果作为分数，进行下一轮的分数计算，次数越多，区分度就会越大，从而把各个页面都区分开来。
-			
+		>Spark sql:创举：对象用sql来查。从数据库查出来的结果直接可以再用sql在本地查。RDD转换为DataSet
+			  >RDD和对象，RDD和StructType都可以转化为Dataset
+				>Dataset构造方式：json文件，数据库表，RDD转换（加StructType对象，或者加类.class），对象+Encoder
+				>Dataset本身用5种基本动作来查找：过滤、分组、排序、统计、联合、选列
+				>Dataset创建临时视图而用sql来查：
+				>Dataset的map-reduce处理：
+			----推论1：什么都可以转换为Dataset(集合，对象，不管存储形式是什么样子，存在哪里)
+			    推论2：Dataset可以进行一般的sql操作（存为视图后，可以用sql进行操作）
 
+			  >自定义函数：
+			  >直接查文件：parquet文件格式的文件，可以直接用sql来查。
+
+			  >Bucket和Parquet：桶
+			  >输出结果Bucket化和Partition化：
+			  >Hive metastore:数据持久化，将Dataset存为Derby下的表。
 
 2.小知识：
 	>使用匿名内部类，不如使用lamda表达式：(a,b) -> {return a * a + b * b}。lamda表达式消除了匿名内部类。且该匿名类只有一个方法
@@ -85,3 +99,5 @@
 7.https://my.oschina.net/wangzilong/blog/910157(本地独立运行spark任务)
 8.http://www.cnblogs.com/JohnTsai/p/5806194.html（java8方法引用）
 9.http://spark.apache.org/examples.html（编程实例）
+10.https://github.com/apache/spark/tree/master/examples/src/main/java/org/apache/spark/examples/sql（官方实例，可以看github）
+11.https://spark.apache.org/docs/latest/sql-programming-guide.html#dataframes（极其重要的spark-sql,hive参考资料）
