@@ -98,7 +98,8 @@
 									其他影响因素：文件系统碎片--重组、文件布局。数据存储密度---一个磁道中一个分区的数据量bit。。定位缓存：即认为当前访问的磁盘位置可能以后也会访问----这个与程序相关--如循环语句-数组操作、矩阵操作。
 							磁盘重要概念：磁盘、柱面、磁道、扇区。
 									磁盘-盘片(5个最多)-盘面(一个盘片2个)-同心圆磁粉构成磁道（上万个）-每个盘面上有磁头---一个磁道上分若干个弧段每个弧度是一个扇区512字节--读写数据以扇区为单位
-							
+									柱面-磁头-扇区：确定一个磁盘上的区域。0-0-0，1-1-1
+									Dos经典扇区：MBR扇区（磁盘分区表）、DBR扇区（dos引导程序）、FAT扇区（文件分配表-簇记录）、BD扇区(根目录)：均在0盘面外磁道
 					>音圈直线电机：
 				
 			  >输出结果Bucket化和Partition化：
@@ -119,3 +120,4 @@
 9.http://spark.apache.org/examples.html（编程实例）
 10.https://github.com/apache/spark/tree/master/examples/src/main/java/org/apache/spark/examples/sql（官方实例，可以看github）
 11.https://spark.apache.org/docs/latest/sql-programming-guide.html#dataframes（极其重要的spark-sql,hive参考资料）
+12.http://bbs.mydigit.cn/read.php?tid=331754（磁盘参考资料）
