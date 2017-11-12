@@ -1,0 +1,18 @@
+1.问题描述：
+	>安装时：4G的版本：CentOS-7-x86_64-DVD-1708.iso。同时最后要接受许可，同时配置一下网络，保证可以联通即可。
+	>预知：
+		>系统操作：
+			>语言设置：LANG="zh_CN.UTF-8" /etc/locale.conf
+			>用户切换：su - root   或者  su - lishaoping
+		>网络操作：
+		>文件操作：
+		>服务操作：
+		>进程操作：
+		>
+		
+	>设计理论：
+
+
+
+参考：
+1.http://mirrors.sohu.com/centos/7/isos/x86_64/（下载地址和官网）

@@ -102,7 +102,23 @@
 			>二是对于静态页面，可以直接读取文件返回。
 			>三是对于动态页面，使用模板， 		
 		
-		
+	>爬虫不断会遇到的新事物和新问题：
+		>python默认运行时编码：ascii  通过sys.getdefaultencoding()可以看到
+					运行时--编译解释时，是将文件中的内容（以gbk或者unicode等）方式编码的内容试图先转换为asclli编码。有中文显然就会报错。所以要指定运行时coding=utf-8编码就可以了
+		>python内字符串的中间编码方式：unicode。decode（源串的编码）, encode(目标编码)编码的中间编码。
+			unicode方式的字符串不能再调用decode解码方法，只能encode编码了。
+		>python文件中字符串常量：如果文件编码是utf-8,则该字符串就是utf-8编码。可以通过在文件开头#coding=utf-8来指定。工程文件默认编码GBK。Editor->File Encoding可以看到
+					 此时一个字符串：'李少平'就是utf-8编码的，可以调用decode('utf-8')来解码为unicode方式，而再编码为其他方式。
+					 同时在输出时，本console里只能显示utf-8和unicode编码的字符串--中文字符串
+		>requests对报头Content-type没有编码的http返回页面处理方式：content-type设置为iso-8859-1
+				>所以只需要重新设置res.encoding = 'utf-8'即可
+		>一般的编码知识：可以用iso-8859-1这样的单字符编码集，来表示utf-8 或者gb2312这样的多字节编码集：方法就是拆分多字节为单字节，而每个单字节就用iso-8859-1来表示了。
+				  unicode是定长编码2字节，所有语言都可以表示。英文也是2字节。而utf-8对于中文是3字节，是不定长编码。
+				存储表示和显示认为：存储为什么字节，认为是什么编码。
+				asclli -- > iso-8859-1 -- > gbk ---- > utf-8 ----> unicode
+
+		>请求报头的设置：Accept-Encoding有时候需要不设置，否则永远无法得到正确的编码。含义就是不接受压缩编码，而直接返回源码给我----因为我不是浏览器，不能解码压缩后的html页面，而需要直接给我源码的html页面。
+	
 3.修炼：以战促学促思考
 	>前进中将会遇到的问题计划：
 	>常见操作计划：
@@ -111,7 +127,8 @@
 
 4.经验--插件
 	>BeautifulSoup就是python的jquery,能够很好的访问到一个html页面中各个层次的内容
-	>pip install
+	>pip install beautifulsoup4
+	>下载模块，进入文件来安装：python setup.py install
 5、额外体会：
 	>BS架构方式就是更新快，客户端不需要做什么。而CS模式就需要升级客户端，比较麻烦。
 	>手机的未来：是空间显示---这样对肉眼最好--但不保密。不用升级客户端app必然是以后的一种趋势。
@@ -128,3 +145,6 @@
 9.https://www.liaoxuefeng.com/wiki/001374738125095c955c1e6d8bb493182103fac9270762a000/001386832648091917b035146084c43b05754ec9408dfaf000（非常全面的python开发，到网页的教程）
 10.http://blog.csdn.net/testcs_dn/article/details/50449048(原生python httpserver方式)
 11.http://blog.csdn.net/pi9nc/article/details/23204449（Django网站开发）
+12.http://cuiqingcai.com/1319.html(Bs4重要的资料)
+13.https://www.cnblogs.com/lilinwei340/p/6417689.html（requests插件的使用）
+14.https://www.crifan.com/set_accept_encoding_header_to_gzip_deflate_return_messy_code/（请求获取页面的编码问题彻底解决）
