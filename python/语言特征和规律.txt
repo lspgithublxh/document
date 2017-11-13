@@ -118,7 +118,11 @@
 				asclli -- > iso-8859-1 -- > gbk ---- > utf-8 ----> unicode
 
 		>请求报头的设置：Accept-Encoding有时候需要不设置，否则永远无法得到正确的编码。含义就是不接受压缩编码，而直接返回源码给我----因为我不是浏览器，不能解码压缩后的html页面，而需要直接给我源码的html页面。
-	
+	>Anaconda:一个科学计算的python发行版本。
+		>
+	>scrapy:一个spider框架：scrapy startproject scrapy_spider
+		>
+
 3.修炼：以战促学促思考
 	>前进中将会遇到的问题计划：
 	>常见操作计划：
@@ -148,3 +152,8 @@
 12.http://cuiqingcai.com/1319.html(Bs4重要的资料)
 13.https://www.cnblogs.com/lilinwei340/p/6417689.html（requests插件的使用）
 14.https://www.crifan.com/set_accept_encoding_header_to_gzip_deflate_return_messy_code/（请求获取页面的编码问题彻底解决）
+15.https://mirrors.tuna.tsinghua.edu.cn/help/anaconda/(清华大学开元软件站)
+16.https://jingyan.baidu.com/article/1876c8527be1c3890a137645.html（conda命令的使用，安装换资源路径，安装scrapy都可以）
+17.http://python.jobbole.com/86236/(Anaconda包管理工具)
+18.https://sourceforge.net/projects/pywin32/files/pywin32/Build%20221/pywin32-221.win-amd64-py2.7.exe/download（pywin32下载）
+19、http://blog.csdn.net/playstudy/article/details/17296473（正确安装顺序，scrapy的依赖）https://www.cnblogs.com/tigerm/p/scrapy.html
