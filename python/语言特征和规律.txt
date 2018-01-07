@@ -121,7 +121,10 @@
 	>Anaconda:一个科学计算的python发行版本。
 		>
 	>scrapy:一个spider框架：scrapy startproject scrapy_spider
-		>
+		>执行蜘蛛：在根目录下，scrapy crawl name
+	>可视化：
+		>插件：世界地图：pygal_maps_world进行：
+				>数据类型：国家分类型、国家取值型
 
 3.修炼：以战促学促思考
 	>前进中将会遇到的问题计划：
@@ -157,3 +160,5 @@
 17.http://python.jobbole.com/86236/(Anaconda包管理工具)
 18.https://sourceforge.net/projects/pywin32/files/pywin32/Build%20221/pywin32-221.win-amd64-py2.7.exe/download（pywin32下载）
 19、http://blog.csdn.net/playstudy/article/details/17296473（正确安装顺序，scrapy的依赖）https://www.cnblogs.com/tigerm/p/scrapy.html
+20.http://blog.csdn.net/ouening/article/details/54983701（地图数据图）
+21.http://python.jobbole.com/86584/（scrapy简单实例）
