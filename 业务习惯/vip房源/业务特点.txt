@@ -106,6 +106,7 @@
 		>获取房产类别信息：CMCProxy.getInstance().getCategoryByID(类别id)。。比如ershoufang这种字符串
 		>获取网灵通：获取当前用户的网灵通：WltCommon.getCurrentUserWlts(BeatContext beat);
 				List<WltInfo> openedWltList = WltService.getVipWltInfoList(Long.parseLong(userId));
+				IWltDisplayService.getWltInfoList(userid, statelist)
 		>vipuserlog服务：/deleteapi
 		>获取刷新次数：IRefreshedCountService.getRefreshedCountListByUserId(userid,...)  获取总共刷新次数：  IRefreshedCountService.getRefreshedCountByUserId()
 		>获取用户的推广列表（是部分房源信息）：IPromotionService.getPromotionsByUserId(userid,query)推广中的，还是其他状态都可以
@@ -126,6 +127,7 @@
 					更新信息状态：IInfoWriteService.updateState(infoid)
 					IInfoService这个服务就是imcService
 		>获取info通过条件的方式：IUsercenterService.getInfoIdList(condition, userid)
+					IInfoService.getInfo(ContentType.CONTENT,infoid)
 		>消息发送：站内：发给审批人或者申请人：IMessageV3.AppendSystemMsg(userid,userip,content....)
 		>已经使用的降价次数：IDepreciationService.countDepreciationsByUserId(userid)	
 		>设置降价：IDepreciationService.setDepreciation(userid, infoid, productid,新价格，旧价格，原因)
@@ -139,6 +141,14 @@
 		>更新-添加手动刷新：IManualRefreshService.addManualRefresh(ManualRefresh， param)
 		>房源移动：	IHouseMoveService.addFangYuanMove(loginuserid, tarUserid,交集类别cateidlist) 
 				房源申请
+		>获取用户置顶top的info帖子：InfoTopService.getUserTopDatas(userid,...)
+		>获取用户推广余额：TradeService.getAccount(userid)
+		>获取微信二维码列表：
+		>获取商圈占领异常信息：IAdsBussOccuQueryService.getAdsBusinessOccupyMessage(信息来源，userid)
+		>获取商圈模板：
+		>查询用户在某商圈所发的帖子数（30天内）：IJiGuangService.infoIdsIn30DaysBusiness(userid,...)
+
+
 	>典型枚举：
 		>产品：ProductEnum
 		>产品id体系：Product.FangChanType
@@ -164,7 +174,7 @@
 		>表现类别：ConsumeConst(招商加盟二级表现类别集合...)
 		>消耗制优先推送-错误代码：添加推广时的错误代码：PromotionErrorCode(...推送已经达到上限、信息状态错误、金额不足、套餐资源已经用完、重复推广、推送成功)
 		>预约刷新状态：ReservationRefreshState(正常，预约中，取消预约，刷新完成，已经更新)
-		>帖子来源：InfoSourceEnum
+		>帖子来源：InfoSourceEnum（）
 				
 
 

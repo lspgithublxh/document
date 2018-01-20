@@ -147,6 +147,14 @@
 		>AdsBusinessPutDetail:广告占领商圈详情：订单id,商圈id,类别id,占位帖子数，商圈占领开始-结束时间、赠送商圈占领开始-结束时间，付款-退款
 					城市-区域-商圈
 						IAdsBussOccuQueryService.getAdsBusinessOccupyPutDetail(...userid, cateid,...)
+		>OtherStatVO:推广和定向统计。推广余额。
+		>BusinessVO:商圈模板：localName-htmlTemp
+		>BusinessOccupyDetail:商圈占领详细-商圈排行实体：商圈id,类别id,占领数量、sort排名
+						IAdsBussOccuQueryService.getAdsBusinessOccupyCitySort(userid,cateid,cityid,....)
+		>BusinessOccupyPrice:商圈投放定价表：IAdsBussOccuQueryService.getAdsBusinessOccupyPrice(userid,cateid,...)
+		>NewAccount:用户58账户余额：IJiGuangService.getWUBAAccountFront(userid)
+
+
 
 	>请求控制器：
 		>FangyuanAgentApiController:
@@ -154,3 +162,4 @@
 		>PromotionApiController：增加一条推广信息
 		>AjaxFangYuanMoveController：房源搬家申请
 					>条件：网灵通类别有交集（两者之间）
+		>EditFangYuanController:
