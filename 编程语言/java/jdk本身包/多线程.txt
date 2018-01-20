@@ -1,0 +1,6 @@
+1.问题：
+	>执行器Excutors:里有任务队列---任务统一实现Runnale接口，有线程队列：从而每个线程（一般的Thread线程是执行任务完毕就停止了，但是特殊的队列式的线程肯定不是Thread类型，而是重新新的，我也写过）。
+		>方法里定义内部类，或者属性值定义为一个匿名内部类，定义的时候里面的方法是没有执行的。
+		>Executors.newScheduledThreadPool()可以周期性的执行任务：ScheduledExecutorService.scheduleWithFixedDelay(Runnable...)
+		>ConcurrentHashMap
+		>AtomicReference<long[]>

@@ -1,0 +1,156 @@
+1.问题：
+	>数据结构：
+		----诚信房源
+		>InfoVO：是一个房源信息的基本描述：房子的基本地域信息、图片、价-户-面积，发布时间
+		>Promotion:是推广表：产品、信息、分类、地区id都有。开始-结束日期和用户id
+			   >获取途径：IPromotionService.getPromotionsByUserId(用户id,query)获取的是用户推广中的推广表信息
+					获取一个info的全部推广Promotion 	IPromotionService.getPromotionsByInfoId(userid,infoid, productid)
+		>Info:是一个房源信息的直接返回体。包含local列表。。有参数结构ParaClass
+			>获取途径：IUsercenterService.getInfoListOrder(userid...)
+					IInfoService.getInfo(infoid)
+				  Info info = InfoService.getInfo(infoid)
+					Info info = IMCProxy.instance.getByInfoId(infoid)
+		>PromotionInfoVO:是优先推送数据,含有刷新-预约等信息：含基本信息实体InfoVO和降价信息实体JiangjiaInfoVO和Promotion
+			>获取途径：是封装出来的：InfoVOBuilder.buildPromotionInfoVO().内容一部分来自同一个infoid的Promotion,一部分来自Info,预约刷新的几个来自包下列装类的数据，另一部分来自于计算。			
+
+		>DispLocalEntity:是一个城市的地理-展示名称的实体。含有城市-区域-商圈三级编号字符串fullPath
+				>获取途径：IDispLocalService.GetDispLocalByID()
+		>RefreshedCount:是一个用户的刷新数量--地域-产品-房源类别-日期下
+				>获取途径：IRefreshedCountService.getRefreshedCountListByUserId(userid,基础查询条件如地域-产品-类别)
+		>ReservationRefresh:是用户预约刷新数量。含地域-产品-类别-信息-推广等id信息和预约时段、预约数-已经刷新数等关键信息。
+				>获取途径：IReservationRefreshService.getReservationRefreshByUserId(userid,基础条件查询)
+		>DispCategoryEntity:是房产分类实体(表现类别：名称-路径-归属-名称)
+				>获取途径：IDispCategoryService.GetDefaultDispCateByCateID(cateid)
+		>WltInfo:是网灵通基本信息：含有用户、产品类别-产品线、产品编号（房产、宠物、汽车网）、二级服务类别、一级表现城市、服务表现商圈-区域、服务状态、订单编号
+			>获取途径：使用客户输入的表现类别，WltCommon.getCurrentUserWlts(beat)--来获取网灵通列表，同时保留网灵通表现类别和用户输入的类别一样的那些网灵通。
+			>使用目的：获取服务一级表现城市id列表getDispcityList，服务二级表现类别id列表getDispcateList。。基本只此2用。
+		----房源统计
+		>RefreshedCount：是用户已经刷新的实体（infoid和count）
+				>获取用户每条信息已经刷新的次数：IRefreshedCountService.getRefreshedCountListByUserId(userid,query)
+		>ReservationRefresh:是用户预约刷新的实体（infoid和reserveCount）
+				开始、结束、时段、频度、来源、索引类型、状态
+				>获取方式：用户当天有效的预约刷新表：IReservationRefreshService.getEffectReservationRefreshByUserId(userid,date, query,产品-类别)
+					用户一条信息的预约刷新列表：IReservationRefreshService.getReservationRefreshByInfoId(userid,infoid,productid,date)
+				>添加一条：IReservationRefreshService.addReservationRefresh(ReservationRefresh,param)
+		>CnsmRet:(totalValue,curValue)
+		>RscParam:参数对象
+		>WltDimension:网灵通服务维度实体（状态、产品、地域、类别）
+		>FreeTaxStatVO:免税房源实体：各种统计量
+		>ChengxinStatVO:诚信统计实体：各种统计量：如已经刷新个数、剩余可刷新个数、等待刷新个数
+		>ShowBlocks:
+		----置顶房源
+		>JSONString:是置顶房源列表：其中topLocal是商圈int类型id
+			>获取途径：CommonTopService.queryTopMessageList(userid)
+		>AdEntity:是广告实体：其entityid就是infoid，schedule就是置顶调度(策略id,起止时间，置顶小时数)，amount就是总共的消费，channels就是地区信息-类别信息，couponCost就是优惠信息，source是置顶类型，state是广告状态
+					adId是本身的id，在获取PayDetailEntity里有使用，指明一个广告id一个PayDetailEntity
+			>获取途径：IAdService.get(用户id,广告状态集合，分页参数，输出结果统计out,...)
+		>PayDetailEntity:是支付详细实体：
+			>获取途径：IAdService.getPayDetail(userid,产品类型枚举)获取的是用户的全部的支付详细实体，为一个Map<Long,PayDetailEntity>,键就是广告实体AdEntity的adId
+		>ChannelEntity:是通道实体，有fullpath这种地区信息,在AdEntity里有
+		>LocalEntity:是归属地域实体，是城市区域商圈信息，有：地域名、全路径、归属地域名...。。还有小区名信息
+			>获取途径：ILocalService.GetLocalByID(userid)
+		>CouponEntity：是优惠实体：是PayDetailEntity的属性，type-,auctionType,effectiveHours有效时长
+			>获取途径：
+		>CreativeEntity:是pv相关的实体，是AdEntity的属性--是一个列表 。其creativeId就是promotionId
+		
+		----else ajax
+		>ReservationTemp:预约模板。有tempName ,userId,productId等属性。用户在某个产品下的刷新模板
+				>IReservationTempService.getUserRefTemp(userid,productid)
+				>更新模板或者增加模板：IReservationTempService.insert/update
+		>com.bj58.bsp.authorized.bean.User:与立即刷新有关的用户，
+				>获取方式：User crmuser = CrmProvider.getCrmUser(clientParam.getCrmUserJson());
+		>CrmCookie:用户-客服人员id集合体
+				>获取方法：CrmCookie crmCookie = CrmCookieUtil.getCrmCookie(BeatContextUtils.getCurrent());
+		>UserDeposit:用户保证金：城市、产品、金额、起止、解冻时间;;二级表现类别
+		>JiangjiaInfoVO:降价实体：infoid, promotionid,oldPrice,reason,...
+		>WorkStatementEntity:用户工作指标,与浏览器点击有关。
+				>获取方式：IStatisticsService.getBrokerList()
+					IDataStatementService.getEntityByUserId(userid)
+		>WorkStatementData:是WorkStatementEntity的内容。含有jztg-精准统计数量，jbxz-新增统计数量-发布信息数，jbll-浏览数量--info浏览统计，jbzl-总房源量即info量，yxtg-优先推送房源数量（recommand推荐数），jbzs-展示房源数(topcount)
+					cxtg-诚信统计-热租房源展示总量(honesstRecommandCount)，cxsx-热租房源已经刷新次数honestRefreshCount, cxll-热租浏览总量，mstg-免税房源展示总量-taxFreeRecommandCount,
+					mssx-免税房源已经刷新次数-TaxFreeRefreshCount, mslf-免税房源剩余-TaxFreeLeftCount,msll-免税浏览总量-taxFreeInfoBrowseCount,	yxqx-优先取消数-cancelRecommandCount
+						honest-有诚信含义
+		>InfoBrowseDTO:信息点击实体：infoid, 浏览量browseCount,发布类型cate，信息来源类型source
+				>构造出来。手动。
+		>DsapResult：一个信息的浏览量实体：通过hbase搜索可以实现。其中有scfmap，<key-day,count(pv)>
+				>获取方法：IHbaseApi.queryDsapResultByRowKey('HouseVipAnalytics',infoid相关的key列表)  可以知道每个info帖子每天的访问量
+					IHbaseApi.queryDsapResultByRowKey(tablename, rowkey)可以获取scfmap里的cf:jz_fy精准展现总量、cf:jb_xz新增量、cf:jb_pv浏览量、cf:jb_fyz总房源、cf:yx_fy有限房源、cf:jb_zs展示房源量、cf:yx_sx刷新、....诚信、免税之类量详细信息
+					searchDsapResultByPrefix("HouseVipAnalytics", "前缀")
+					表名：hdp_hbg_fcrd_58:fangchan_businessIds_data，可以获取queryDsapResultByRowKey帖子所在商圈相关信息：cf:businessIds
+							这个表名-可以是：bi_fangchan_duankou_day_new
+		>InfoBrowseSortDTO：点击量排名
+				>获取逻辑：先可以从IHbaseApi方式获取到scfMap中key为cf:top10PvInfo的前10个用户的点击量排名。
+				总共值：lable, value, url（为请求路径）
+		>KanFangUserEntity:看房实体，看房人。。一个userid可以获取到多个--因为看同一套房子？
+				>获取方法：IKanFangService.getUserByVip()
+		>KanFangViewRecordEntity:看房记录实体IKanFangService.getViewRecordListByPage()
+		>KanFangRecomRecordEntity:推荐房源记录实体：看房人id
+				>获取方法：IKanFangService.getRecomRecordListByPage()
+		>KanFangVipHelpEntity:潜在客户实体：一个userid可以获取到多个--因为看同一套房子？
+				>获取方法：IKanFangService.getKanFangHelpList(userid)
+		>LocalDailybroker:含有Dailybroker的信息，+刷新待执行数目。。其中推荐数属性就是推广的数量。取消推荐数就是取消推广数量
+		>Dailybroker:含有推荐数、降价数、信息数、分类-经纪人。。信息丰富
+				>构造方法：从WorkStatementData里获取到
+					旧获取方式：IDailyBrokerService.getBrokerList(usesid, 产品线,cates,起止时间)
+		>CnsmRet:资源相关，可以获取总共资源数和当前资源数。--从而获得剩余资源数：即为剩余免税数量。
+		>StatResult:统计结果实体，包含WorkStatementData含有的及Dailybroker有的相同字段的信息。
+			>获取方式：IStatService.getStatResult(yesterday)
+		>BrokerComment:用户评论：
+			>获取方式：获取某段时间内的用户评论数：再次从hbase里取：tablename:vip_fangchan_data   HBaseService.queryDsapResultByRowKey(tablename, rowkeys)  从结果DsapResult里提取出来：cf:hp, cf:zp, cf:cp, cf:pass等等
+			
+		>OrgSearch:用户信息-注册方面：城市、组织架构名、userid、username、电话、手机、网灵通服务状态、头像-实名-手机-邮箱-商业认证、搜索类型
+		>CompanyAgentVo:经纪人实体类：城市、经纪人id、经纪人姓名、电话、公司、区域、门店、网灵通状态、是否各种认证、用户与组织的关系状态值
+		>com.bj58.enterprise.entity.User:企业用户：
+		>Enterprise:企业实体
+		>UserOrganize:用户组织，orgid
+				IUserOrganize.getListByUid(userid...)
+		>EOranize:企业组织实体：orgid关联、级别码(企业还是门店等)
+				IEOrganize.getEOrganize()
+		>PromotionResult：经纪人房源列表code-data属性：IPromotionAPIService.getPromotionWithBiz()
+				  可以房源信息infoid来获取对应的全部推广结果：IPromotionAPIService.getPromotionInfo(infodi)
+					用户房源信息删除情况：IPromotionAPIService.getFangyuanDelInfo(userid)
+		>CommonInfoVo:普通信息：广告语-title、删除时间、汽车单元参数、汽车图片、状态、信息来源、价格、原因-原因码
+				>获取方式：通过Info为主，InfoVoProvider为辅助提供工具来实现。
+		>InfoResult:IMC写服务返回值封装类，有code这个属性。IInfoWriteService.updateState(infoid)	
+		>Viplog:记录vip日志，部分信息来自下者。用户-类型-内容-时间
+		>VipSysInfo:系统日志		
+		>JSONObject:租房str:包含出租方式（整租、单间、）、装修情况、图片url(info中的ParaClass)（http://pic1-8.58cdn.com.cn/...hash,图片类型都在考虑范围。。http://pic1.ajkimg.com/display/58ajk/%s/%dx%d.jpg为安居客图片的获取方式）
+				联系人、最早入住时间
+		>com.bj58.spat.umc.entity.User:用户基本信息(含QQ)、注册信息、登陆信息
+		>BasicInfo:用户基本信息
+		
+		>InfoCounter:用户今天浏览量相关(点击量)：IInfoCounter.LoadByIDs(infoids)	counter即为今天浏览量
+				>昨天的浏览量：数据来源：hbase表：HouseVipAnalytics		IHbaseApi.queryDsapResultByRowKey(LIULANLIANG_TABLENAME, rowKeys);
+		>HouseMove:房屋移动
+				>获取方式：IHouseMoveService.getFangYuanMoveById(userid,infoid)
+						获取用户全部房屋移动：IHouseMoveService.getFangYuanMove(userid,...)
+		>HouseMoveVO:房屋移动视图：构造方式，由上。
+		>StatRscRet:用户资源信息：RscBuilder.prepare(IStaticRsc.Get.class).userId(userId).rscType(RscSpaces.USER_INFO.value).invoke();
+		>com.bj58.bsp.authorized.bean.User:特殊用户：User crmuser = CrmProvider.getCrmUser()
+		>JiguangInfoVO:与帖子所在商圈有关
+		>RankDetail:帖子商圈排名相关：infoid,shangquanid,rank
+		>ManualRefresh:封装对一个info进行手动刷新的信息实体：包含infoid, productid,localid,source,userid,userip
+				使用：IManualRefreshService.addManualRefresh(manualRefresh...)
+				>获取方式：获取用户的手动刷新表IManualRefreshService.getManualRefreshByUserId(userid,date,产品和分类)
+				
+		>UserProRefSdEntity:单个用户的推送刷新数据：
+				>获取方式：IDataAnalysisService.getUserProRefSdData1(userid,cateid, date等信息)
+		>UserPromotionSd:存放刷新数据相关实体：诚信-优先-免税相关刷新各时段数据和：
+
+		>TsSdBasic:推送刷新时段基本数据
+
+		>DeltaReserveCountVO:今天有效的预约刷新数-和昨天有效的预约刷新数的差额
+		>VipUserLogStat:日志汇总实体：IVipUserLogService.getVipUserLogStat()	
+		>VipUserLog：日志详细实体：IVipUserLogService.getVipUserlog(58,赶集)
+		>AdsBusinessInfoPutDetail:帖子占位详情，
+					IAdsBussOccuQueryService.getAdsBusinessOccupyInfoPutDetail(...userid,cateid, orderid...)
+		>AdsBusinessPutDetail:广告占领商圈详情：订单id,商圈id,类别id,占位帖子数，商圈占领开始-结束时间、赠送商圈占领开始-结束时间，付款-退款
+					城市-区域-商圈
+						IAdsBussOccuQueryService.getAdsBusinessOccupyPutDetail(...userid, cateid,...)
+
+	>请求控制器：
+		>FangyuanAgentApiController:
+		>FangyuanAPiController:
+		>PromotionApiController：增加一条推广信息
+		>AjaxFangYuanMoveController：房源搬家申请
+					>条件：网灵通类别有交集（两者之间）

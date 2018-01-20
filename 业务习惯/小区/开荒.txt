@@ -1,0 +1,87 @@
+1.问题：
+	>请求与处理：
+		>/adminbind/bindstationtoxiaoqu/stationId:一是更新站点所在城市的所有某类小区的附近站点列表。
+		>/adminbind/unbindstationtoxiaoqu/stationId:二是小区解绑站点（不在绑定该站点）
+		>/adminadd/addtype   ../adpage/cateId获取某个分类下应该展示的列名列表
+		>/admin/list:
+			
+	>基本数据结构：
+		>DicInfo:小区信息，字典数据。有cateid:类别（地铁，公交站点）、expanse(可以解析出经纬度、城市id、所有的地铁或公交线、整条线经过的站点列表)
+				是站点也是小区。。。添加图片页也可以使用
+		>DicInfo2:小区信息2，字典数据，是进行索引的的数据结构,xiaoquname信息也有。dictid可以关系到。。。一般用memcache来缓存.MemCacheTool
+		>DicCateInfo:小区分类信息
+		>DicPrice:小区均价信息
+		>XiaoquIndexInfo:小区索引信息。也是字典服务三大数据之一：DicInfo2/DicPrice/XiaoquIndexInfo。。
+		>PicAudit:图片审核信息，picid
+		>PicInfo:图片信息,小区实景图或者户型图。。保存图片会使用这个。。图片会保存在/tiny/目录下
+		>DicAudit:字典审核信息
+
+		>ManageDto:有城市、地区、名的一个查询体
+		>DicAttention:有dicid。小区关注信息。。一个dicid可以获取一个小区注意列表。。也可以获取当前登陆用户关注的小区
+		>MapDto:地图详细信息：城市-地域-商圈-名称-地址-地标经纬度信息	：	
+		>DicManage:小区管理员信息。管理员设置页数据项信息，dictid可以关系到
+
+		>XiaoquAd：小区广告。dicid可以获取到一个。//其中图片保存在：http://pic.58.com/images/xq_img/big/文件名路径下
+				小区的定位，广告的图片信息。（独立的保存）
+		>DicEvaluate:小区评价。评价管理列表，dicid对应一个。所以Dic是小区的意思
+		
+		>RequestFile：为wf系统提供的对上传文件的描述封装：保存图片用RequestEntity对象，里封装了文件的字节，文件的属性如/images/xq_img/tiny/，文件保存则用FileHandler.post(RequestEntity)来完成。
+				http://pic.58.com/images/xq_img/tiny/文件名下可以取图片
+		>DicInfoDTO:小区详细信息：融合基本、图片、均价、地铁公交信息，二手房、合租房、租房的数量。周围10个小区
+		>TrafficDTO:一个地铁或公交站的交通详细：也简单。站名和小区的距离等信息
+		>DictPriceEntity:小区均价实体：图表展示用
+		>ListBottomDto:小区页面底部信息list实体
+		>ListResultEntity:小区页面整体信息实体list
+		>ListRightDto:页面右侧实体list
+		>UserDTO:用户详细实体
+		>InfoDTO:房源信息详细
+		>DictPriceEntity:小区均价实体：图表展示需要。
+		>TopAndFiveDTO:热门房源信息--前5个
+		>DetailEntity:小区详细实体（非常全面的设置）
+		>XieZiLouDTO:写字楼详细信息
+		>DispCategoryEntity:类别目录实体
+		>CMCSPropertyEntity:类别单元参数
+		>DicPriceDTO:均价详细
+
+		>Community:小区基本信息
+		>CommunityDetail:小区详细信息	
+		>CommunityPic：小区图片列表，通过infoid获取
+		>CommunityPrice:小区均价
+		>CommunityPriceEntity:小区新价格实体
+
+		>LocalPrice:商圈均价
+		>XiaoQuInfo:
+		>XiaoQuAuditPic:小区审核信息
+		>XiaoQuLog:记录日志
+		>XiaoQuExpand：附加小区信息
+		>XiaoQuVO:小区视图对象
+		>CommunityPriceEntity：
+
+	>数据存取业务：
+		>
+
+	>问题：
+		>BindController:里面问题大：一是service直接new,二是远程调用每次都ProxyFactory.create而不是只create一次
+		>HezuoController:不在使用。很简单。
+		>ManageAddController:图片审核信息
+		>ManageController：小区相关服务
+		>MiscController:/xiaoqu/
+		>MobileXiaoquController:/xiaoqu/mobilexiaoqu/小区移动服务
+					>小区详细信息：比如小区均价（小区里的二手房、租房、合租房等的价格平均）、小区交通、小区基本信息。
+		>MonitorController:忽略，没用
+		>XiaoquController:制作小区页面各个部分信息
+		>XieZiLouController:写字楼
+		>XinFangController:获取新房详细列表等
+
+		>MobileXiaoquInfoListController:移动小区。主页面各部分数据的加载。
+		>UrlController:
+
+
+		>MobileCommunityDetailFinalController:移动社区详细：
+		>CMCOpenApiController:
+		>KaiHuangIndexController:
+
+		>XiaoQuReviewController:新增小区审核
+		>FangjiaController:各种房价数据
+		>XiaoQuListController:获取新校区
+

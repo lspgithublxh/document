@@ -1,0 +1,17 @@
+1.问题：
+	>准备：
+	>基本概念：
+	>基本数据结构：
+		>JSONString:是置顶房源列表：其中topLocal是商圈int类型id
+			>获取途径：CommonTopService.queryTopMessageList(userid)
+		>AdEntity:是广告实体：其entityid就是infoid，schedule就是置顶调度(策略id,起止时间，置顶小时数)，amount就是总共的消费，channels就是地区信息-类别信息，couponCost就是优惠信息，source是置顶类型，state是广告状态
+					adId是本身的id，在获取PayDetailEntity里有使用，指明一个广告id一个PayDetailEntity
+			>获取途径：IAdService.get(用户id,广告状态集合，分页参数，输出结果统计out,...)
+		>PayDetailEntity:是支付详细实体：
+			>获取途径：IAdService.getPayDetail(userid,产品类型枚举)获取的是用户的全部的支付详细实体，为一个Map<Long,PayDetailEntity>,键就是广告实体AdEntity的adId
+		>ChannelEntity:是通道实体，有fullpath这种地区信息,在AdEntity里有
+		>LocalEntity:是归属地域实体，是城市区域商圈信息，有：地域名、全路径、归属地域名...。。还有小区名信息
+			>获取途径：ILocalService.GetLocalByID(userid)
+		>CouponEntity：是优惠实体：是PayDetailEntity的属性，type-,auctionType,effectiveHours有效时长
+			>获取途径：
+		>CreativeEntity:是pv相关的实体，是AdEntity的属性--是一个列表 。其creativeId就是promotionId

@@ -1,0 +1,6 @@
+1.直接安装：
+  启动：git config --global user.name
+	git config --global user.mail
+	ssh-keygen -t rsa -C "1913796030@qq.com"
+	生成到当前用户的/.ssh/目录下,复制.pub里面的内容到github上。即可使用。
+

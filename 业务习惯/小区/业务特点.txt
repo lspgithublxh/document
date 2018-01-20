@@ -1,0 +1,202 @@
+1.问题：
+	>
+	>常见功能的实现：
+		>服务的获取：根据scf.conf里的配置（服务的地址和端口、名称，可以多达24个服务主机），而用一个工厂类来获取（工厂类同样用ProxyFactory.create来获取到服务对象，而服务对象是通过jar包依赖而构造出来的---而不是其他工程）。
+			>例子1：单服务工厂类：WltFactory工厂获取IWltDisplayService服务。。
+			>例子2：多服务工厂类：RemoteProxyFactory工厂通过ScfMonitorProxy来获取ProxyFactory.create的实例的代理类（即实例实现的接口的实例）
+				这种实例构造出来后，需要做一件事--就是配置全局变量：SCFInit.initScfKey(scfkeyPath);---通过读取scfkey.key文件来实现。同时也可以用SCFInit.init(scfconfigpath);来实现进一步初始化全局变量（或者配置全局的类--框架会使用的类）
+		>服务的初始化：框架的初始化：用scfconf.config和scfkey.key两个文件进行。参考如上。
+		>服务的使用：
+		>调用端到服务端的入口方法：
+		>服务端服务的常见结构：解析调用参数--根据业务规则构造结果数据--并调用依赖的服务获取必要数据--封装数据结果为调用端需要的数据格式--返回调用端
+		>已经实现的服务：
+			>cmcs:调用端java:CMCSClient
+			>PromotionAPIService：推广服务：
+					>参数结构：PromotionSearchEntity
+			>CMCService:是一个依赖多个服务的综合服务:
+					>很多服务的初始化：都先捕获了异常：因为常常会连接超时。
+					
+			>ScfMonitorProxy：是实现了InvocationHandler的动态代理类：即对输入的目标实例进行动态代理---返回实现它接口的实例，同时--在外部调用这个新实例的方法时，会进来执行这个动态代理类的invoke()方法---里面来具体执行一些操作。这个动态代理类像FilterChain,而接口方法就是filter---非常类似。
+		>服务端使用的框架的处理过程：
+		>编写一个自己的服务（强大一点）：
+			>接口：@ServiceContract注解（协定）
+			>实现：@ServiceBehavior注解（行为）
+			    例子：PromotionAPIService.getPromotionWithBiz(参数搜索实体：PromotionSearchEntity)方法
+				>a.参数类型验证：
+				>b.获取业务类型：根据某种标记，具体业务类型实现了抽象业务类型。（租房、合租、出租、二手房...）
+						>ZuFangCateBussiness:租房业务
+						>ChuZuCateBussiness:合租业务
+				>c.获取推广业务类型：具体的实现了抽象推广业务
+					>ZDFYPromotionBussiness：置顶房源
+						>一个典型的查询：PromotionTopService.getTopInfoByUserIdWithLEGO()可以根据查询条件查询结果
+							>
+					>YXTSPromotionBussiness:优先推送
+			
+				>d.获取推广递交：
+				
+				>e.获取推广信息列表：
+					>0.当前用户绑定的二级表现类别的ids:dispCateIds
+					>a.获取List<WltInfo>列表信息（每一个有产品id如100301、展示的二级表现类别）：IWltDisplayService.getWltInfoList(用户id...)返回List<WltInfo>列表，并且缓存到memcache里：键为userid值为List<WltInfo>   用memcacheClient 实现，缓存时间是600s 
+					>b.确认产品id：用上述list来进行
+					>e.开始获取用户的推广列表：getPrmomtionInfoVO
+						>a.获取产品库存房源统计查询实体：fillpromotionCommonQuery的结果PromotionQueryEntity类型
+						>b.设置抽象目录业务查询参数返回查询实体：abstractCateBussiness.setQueryParamter
+						>c.判断是否为置顶查询：（可以为其他查询，比如竞价，智能推广、免税房源查询、诚信房源查询、精准推广查询、优先推送）
+						>d.开始置顶查询：fillIMCQueryWithBiz()将会获取List<PromotionInfoVO>
+							>a.获取一个用户的全部推广信息Map项。键为推广id,值为推广项目详细信息描述:PromotionTopService.getTopInfoByUserIdWithLEGO(用户id,查询实体):
+								>a.查询一个用户的一般置顶信息列表：CommonTopService.queryTopMessageList(userid)返回时是一个jsonstring
+								>b.将上述置顶信息列表提取转换详细化为一个Map:键为推广id,值为信息项目
+								>c.根据用户、广告状态adstate集合、页号获取广告实体列表List<AdEntity>：IAdService.get(广告id,...)
+								>d.将上述广告实体列表转换为一个Map:同上。每一项都专门转换一下，比如content键---置顶策略。其他如：市-地区-商圈，起止时间，支付-消费-优惠价格，置顶目录-置顶类型-广告状态
+									>其中有：获取地区详细：ILocalService.GetLocalByID(userid)，获取pv值：ISearchDataNode.getPV(userid)
+										 获取置顶策略: ScheduleUtil.getWeekSchedule(),(不置顶-全天-早八晚八)
+										 获取昨天或者全部的PV值：ISearchDataNode.getPV(推广id...)
+							>b.将该推广信息项Map赋值给置顶房源推广业务类的topInfoMap上：ZDFYPromotionBussiness.class
+							>c.将该用户的推广id连接成一个字符串
+						>e.如果推广用户信息长度不为0：会获取另一个List<PromotionInfoVO>，与上述不同
+							>a.再次获取用户的推广房源的信息：queryPromotionInfo
+								>a.获取用户的infoIds信息列表：IUserCenterService.getInfoIDs(用户id...)
+								>b.进而获取用户的详细信息列表：IInfoService.getInfo(infoids)
+								>c.遍历这个info列表，构造推广信息列表：对每个推广信息实体PromotionInfoVO
+										>增加：信息状态infoState(优先推广、未推广、热租房源诚信房源)：
+										>增加2：本地地区展示实体：IDispLocalService.GetDispLocalByID(info里取出来的id)为DispLocalEntity，然后封装为GradeDispLocal对象，设置到InfoVO里
+											本地房产目录展示实体：IDispCategoryService.GetDispCategory(listname) 为GradeDispCategory，设置到InfoVO里，InfoVO是PromotionInfoVO的属性
+										>增加3：设置是否诚信、免税、产权、建筑年代等信息。为增值服务信息
+					>f.设置其他推广信息：setOtherPromotion(利用上述List<PromotionInfoVO>,查询出来的该用户全部推广信息Map项目),遍历该List	
+								>a.设置置顶状态：CommonTopService.getInfoTopStateS(infiIds,)
+								>b.将上述Map项目和PromotionInfoVO按照infoid合并。
+				>f.使用推广递交的封装服务将上述List封装为一个结构化的JSNOstring:promotionInfoRender()---包括设置：page属性、data属性
+				>e.结果最终封装-封装为PromotionResult对象，包含
+											
+		>服务的部署：
+		>服务的查看和维护：
+		>缓存服务：构造一个NoCache，它继承了BaseCache类，而这个会放到一个hashMap中，而hashMap是CacheFactory的属性。。缓存配置文件，和具体缓存bean的配置文件。从而CacheFactory根据缓存配置文件中指定的cacheName而获取到相应的bean---这种是BaseCache类型。
+				而cacheName就是服务的类的名比如：WltService。。从而每个服务都有一个专门的cache-BaseCache类型。
+			   >缓存的用途：BaseCache:一般是存放：key-value:key就是userId,而value往往是List<Object>
+	
+
+		
+
+
+
+2.业务：
+	>业务的数据结构：（数据库结构）
+		>推广信息数据结构：
+			>content:推广策略/推广时间/推广计划
+			>topPay：置顶消费，是amount-counpon结果(总共减去优惠)
+			
+	>业务的现实数据：（现实中的数据）
+		>类型1：租房信息：这个信息的数据结构定义由公司指定，而内容由客户输入。
+			>这个数据结构信息比如：地区-房源信息-房源描述-房源图片-发布时间-更新时间-价格-标题
+			>房源信息有状态，比如推广中、为推广...
+		
+
+	>业务关系：产品线的网灵通
+		>
+
+	>服务返回的数据结构：	code:,msg:,data:{page:{pagesize:,pagenumber:,record:},data:[{},{}]}
+	>后台变量说明：
+		>dispCateIds:就是房产类别编号：比如出租房、二手房、厂房、写字楼...
+		>List<WltInfo>就是网灵通列表
+	>典型服务聚合类：
+		>RSC:
+
+	>典型服务：
+		>获取区域地域信息：CMCProxy.getInstance().getDispLocalByID(区域id)。。比如ft这种简码
+		>获取房产类别信息：CMCProxy.getInstance().getCategoryByID(类别id)。。比如ershoufang这种字符串
+		>获取网灵通：获取当前用户的网灵通：WltCommon.getCurrentUserWlts(BeatContext beat);
+		>vipuserlog服务：/deleteapi
+		>获取刷新次数：IRefreshedCountService.getRefreshedCountListByUserId(userid,...)  获取总共刷新次数：  IRefreshedCountService.getRefreshedCountByUserId()
+		>获取用户的房源信息：IPromotionService.getPromotionsByUserId(userid,query)推广中的，还是其他状态都可以
+
+		---小区
+		>字典服务：IDicService.get(stationid公交或地铁id)获取DicInfo对象。城市的小区、公交地铁站旁边的小区都可以获取。
+				DicInfo既是小区也是站点
+				IDicService2.update()
+		>字典索引服务：IXiaoquIndexService.insert(x)
+		>添加均价数据：IDicAttentionService.insert(DicPrice x)
+		>图片审核信息：IPicService.insert()
+				IPicAuditService.delete
+		>字典管理服务：IDicManageService.count
+		>小区广告服务：IXiaoquAdService.selectCount
+		>字典评估服务：IDicEvaluateService.selectDicEvaluate(dicid)小区评价服务
+		>管理员设置页获取服务：IDicManageService.select(sql查询)
+		>归属地域获取服务：LocalService.getInstance().GetLocalPyParentID(pid)返回父id下的所有LocalEntity列表
+		>展示归属地域获取服务：DispLocalService.getInstance().GetDispLocal(listname)返回这个listname下的DispLocalEntity列表
+
+		>交通详细服务：IDicService2.fetchNearBuss()
+		>小区均价实体服务：IAveragePriceVisualService.getChartData()
+		>小区详细实体：EHCacheHelper.getCacheValue()
+		>小区信息实体：IDicService2.select()
+		>小区非常详细的实体设置：DetailService.erShouFangIndex
+		>小区id获取小区信息实体：RSBLL.dict_Dic().get(dicinfoid)
+		>图片信息列表：DictCache.getInstance().getPicInfoByDicId(dictid)通过dictid获取小区的图片列表--实景图或者户型图
+		>用户的关注小区列表获取服务：DictService.getDicAttentionList(userid)
+		>房源信息列表info list的获取：IMCProvider.getNewImcInfoList()
+		>小区对比结果的导出：直接response里写入。		
+		>写字楼详细信息列表：ImcCache.getInstance().getXZLByCondition(
+		>二手房走势chart图：DictCache.getInstance().getErshouAveragePriceChartline		
+		>二手房均价走势chart图：DictPriceProvider.getInstance().getErshouAveragePriceChartline(
+		>新的小区基本信息列表获取方式：OpenApiServiceProvider.getComListByCondition()返回List<Community>
+		>小区详细列表获取方式：ICommunityService.getCommunityDetailById(根据小区编号获取详细列表)	
+		>商圈均价列表：OpenApiServiceProvider.getLocalPrice  返回List<LocalPrice>
+		>小区均价列表：OpenApiServiceProvider.getCommunityPrice()返回List<CommunityPrice>
+		>小区审核图片列表获取：XiaoQuAuditPicProvider.getAuditPicByInfoid()		
+		>获取LocalEntity列表:CMCProvider.getLocalByID()
+		>保存消息日志：UMCProvider.SendMessage
+
+		
+	>典型枚举：
+		>产品：ProductEnum
+		>产品id体系：Product.FangChanType
+		>网灵通状态：WltServiceStateEnum（预约开通、过期、服务中、已经关闭）
+		>产品类型-服务地址：FunctionEnum（诚信房源-优先推送-免税房源-置顶-智能房源...）
+		>类别Id（房源）:DispCateIds(出租房、二手房、合租房、写字楼、商铺、厂房、新房)
+		>刷新类型：RefreshType（ReservationRefresh预约刷新、ManualRefresh手动刷新、ReservationRefreshBefore取消前刷新--属于预约刷新但是还没有执行又手工取消了--但是这个取消动作还会触发刷新--所以还是要统计一下）
+		>预约刷新类型：ReservationRefreshState（Normal正常、Finished已经完成）
+		>vipresource所有变量名：RscParamEnum
+		>地区级别：LocalLevelEnum
+
+	>典型缓存：(hashmap,ehcache,memcached)
+		>小区缓存：DictCache
+		>区域缓存：LocalCache。。根据名称获取展示区域DispLocalEntity等信息
+		>区域缓存2：CmcCache。。根据cityid获取LocalEntity列表等信息
+		>小区管理员缓存：UserCache根据小区id获取管理员
+	>典型beat服务：
+		>获取上传的文件：beat.getClient().getUploads().getFiles("fileUploadInput")。也可以获取cookie等
+	>公网请求路径：
+		>微信api服务：http://fang.vip.58.com/weixinapi?userId=39181720767762&infoids=32579650161221
+		>vipuserlog服务：http://fang.vip.web.58dns.org/deleteapi/。。。。日志处理工具：VipLogUtil类里：任务队列。每个任务类型：VipLogRunable。它调用的服务：IViplogService，这个服务的请求地址：tcp://viplog/ViplogService。部署服务名：viplog，可以在老版本上看到本服务部署的各个机器ip-port：
+				>本日志服务会将vipLog对象型日志传递到固定url上---由它处理。	 
+		>置顶房源服务：http://fang.vip.58.com/zhidingupgradeapi?userId=29612340047628&dispcateid=12
+		>管理报告推送服务：利用ScheduledExecutorService.scheduleWithFixedDelay而周期性的推送方法-类-接口-应用名等信息，到http://127.0.0.1:5258/v1/push
+		>合租房数量：IMCProvider.getNewImcCount
+	>典型工具：
+		>日志工具：Log.infoWF("消息内容")
+		>cookie工具：VipCookieUtil.getVipUserCookie(beat)
+		>cookie中获取信息的工具：DictUtils.getUserIdFromCookies()
+		>日期工具：PromotionDateUtil.formatDateToLong(Date)
+		>域名服务：JspUtils.getHostUrl()
+		>获取bean:MvcWebAppContext.getBean()	this.beat.getServletContext().getAttribute(
+                            MvcConstants.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE).getBean();
+		>当前请求数：equestCounter.instance().getCurrentState().getConcurrentRequest()	
+		>记录访问：BMonitor.recordOne
+		>当前用户id的获取：UMCProvider.getUserId()
+		>当前用户信息的获取：RemoteMethodInvoke.getUserServiceClient().get(userid)  User
+		>获取用户的网灵通城市id:WLTProvider.getWltCity(userid) 
+		>获取展示归属地区实体：CMCProvider.GetDispLocalByID(cityid)得DispLocalEntity
+		>获取用户信息：com.bj58.bsp.Provider.getUserService().getUserById(adminid)  UserInfo
+
+		>小区信息列表获取：RemoteMethodInvoke.getXiaoquInfoService()
+		>
+		-----业务中的验证工具：
+		>整数验证：StringHelper.tryParseInt()   NumberUtils.isNumber()
+		>字符串验证：StringUtils.isNotBlank() StringUtils.isNullOrEmpty()
+		>字符常量：StringUtils.EMPTY;
+
+	>业务逻辑的抽象描述到具体描述：向下层层进行
+		>方法：逻辑分类。先整个方法认为是一个逻辑--描述这个逻辑。然后向右分类，根据内容看可以分出的逻辑--按情况分类，按处理分支分类，按处理阶段分类
+
+3.项目：
+	>项目结构：
+		>

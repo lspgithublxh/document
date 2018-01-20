@@ -1,0 +1,56 @@
+1.问题：
+	>准备：处理路径：/chengxin/{dispcateid}
+	  >基本概念：
+		>IMC信息：List<PromotionInfoVO>即推广信息对象
+	  >基本数据结构：
+		>InfoVO：是一个房源信息的基本描述：房子的基本地域信息、图片、价-户-面积，发布时间
+		>Promotion:是推广表：产品、信息、分类、地区id都有。开始-结束日期和用户id
+			   >获取途径：IPromotionService.getPromotionsByUserId(用户id,query)获取的是用户推广中的推广表信息
+		>Info:是一个房源信息的直接返回体。包含local列表
+			>获取途径：IUsercenterService.getInfoListOrder(userid...)
+					IInfoService.getInfo(infoid)
+		>PromotionInfoVO:是优先推送数据,含有刷新-预约等信息：含基本信息实体InfoVO和降价信息实体JiangjiaInfoVO和Promotion
+			>获取途径：是封装出来的：InfoVOBuilder.buildPromotionInfoVO().内容一部分来自同一个infoid的Promotion,一部分来自Info,预约刷新的几个来自包下列装类的数据，另一部分来自于计算。			
+
+		>DispLocalEntity:是一个城市的地理-展示名称的实体。含有城市-区域-商圈三级编号字符串fullPath
+				>获取途径：IDispLocalService.GetDispLocalByID()
+		>RefreshedCount:是一个用户的刷新数量--地域-产品-房源类别-日期下
+				>获取途径：IRefreshedCountService.getRefreshedCountListByUserId(userid,基础查询条件如地域-产品-类别)
+		>ReservationRefresh:是用户预约刷新数量。含地域-产品-类别-信息-推广等id信息和预约时段、预约数-已经刷新数等关键信息。
+				>获取途径：IReservationRefreshService.getReservationRefreshByUserId(userid,基础条件查询)
+		>DispCategoryEntity:是房产分类实体(表现类别：名称-路径-归属-名称)
+				>获取途径：IDispCategoryService.GetDefaultDispCateByCateID(cateid)
+		>WltInfo:是网灵通基本信息：含有用户、产品类别-产品线、产品编号（房产、宠物、汽车网）、二级服务类别、一级表现城市、服务表现商圈-区域、服务状态、订单编号
+			>获取途径：使用客户输入的表现类别，WltCommon.getCurrentUserWlts(beat)--来获取网灵通列表，同时保留网灵通表现类别和用户输入的类别一样的那些网灵通。
+			>使用目的：获取服务一级表现城市id列表getDispcityList，服务二级表现类别id列表getDispcateList。。基本只此2用。
+
+	>频繁定义包装类：
+		目的在于在主程序之前就先调用服务获取好必备数据、并事先进行一些初始化-比如数据的提取，做一些hashmap\list之类
+		>UnitParamWrapper
+	>工具结构：
+		>分页插件BasePager
+	>业务逻辑：
+		>初始化的工作：BaseController的静态块里：
+				>SCF远程调用的初始化：
+				>Bean的初始化
+				>Cache的初始化
+				>ESB的初始化（企业服务总线，SOA的核心部分，就是到转发调度中心的网络）
+				>页面page风格初始化
+				>velocity的初始化
+				>认证初始化
+				>展示城市初始化
+				>zookeeper初始化
+				>
+		>主业务逻辑：推广信息列表的获取：--采用建造者模式(内部零件若干，输入若干零件，输出整体)
+				>IMC查询结构的构造ImcQuery：InfoVOBuilder.setQeruyParamter(userid,dispcateid)
+				>推广列表的查询：InfoVOBuilder.buildPromotionInfoVO(分页插件) List<PromotionInfoVO> 也是构造出来的
+				>上述列表没数据则再次构造查询条件而再次查询
+				>其他设置：浏览量参数、检验promotoin、用户是否北京设置（usercookie里查看）
+
+		>视图所需的数据模型：
+				>基本的先统一构造：HeaderStatistic.build(userid,cateid,...)
+				>后逐项设置：每一项都有专门的逻辑来生产而制作
+
+		>response需要的Cookie:
+				>统一构造
+	>
