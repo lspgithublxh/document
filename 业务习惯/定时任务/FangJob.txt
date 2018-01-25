@@ -1,0 +1,33 @@
+1.问题：
+	-----分布式任务调度框架
+	>任务：
+		>注册：
+		>依赖：
+		>脚本任务：
+		>增删改查：
+		>在线开发逻辑代码：
+	>执行器：
+	>调度中心：
+		>和执行器之间：加密通信
+		>
+	>调度：对象就是执行器
+		>调度失败：策略
+		>调度阻塞：策略
+
+	>入口点：scf的入口点是scf_config.xml里配置的init的类--实现了IInit的类。
+		>FangJob的入口点是需要网络请求来促发的---就像controller一样。这个框架是一个请求则处理的handle的处理过程框架。
+			>而FangJob.init()则是监听网络之前的一个初始化工作。因为scf服务本身也有监听tcp端口。----所以像一个web容器。尽管是一个服务容器。
+		>scf:是socket server。。每个服务都在不同的端口上。
+		>FangJob:是jetty server
+		>含有调度服务的scf服务，都需要config/fangJob/fang-job-executor.properties文件。且这个文件会被FangJob.init()初始化。
+			阅读log日志知道，jetty server启动侦听的端口正是这个文件里port配置项的值（且不是jar包里的同样的配置文件）
+					 socket server启动侦听的端口是jar包同级目录里的scf_config.xml里的配置决定的。
+		
+	>管理页面：执行器就是scf服务容器。
+		>前端配置的意义：
+			>“执行器”指定：ip：port就是指定这个jetty server-----而不是配置，，是指定而不是配置（其页面措辞容易误解）。。
+					执行器本身之间没有什么关系（排序关系-可能和执行顺序有关系）-----因为在这个配置之前，执行器已经起来了---即scf服务已经起来了--socket server已经起来了。jetty server也已经起来了----这些jetty server只是在侦听来的job任务信息而已（配置执行器的目的是让task找到jetty server）。
+			>“任务”指定：任务class类-的注解名-即job名，同时会传递一些参数过来。	----就是指定后端框架具体执行哪个job，并且以怎样的方式执行--命令参数。		
+
+	>文件上传：rz    或者rz -e
+	   下载：sz  

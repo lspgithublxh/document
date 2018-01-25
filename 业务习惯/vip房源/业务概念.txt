@@ -93,6 +93,7 @@
 			>推广状态：PromotionState:
 					>推广中、手动取消退u刚、系统取消推广、推广完成
 			>索引类型：大索引-商业索引
+			---用网灵通来推广。
 
 		>预约:对info	一个用户的一个产品-类别下有预约刷新列表
 			>预约刷新：
@@ -130,6 +131,10 @@
 		>确定链：用户id ---> Info s 
 			 用户id ---> Promotion s
 			 Info id ---> Promotion s
+
+			用户id ---> List<WltInfo> 
+			WltInfo ---> dispCateList  包含  cateId   <---  Info
+	>现实实体概念关系图：
 		
 	>业务需求：
 		>增加-更新手动刷新：
@@ -149,10 +154,13 @@
 		>一条信息允许的预约数：3
 		>用户购买网灵通
 
-	>业务工具：底层、公共：
-		>IMC:用户查询房源相关的服务。。可以看IMCProxy。。里面的基本方法就是IMC基本服务。
+	>业务工具：底层、公共：都是服务：因为tcp://imc/接口  这样的逻辑
+		>IMC:帖子服务，用户查询房源相关的服务。。可以看IMCProxy。。里面的基本方法就是IMC基本服务。  使用接口：tcp://imc/InfoProviderWithIndex
 				Info相关服务
 		>RSC:资源resource相关。。与消费consume有关--消费的就是资源
-		>CMC:地域相关服务、分类目录相关服务。CMCProxy
+		>CMC:地域相关服务、分类目录相关服务。CMCProxy。。还可以查询获取info的url。
 		>UMC:用户本身信息相关的服务
 		>CRM:获取crm用户相关：CrmProvider提供：com.bj58.bsp.authorized.bean.User
+		>cmcpc:里面有的接口多个：CategoryService（归属分类服务）, DispCategoryService,LocalService,DispLocalService,UrlService
+		>dict:
+		>poster:短信服务

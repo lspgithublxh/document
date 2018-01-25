@@ -5,7 +5,7 @@
 		>Promotion:是推广表：产品、信息、分类、地区id都有。开始-结束日期和用户id
 			   >获取途径：IPromotionService.getPromotionsByUserId(用户id,query)获取的是用户推广中的推广表信息
 					获取一个info的全部推广Promotion 	IPromotionService.getPromotionsByInfoId(userid,infoid, productid)
-		>Info:是一个房源信息的直接返回体。包含local列表。。有参数结构ParaClass
+		>Info:是一个房源信息的直接返回体。包含local列表。。有参数结构ParaClass。。参考文档：http://wiki.58corp.com/index.php?title=Info%E5%AE%9E%E4%BD%93%E8%AF%B4%E6%98%8E
 			>获取途径：IUsercenterService.getInfoListOrder(userid...)
 					IInfoService.getInfo(infoid)
 				  Info info = InfoService.getInfo(infoid)
@@ -153,9 +153,10 @@
 						IAdsBussOccuQueryService.getAdsBusinessOccupyCitySort(userid,cateid,cityid,....)
 		>BusinessOccupyPrice:商圈投放定价表：IAdsBussOccuQueryService.getAdsBusinessOccupyPrice(userid,cateid,...)
 		>NewAccount:用户58账户余额：IJiGuangService.getWUBAAccountFront(userid)
+		>PromotionQuota:网灵通对应的推广配额实体：
+					>包含：每天推广-刷新最大数量，，推广起止时间，网灵通id
 
-
-
+		>UserScore:用户级别。可以用来判断：根据用户和产品获取有限推送特权数
 	>请求控制器：
 		>FangyuanAgentApiController:
 		>FangyuanAPiController:

@@ -1,0 +1,28 @@
+1.问题：
+	>实体：Info:
+		>典型的可以确定的信息：a.在哪个页面下类别下（cateId）
+				  	b.在哪个城市(locals)
+					c.该条信息的链接地址url(前端可以直接访问到如：http://bj.58.com/zufang/32876410434371x.shtml)
+					d.帖子状态state（是否删除、正常、信息完整、没过期）
+					e.来源source（QQ,baidu,抓取，网站发布，编辑提交、vip用户）
+					f.用户id(发布者id)userid、发布者IP:userip、联系电话、Email、
+					g.发布时间（adddate）、最后修改时间postdate（最后刷新时间）					
+					h.信息有效截止日期effectiveData（在此时期之后，信息不会被删除，但是不会被见索引不会显示联系方式）
+					i.信息类型infotype	
+					j.是否为中介帖子：isBiz
+					k.排序ID:SortID	
+									
+
+	      >单条帖子查询方法2：http://api.58.com/info/id-30796956452786/?api_id=20&api_type=data
+
+	>页面：
+		>列表页：
+		>最终页：
+		>详情页：
+
+	>IMC调用接口：
+		>会产生消息：add接口则发消息到201主题，delete到202，update到203。state修改了会发送到205.。消息格式：见原文。http://wiki.58corp.com/index.php?title=IMC#IMC.E6.B5.8B.E8.AF.95.E7.8E.AF.E5.A2.83
+
+	>一般项目调用其它scf服务的条件：
+		>1.加载3个服务包（开发服务需要），和客户端的包（调用scf服务需要）。
+		>2.初始化SCF服务：SCFInit.init(scf.config)  SCFInit.initScfKey(scfkey.key)
