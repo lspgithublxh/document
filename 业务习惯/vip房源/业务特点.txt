@@ -175,7 +175,7 @@
 		>消耗制优先推送-错误代码：添加推广时的错误代码：PromotionErrorCode(...推送已经达到上限、信息状态错误、金额不足、套餐资源已经用完、重复推广、推送成功)
 		>预约刷新状态：ReservationRefreshState(正常，预约中，取消预约，刷新完成，已经更新)
 		>帖子来源：InfoSourceEnum（）
-				
+		>产品详细类别：UnitParameterIDEnum（四位编码）	：急售降价wlt(100311)	
 
 
 	>公网请求路径：

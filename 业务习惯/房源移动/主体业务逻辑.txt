@@ -1,0 +1,13 @@
+1.问题：
+	>主要业务逻辑
+		>数据准备：
+			>请求移动的请求列表List<HouseMove>：IHouseMoveService.getFangYuanMoves(Date arg0, HouseMoveStateEnum... arg1)
+			>获取一个请求的帖子列表List<Info>：UniversalService.query(Query arg0)
+		>流水记录：
+			>插入一条：无论房源是否重复，请求了一次都记录一次：.IHouseFlowService.addHouseFlow(long arg0, HouseFlow arg1) 
+		>推送房源：没有重复房源---自己名下还没有将导入的那条房源
+			>开始推送-发布到自己名下：IApiCopyServerService.doPost(long arg0, CopyDTO arg1)
+
+		>消息发送：
+			>发送给使用用户（目标用户，获取房源的用户）：IMessageV3.AppendSystemMsg(long arg0, String arg1, long arg2, String arg3, String arg4)
+			

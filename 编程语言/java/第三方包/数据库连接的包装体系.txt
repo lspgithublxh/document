@@ -1,0 +1,5 @@
+1.问题：
+	>jdbc:
+	>mysql-jdbc:
+	>oracle-jdbc:
+	>java自带的jdbc:

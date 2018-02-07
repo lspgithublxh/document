@@ -1,0 +1,12 @@
+1.问题：velocity
+	>语法：
+		>输出表达式计算结果：
+			>过滤变量中的html标签等过滤：${表达式}。。值为空，原样输出
+			>不过滤：$!{表达式}。。可以输出html片段。。值为空，不显示。
+		>设置变量:
+			>#set{$var = 5}
+	
+		>流程控制：
+			>#if  #else #end
+			>#ifnull()  #ifnotnull()
+			>#foreach($var in list)

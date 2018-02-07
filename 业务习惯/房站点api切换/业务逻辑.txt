@@ -1,0 +1,70 @@
+1.问题：
+	>a.批量取消免税房源：/promotionapi/batchcancelpromotionfreetax
+		>根本目的方法|数据库操作方法|核心服务调用方法：不看各种判断逻辑。只看最终要执行的方法：
+			>PromotionService.cancelPromotionByInfoId(long,long,long,String)
+	>b.房源数据统计：/fangyuantongjiapi/count
+		>数据库操作服务调用方法：排除本地做的一系列判断和筛选和准备，最终要修改的数据库的操作服务方法（真正要达到的数据获取和修改）（或者本地数据获取/构造方法）
+			（或说需要哪些数据的组合、计算）
+		>b1.免税房源产品数据统计：---免税房源：是一个cate类别(帖子所属于的类别)（就像帖子所属的产品：房产）
+			>哪些服务数据的组合：今天还在的推广集合（一个用户userid、城市cityid、产品productid、类别cateid，今天，推广中）(今天有效)  IPromotionService.getPromotionsByUserId(long arg0, Date arg1, PromotionCommonQuery arg2, Integer[] arg3) 
+					     今天已经执行的刷新集合（一个用户，预约今天已经刷新和手动已经刷新，今天已经做了的，可能针对许多的info帖子，一个帖子一个刷新对象）
+					     今天会执行的预约刷新集合（一个用户，预约今天会执行的帖子的刷新，可能很多的帖子，一个预约刷新对象对应一个帖子）（从而计算等待刷新的预约刷新数量）
+			>统计哪些指标：a.今天所有帖子已经刷新的次数之和（该用户该类别当前时间之前的）
+					今天所有帖子已经刷新的属于预约刷新类型的刷新的次数之和（同上条件，且有手动刷新的次数之和）
+					b.c.今天所有帖子的预约刷新次数之和（同上条件，显然有的已经刷新，且上述已经求出，所以可以求出等待执行的预约刷新数总和）(再利用一天的最大值，来算出剩余可以刷新的数量)
+					
+					d.截至日期endDay为今天的所有推广的数量（无重复概念）
+					e.f.资源消费统计(资源总量，当前已经消耗的量，剩余量)（一个用户、一个资源类型RscSpaces、产品id:FreeTax_Product）、类别cateid、城市（cityid）  IRscConsumable.getDetail(long userId, int t, RscParam params)
+
+
+		>b2.一般房产网灵通产品数据统计：PromotionStatVO
+			>统计哪些指标Fang2：a.资源消费统计（资源总量，已经消耗的量，剩余量）（当前用户、Fang2产品、Promotion来源类型、House优先天资源类型、网灵通的城市-类别，作为条件）IRscConsumable.getDetail(long userId, int t, RscParam params) throws Exception
+					b.已经刷新的次数：三种类型：下架前刷新类型 + 预约刷新类型 + 手动刷新类型，（作为参数，并当前时间、用户、查询条件如产品类别城市）（返回结果按infoid分类map统计，所有帖子的这三大类刷新的总和allRefreshedCounts，及三大类分别的刷新数总和）IRefreshedCountService.getRefreshedCountListByUserId(long userId, Date date, PromotionCommonQuery query, Integer[] refreshTypes)
+					c.等待刷新的次数：计算方式：今天有效的预约刷新数---预约中类型和完成类型的预约刷新列表（当前时间之后，当前用户，查询条件）中refreshDay在今天的refreshCount统计求和计算出来（IReservationRefreshService.getReservationRefreshByUserId(long userId, Date date, PromotionCommonQuery query, Integer[] states)）
+								     -  今天已经完成的预约刷新数（上述已经计算出的已经刷新的三大类刷新中预约刷新的数量）
+					d.剩余刷新的量：5
+			>统计哪些指标Fang1:
+					a.b.c推广总量：已经优先推送的信息条数（用户id,query下的推广列表查出来，按infoid分的infoid的个数 - 按source分取值为-1的个数----即在线购买的且推送了的信息条数，即为计算方法）IPromotionService.getPromotionsByUserId(long arg0, Date arg1, PromotionCommonQuery arg2, Integer[] arg3)
+						剩余量：状态为推送中的Promotioning推广数量 + 网灵通规定每天最大推广数（WltParamsUtil.getMaxDayPromotionCount(wltInfo)） - 上述信息条数（IPromotionService.countByUserId(long arg0, Date arg1, PromotionCommonQuery arg2, Integer[] arg3, Integer[] arg4, Map<String, String> arg5) ）
+						取消量：推广类型为取消Cancel的推广条数（当前用户、产品、一级地域二级类别）：IPromotionService.countByUserId(long arg0, Date arg1, PromotionCommonQuery arg2, Integer[] arg3)
+					d.e.f已经刷新的次数：计算方式同Fang2
+					     等待刷新的次数：计算方式同Fang2
+					     剩余刷新的次数：计算方式同Fang2
+					g.截至日期为今天的推广的总量：计算方式同Fang2
+		>b3.诚信统计：ChengxinStatVO
+			>统计哪些指标：都是今天的：
+					a.推广总量：已经优先推搡的信息条数（同上，当天，只是条件中产品不同而已--产品为诚信房源产品，甚至一级表现城市二级表现类别都一样）
+					b.可以设置的量：一天最多可以设置的量（同上计算方式） - 上述推广总量
+					c.截止日期等于今天的推广的总量：计算方式同上（查出该用户、一级二级、产品、推广中状态、当天的推广的列表）
+					d.已经刷新的次数：同上计算。（三大类刷新类型）
+					e.等待刷新的次数：同上
+					f.射弩刷新的次数：同上计算
+		>b4.封装到Showblocks配置文件的模板中。
+
+	>c.库存列表和免税列表(还包括诚信-优先-置顶)：/fangyuanapi   PromotionAPIService.java
+		>准备数据：a.推广列表List<Promotion>(当前用户、产品、所有已开通的网邻通的类别，不算城市)IPromotionService.getPromotionsByUserId(long arg0, Date arg1, PromotionCommonQuery arg2, Integer[] arg3) 
+				(库存服务开始获取地址：fillIMCQueryWithBiz())
+				
+			   b.帖子列表List<Info>(当前用户、localid,indextype=fang,类别cateid，状态state等)IInfoService.getInfo(ContentType arg0, Long... arg1) 
+					(附加服务：比如由Info获取地域详细实体信息CMC服务，根据用户和网灵通状态获取网灵通列表IWltDisplayService.getWltInfoList(Long userId, List<Integer> states)不算在内)
+		>封装数据：建造模式--使用上述两种数据，生成PromotionInfoVO对象列表：PromotionBuilderVO.buildPromotionInfo(Info info, PromotionUserWrapper promotionUserWrapper, Map<Long, Depreciation> depreciationMap, boolean jishou)
+			   >分别实现。	
+	>d.免税设置-单条房源优先推送：	传参已知infoid和userid
+		>a.准备数据：Info的准备：InfoService.getInfo(long infoid, InfoFieldEnum... InfoFieldEnu)
+		>b.封装数据：Promotion的封装好：Info方面的信息可以设置，startDay-endDay方面的信息用算法确定，state则为推广中
+		>c.核心服务：
+				IPromotionService.addPromotion(Promotion promotion, PromotionParams params, AddPromotionExtend promotionExtend) 
+	
+	>e.优先推送价格列表：
+		>a.数据准备：List<PriceItem>根据单一包编码和地域类别而获取：IPriceItems.getSingPkgPriceItemsByCode(long singPkgCode, HashMap attrValueMap, byte isenable)
+		>b.封装数据：推送时长-价格的json数组。
+		
+2.工具：
+	>a.缓存服务：
+	>b.预备服务：wraper
+	>c.查询封装服务：Querybody
+	>d.推广列表服务：PromotionUserWrapper
+
+
+3.概念-实体关系：
+	>

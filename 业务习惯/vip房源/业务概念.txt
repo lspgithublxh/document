@@ -4,20 +4,34 @@
 			>生活服务网灵通产品
 			>招聘网灵通
 			>房产网灵通
+				>免税房源产品:100303
+				>诚信房源产品：100302（又叫热租房源）
+				>房产网灵通产品：100301(又叫 优先推送 房源)  100304
 			>宠物网灵通
 			>汽车网灵通
 			>跳蚤网灵通
 			>手机号码
 			---消耗制
+		>一级表现地域：dispLocalIds
+			>
 		>二级表现分类：DispCateIds
-			>租房
-			>合租房
-			>二手房
-			>写字楼
-			>商铺
-			>厂房
+			>租房8
+			>合租房10
+			>二手房12
+			>写字楼13
+			>商铺14
+			>厂房15
 			>新房
-			
+			>小区：1
+		>资源类型: RscSpaces
+			>TaxFree免税房源：1 + 39
+			>House优先天： 1 + 44
+		>来源类型：RscServType
+			>优先推送Promotion：6
+			>刷新Refresh:9
+			>微信建站VIP_WEIXIN:7
+			>订单服务ORDER:	2
+			>网灵通服务WLT:0
 		>用户:
 			>vip用户：
 			>一般用户：
@@ -68,7 +82,7 @@
 			>类别：
 			---推送天数：	
 
-		>刷新：对info	。一个用户的一个产品-类别下有刷新列表
+		>刷新：对info	|promotion推广。一个用户的一个产品-类别下有刷新列表
 			>刷新类型:
 				>手动刷新
 				>预约刷新
@@ -87,7 +101,7 @@
 			>地区localId:
 			>开始-结束日期：
 			>用户ip:
-			>来源source:			
+			>来源source:	在线购买：-1		
 			>是否预约：
 			>建立时间-更新时间：
 			>推广状态：PromotionState:
@@ -123,6 +137,46 @@
 
 		>广告：
 
+		>置顶：是一种查询类型（BizSearch的枚举值）：（竞价查询、智能推广查询，买免税房源查询，诚信房源查询，精准推广查询）
+			也是一种函数枚举（FunctionEnum的枚举值：//fang.vip.58.com/zhiding/）---暂时无太多联系，和其他概念。
+			
+
+		>小区：
+			>基本信息：DicInfo Community
+				   InfoModel（列表页中的单个概略小区实体）  CommunityInfoEntity(详细小区实体)
+				>地域信息：城市-地域-商圈
+				>小区信息：
+
+			>房价信息：DicPrice CommunityPriceDto
+				   DictPriceEntity（折线图信息）
+				   DicPriceDTO（均价信息：price-涨跌幅度）	
+				>基本信息id:
+				>地域均价：城市-地域-商圈级别。按月份。每月都有
+				>小区均价：小区级别。按月份，每月都有。所以是每月的均价。进而计算半年的均价。
+		
+			------房价统计方式：按区域（本质也是按小区，时空维度）、按小区（时间维度）
+			>推荐：
+				>附近小区List：nearDic：参数：某个小区id
+				>推荐房源List：某个小区的推荐房源：参数：某个小区id。。也是热门房源获取根本方式
+				>			
+			>热门小区：
+				>当前城市下的热门小区：esfcount最多的那些小区
+			>热门房源：周边小区房源
+				>当前小区的周围小区（含自己）中的每个的推荐房源的集合。
+			>附近城市：
+				>当前城市的关联城市。。cmc服务
+			>推荐房源：都是从ES中查询出来的。（或许是收费了的、价格、看房量、浏览量）
+				>目标小区的二手房房源推荐：
+				>目标小区的租房的房源推荐：
+				>目标小区的附近小区的二手房房源推荐：
+				>查询的应该是索引
+			>租房信息数：从ES中查询出来。
+				>整租数：
+				>单间数：
+				>床位数：
+			>猜你喜欢的房源：
+				>
+				>
 	>概念关系：
 		>确定一条信息：userid, productid,localid,cateid,
 				infoid
@@ -134,8 +188,15 @@
 
 			用户id ---> List<WltInfo> 
 			WltInfo ---> dispCateList  包含  cateId   <---  Info
+
+			Info id  ---> RefreshedCount id
+			Info id\Promotion id  ---> ReservationRefresh id
 	>现实实体概念关系图：
+		>产品类别层级：房产product ---- 免税产品  ---- cateid  
 		
+
+
+
 	>业务需求：
 		>增加-更新手动刷新：
 		>修改预约刷新：	
@@ -159,8 +220,10 @@
 				Info相关服务
 		>RSC:资源resource相关。。与消费consume有关--消费的就是资源
 		>CMC:地域相关服务、分类目录相关服务。CMCProxy。。还可以查询获取info的url。
+		>cmcpc:地域相关服务、...获取DispLocalEntity相关地域信息实体   tcp://cmcpc/CacheService
 		>UMC:用户本身信息相关的服务
 		>CRM:获取crm用户相关：CrmProvider提供：com.bj58.bsp.authorized.bean.User
 		>cmcpc:里面有的接口多个：CategoryService（归属分类服务）, DispCategoryService,LocalService,DispLocalService,UrlService
-		>dict:
+		>dict:获取小区、小区房价信息
+		>newdict:获取小区、小区房价信息
 		>poster:短信服务

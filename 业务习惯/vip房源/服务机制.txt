@@ -1,0 +1,41 @@
+1.问题：
+	>日志：级别-日志器（还可以控制到包级别）（还可以控制日志文件过期则加日期为一个老文件---而且修改日期不变；然后创建一个新的同原名文件）
+		>FangJob的默认日志：其配置到了：D:\dataUpdate\2018-01-29\目录下：依赖的日志面板是slf4j
+		>SCF的init可能没有初始化日志系统：运行可知。
+			  >客户端：所以需要自行加载日志配置文件：在初始化的时候DOMConfigurator.configure(scf_log4j.xml)。使用slf4j的日志面板接口。
+			  >客户端：还需要自行加载scf.config服务配置文件。SCFInit.init(path);以及相应的scfkey.key配置文件。
+			  >服务端：因为要放在scf运行环境，所以不用配置。只需要scf_config.xml和scf_log4j.xml放在工程jar同级目录即可。
+				   >并且这个配置会实际的生效：比如数据更新的配置：/opt/scf/log/dataupdate/log.log （同时,Fangjob的配置文件也是默认打日志在这个目录下）
+				   >其次，会在log/服务名/下生成服务名.log的系统日志文件--整个scf输出的日志文件：比如启动过程中的日志。
+				  		
+			  >ILog:com.bj58.spat.scf.server.jar里的类：此jar里有配置日志配置文件---指向../log/default.log(非常像是scf环境下的log文件夹下的日志文件)
+				>里面使用log4j日志系统。但没看到配置文件的被加载。-----所以使用前也需要自己先加载log4j
+			  >scf环境：在conf文件夹下也有scf_log4j.xml配置（指向../log/default-日期.log）和scf_config.xml配置文件。
+			--------------：然而，在windows下都会失效：windows下必须手动初始化日志系统。
+			  >结论一：独立启动时，FangCopy.java里的日志是不会被打印到日志系统中的。
+		>WF的日志初始化：使用bj58log.properties配置文件里的配置内容。。这个在工程wfconfig文件夹下，或者D:\opt\wf\fang.vip.58.com这样的配置目录下。
+				日志文件一般放在：/opt/wf/logs/ 这样的文件目录下。
+				从WF这个类的静态加载中已经确定了。
+
+		>日志的包装体系：
+			>log4j:最强大的日志系统
+			>logback：也强大的日志系统：slf4j使用它做日志系统时，不需要适配jar。直接就可以用（）
+			>java.util.logging:自带的日志系统
+			>slf4j:简单日志门面for java:是方便变更日志系统的一个facade。日志的门面。从而可以切换日志包：
+				比如使用log4j日志系统,还是java自带的日志系统。
+				>本身提供：slf-api-***.jar包。。且用户用这个里的api来开发。
+					   >对其他日志系统的适配：slf4j-jdk14-***.jar(对java自带的日志系统)
+								  slf4j-log4j12-***.jar(对log4j日志系统的适配)		
+				>使用来开发：切换日志系统时：需要提供slf4j对该日志系统的适配和日志系统本身的jar及其配置文件：jdk自带的则不用。
+								（在classpath下）
+			>common-logging:也是一个门面系统，需要提供具体的日志系统比如log4j	
+
+	>缓存数据：
+		>本地磁盘：D:\tmp\object_persistence_data    
+			   >缓存文件：以对象为单位：com.bj58.spat.cmc.entity.CategoryEntity
+		>本地内存：HashMap  ConcurrentHashMap
+		
+	
+
+参考资料：
+1.https://www.cnblogs.com/Sinte-Beuve/p/5758971.html（最佳比较和使用说明）

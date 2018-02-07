@@ -1,0 +1,56 @@
+1.问题：根本是从DicInfo DicPrice DicAttention三张表进行各种视图查看。
+	>基础数据：
+		>List<DicPrice>一个城市下地区均价列表 IDicPriceService.select(String arg0, int arg1, int arg2) 
+		>List<DicPrice>一个城市下二手房的月份均价列表：分四次获取,每次取一个月。也是IDicPriceService.select(String arg0, int arg1, int arg2) 方式。
+		>List<DicPrice>一个城市下的租房的月份均价列表：也是分4次获取，每次取出一个月的。
+		>List<DicInfo>一个城市下的小区列表：可以看各种条件---类别-城市-字母开头。来缩小返回值范围。
+		>List<DicInfoDTO>一个城市下的top10的小区列表--热门房源--都一样（无论房价还是小区页）：获取方式和房价类似：DicInfoNumDAO.getDicInfoListByCond(int localId, int localLevel, String sortColumn, int start, int count)
+
+
+
+	>详细页面：(老接口)
+		>List<DicInfo2>:根据条件获取小区列表：IDicService2.selectXiaoQu(String arg0, int arg1, int arg2, String arg3, String arg4, Out<Integer> arg5) 
+		>List<DicInfo2>:根据条件获取热门小区5个（房源数最多）的小区列表：.IDicService2.select(String arg0, int arg1, int arg2, Out<Integer> arg3)
+		>List<DicInfo2>:附近小区列表5个：IDicService2.fetchNearDic(int arg0, int arg1) 
+		>List<DicPrice>:根据条件获取小区价格列表（按小区、时间可以--所以上一个月也可以）：IDicPriceService.select(String arg0, int arg1, int arg2) 
+		>List<DicPrice>:小区的排过序的均价列表：IDicPriceService.select(String arg0, int arg1, int arg2) 
+		>List<PicPrice>:根据条件获取小区图片列表-实景图-户型图列表：IPicService.select(String arg0, int arg1, int arg2, String arg3)  IPicService.select(String arg0, int arg1, int arg2, String arg3) 
+		>List<DicAttention>:小区关注实体列表：IDicAttentionService.select(String arg0, int arg1, int arg2)
+		>count:二手房（户型5种）/租房的房源数统计：SESAgent.getCount(String arg0)
+		>List<DictPriceEntity>:商圈下的二手房趋势图数据数组（最多6月）IAveragePriceVisualService.getChartData(int arg0, LocalLevelEnum arg1, short arg2)
+					----是新的获取方法---区域级别
+		>List<CommunityPriceEntity>:小区级别的二手房租房趋势图数据数组：ICommunityPriceWListService.load(int arg0, short arg1, int arg2) 
+		>List<Info>:置顶房源-普通-精品房源（最新房源）5条：SESAgent.getCISearchResult(String arg0)  化为：List<InfoDTO>
+				---租房和二手房都有三种房源类型：从而获取到最新的房源各4条。
+		>List<DicEvaluate>：小区评分实体列表：IDicEvaluateService.selectDicEvaluate(String arg0, int arg1, int arg2)
+		>List<DicInfoDTO>:最近浏览小区：从cookie里取出。
+		>List<InfoDTO>:猜你喜欢的房源：只是置顶类型。查询方式：SESAgent.getCISearchResult(String arg0)
+		>List<AjkXiaoquInfo>:当前城市的安居客的小区：http请求的获取方式
+		>List<DicInfo>:A-Z的当前城市的所有小区的分类列表：IDicService.select(String arg0, int arg1, int arg2, String arg3, String arg4, Out<Integer> arg5)
+		>String:小区的广告实体内容字符串：IXiaoquAdService.getByDicid(int arg0) 
+		>List<LocalRelationEntity>:当前城市的周边城市：ILocalRelationService.GetLocalRelation(int LocalID)
+		>String:友情链接资源：http方式获取：http://link.service.58dns.org/ulink.aspx?PlaceID=60&CateID=%s&CityID=%s
+		>String:焦点楼盘字符串：IDicService.get(int arg0)
+	>新接口所在类：NewXiaoquController.java    底层接口所在类：RemoteMethodInvoke
+		>列表页：listLocal(String param, BeatContext beat)
+			>
+		
+		>详细页：getDictDetail(String param, BeatContext beat)
+		
+			>ICommunityService 
+			>ICommunityPicService
+			>ICommunityPriceService
+			>ILocalPriceService等等
+
+			>UnityLocalRelationService：城市关系
+			>CommunityEsbLogService:日志列表
+			>DictionaryService....字典、参数、站内信
+	>层次接口塔：
+		>
+	>层次服务函数图：
+		>
+	>层次服务方法图：（自顶向下）（）(方法必须有中文说明--且是等同描述，使用需求定义中的概念)
+		>
+
+	>现实对象的数据结构体系：
+		

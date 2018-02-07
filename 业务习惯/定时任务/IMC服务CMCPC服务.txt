@@ -26,3 +26,15 @@
 	>一般项目调用其它scf服务的条件：
 		>1.加载3个服务包（开发服务需要），和客户端的包（调用scf服务需要）。
 		>2.初始化SCF服务：SCFInit.init(scf.config)  SCFInit.initScfKey(scfkey.key)
+
+
+	>实体2：Promotion  比Info多出的信息。因为基于Info。是针对Info的
+		>a.开始推广时间startDay、结束推广时间endDay
+		>b.推广状态state
+		>c.是否预约isReservation
+		>d.建立时间-更新时间createTime udpateTime
+		>e.索引类型indexType
+
+	>实体3：ReservationRefresh
+
+	

@@ -23,6 +23,7 @@
 				>获取途径：IDispCategoryService.GetDefaultDispCateByCateID(cateid)
 		>WltInfo:是网灵通基本信息：含有用户、产品类别-产品线、产品编号（房产、宠物、汽车网）、二级服务类别、一级表现城市、服务表现商圈-区域、服务状态、订单编号
 			>获取途径：使用客户输入的表现类别，WltCommon.getCurrentUserWlts(beat)--来获取网灵通列表，同时保留网灵通表现类别和用户输入的类别一样的那些网灵通。
+						IWltDisplayService.getWltInfoList(Long userId, List<Integer> states)
 			>使用目的：获取服务一级表现城市id列表getDispcityList，服务二级表现类别id列表getDispcateList。。基本只此2用。
 		----房源统计
 		>RefreshedCount：是用户已经刷新的实体（infoid和count）
@@ -157,6 +158,29 @@
 					>包含：每天推广-刷新最大数量，，推广起止时间，网灵通id
 
 		>UserScore:用户级别。可以用来判断：根据用户和产品获取有限推送特权数
+
+		>Depreciation:降价实体。
+				>获取方法：IDepreciationService.findDepreciationsByUserId(long arg0, Date arg1, Integer[] arg2) 
+
+		>PriceItem:价格实体：条目code,定价名称name, 三种价格，属性中有推送时长-价格
+				>获取方法：IPriceItems.getSingPkgPriceItemsByCode(long arg0, HashMap arg1, byte arg2)
+		>HouseMove:房源移动的一个请求实体：包含来自userid, 转移到的目的地userid,开始日期startDate和结束日期endDate
+		
+		>DicPrice:小区均价实体：价格、上涨下降多少幅度、当前日期（月）、扩展信息（含有地铁-公交线路）
+		>DictPriceEntity:价格趋势实体：是每个趋势点的实体	
+		>CommunityPriceEntity：新校区价格实体：
+		>LocalRelationEntity:关联城市.一个城市的关联城市--即附近的城市。
+		>XiaoQuVO:小区实体：计算附近小区需要
+		>DicInfoDTO:热门小区实体：也是详细小区信息实体
+		>DicInfo2:小区信息实体2
+		>PicInfo:小区图片实体。。小区实景图、户型图。
+		>DicEvaluate:小区评分实体：IDicEvaluateService.selectDicEvaluate(String arg0, int arg1, int arg2)
+		>DicManage:小区管理员
+		>PortalsNewEntity:用户相关信息
+		>AjkXiaoquInfo:安居客小区
+		>XiaoquAd:小区的广告实体IXiaoquAdService.getByDicid(int arg0) 
+		
+
 	>请求控制器：
 		>FangyuanAgentApiController:
 		>FangyuanAPiController:
@@ -164,3 +188,30 @@
 		>AjaxFangYuanMoveController：房源搬家申请
 					>条件：网灵通类别有交集（两者之间）
 		>EditFangYuanController:
+
+	>估计会有的数据库表：
+		>Info表
+		>DispLocalEntity表
+		>t_dic_infonum:此表真实存在 。。热门小区从中取出。
+
+		>DicInfo表：小区信息表(以及小区详细信息表)
+		    
+		>DicPrice表：小区价格表（不一定每个小区都有小区价格对象）
+		>DicAttention表：小区关注表
+		>DicPic表：小区图片表
+	>估计会有的ES索引：
+		>
+       >数据关联关系：从一张表到另一张表。由信息A关联到信息B。用信息A知道信息B
+
+       >查询load语法：
+	 	>已经有的字段：cityid, cateid, areaid,可以在bean里找到的字段
+		>表中隐含的字段：esfcount, zfcount
+		>表中隐含的参数字段：&param1588=12		旧api语法：使用http url方式----是一种查索引的方式
+			
+	>枚举量：
+		
+
+	>容器工具：wf的bean容器--MvcWebAppContext（存在servlet容器中）：this.beat.getServletContext()
+				.getAttribute(MvcConstants.ROOT_WEB_APPLICATION_CONTEXT_ATTRIBUTE);
+	>工具：
+		>SESAgent:应该是类似ES的客户端工具

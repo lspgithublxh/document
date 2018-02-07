@@ -1,0 +1,9 @@
+1.问题：
+	>pom:
+		>distributionManagement:仓库管理。
+
+	>mvn运行命令：
+		>mvn dependency:copy-dependencies
+
+	>settings配置：
+		>servers（私服的登陆用户名密码） ---  mirrors （令私服去找的镜像）--- profile （私服的地址） 三级配置。实现私服代理。

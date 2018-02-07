@@ -1,0 +1,12 @@
+1.问题：
+	>文件操作：
+		>文件查找：find -type d -name "dirname"  当前目录中找目录
+			   find / -type d -name "dirname" 系统中找目录
+			   find / -type f -name "filename" 系统中招文件
+
+		>彻底删除目录：单步直接全部删除不对话：rm -rf  dir
+				有对话-一一确认：rm -r dir 
+			  
+	>系统操作：uname -a 系统名称
+	>网络操作：
+	>线程操作：

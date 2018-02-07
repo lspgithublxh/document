@@ -1,0 +1,26 @@
+1.问题：Shell--命令语言，也是程序设计语言
+	>命令语言：
+		>Shell应用程序：提供了访问操作系统内核的服务:sh是。浏览器也是...C Shell   ;   K Shell  ;   Bash
+				>Boume Shell  : /bin/sh
+				>Boume Again Shell : /bin/bash
+				>C Shell : /usr/bin/csh
+				>Shell for Root: /sbin/sh
+		>Shell脚本：Shell编程就是为Shell应用程序编写的脚本程序。（脚本文件）
+				>
+		>Shell脚本编辑器和解释器：
+				
+	>解释器：
+	>编译器：
+	>运行：虚拟机或者解释器
+	>常量变量定义：
+	>数据类型：
+	>运算符：逻辑运算和算术运算、关系和赋值运算
+	>流程控制：
+	>函数定义：
+	>面向对象编程：
+	>文件操作：
+	>网络操作：
+	>进程线程操作：
+	>操作系统操作：
+	>
+	

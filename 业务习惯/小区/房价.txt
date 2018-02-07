@@ -1,0 +1,34 @@
+1.问题：debug可以进入 类的静态属性层次：----从而知道静态属性是先执行的。。F5
+	>小区房价：/fangjia/小区名...
+		>准备数据：条件数据
+			>基本数据：List<DicPrice>：根据条件获取城市下的小区价格排行榜。 城市小区房价涨跌榜：城市小区房价列表查询方法可以得到。
+						   设置好一定条件可以查一个城市的均价列表：只有一个对象的list:IDicPriceService.select(String arg0, int arg1, int arg2)  IDicPriceService.select(String arg0, int arg1, int arg2) 
+				   List<DicInfo2>: 根据条件查表得城市热门小区列表。进一步封装为List<DicInfoDTO>
+				   List<LocalRelationEntity>：根据条件获取城市关联城市-附近城市列表ILocalRelationService.GetLocalRelation(int LocalID) 。该城市的小区列表List<DicInfo2>又可以服务方式获取：IDicService2.select(String arg0, int arg1, int arg2, Out<Integer> arg3)。从而可以知附近城市中小区房源不为0的城市
+				   List<Info>--CISearchResult:根据条件获取推荐房源列表List<Info>:.SESAgent.getCISearchResult(String arg0) 
+				   List<DicPriceEntity>:根据条件获取城市下的某种房源的走势图数据list:IAveragePriceVisualService.getChartData(int arg0, LocalLevelEnum arg1, short arg2)
+			>底部数据：商圈直达、附近城市、全国城市、友情链接
+				   
+	>房价详细：入参：小区名
+		>准备数据：a.小区实体DicInfo2: IDicService2.selectXiaoQu(String arg0, int arg1, int arg2, String arg3, String arg4, Out<Integer> arg5)  tcp://dict/DicService2
+			   b.城市实体DispLocalEntity:根据小区实体中的城市id信息：DispLocalService.GetDispLocalByID(int dispLocalID) 
+			   c.地域实体和商圈实体DispLocalEntity：也是上述方式获取。id不同而已。（可以从城市获取下面的所有地域）
+			   d.小区均价列表List<DicPrice>一条:代表的就是均价。IDicPriceService.select(String arg0, int arg1, int arg2) 
+			   e.小区租房均价列表List<DicPrice>一条：IDicPriceService.select(String arg0, int arg1, int arg2)  tcp://dict/DicPriceService
+			   f.小区4个价格走势图数据List<DicPriceEntity>:IAveragePriceVisualService.getChartData(int arg0, LocalLevelEnum arg1, short arg2) tcp://dictprice/AveragePriceVisualService
+						>新的4大价格走势获取方式List<CommunityPriceEntity>：ICommunityPriceWListService.load(int arg0, short arg1, int arg2) tcp://dictprice/CommunityPriceWListService
+					（代表二手房、一居室、二居室、三居室的租房价格走势图）
+
+			   h.推荐房源列表--租房和二手房的List<Info>的获取：根本：SESAgent.getCISearchResult(String arg0)---查询出全部的推荐房源的Infoids
+					>最基本的和挂牌参考价：视图列表List<InfoVO>：IInfoService.getInfo(ContentType arg0, Long... arg1)  tcp://imc/InfoProviderWithIndex
+					>周边小区房源参考价List<InfoVO>：先取周边小区List<DicInfo2>：IDicService2.fetchNearDic(int arg0, int arg1)
+								   再取每个周边小区的推荐房源信息：List<InfoVO>：IInfoService.getInfo(ContentType arg0, Long... arg1)  tcp://imc/InfoProviderWithIndex
+			   i.租房信息数：合租-整租：SESAgent.getCount(String arg0)
+			   j.周边城市信息List<LocalEntity>---List<LocalRelationEntity>：ILocalRelationService.GetLocalRelation(int LocalID) tcp://cmcp/LocalRelationService
+						LocalService.GetLocalByID(int localID)  当然可以进一步获取到小区信息，但是不必。
+			   k.获取城市的下级的下级列表-并且封装为Map：键为小区的拼音首字母
+			   l.获取全部城市的Map:键为城市的拼音首字母
+			   m.热门小区列表List<DicInfoDTO>:直接查询数据库表t_dic_infonum得出结果后化为List<DicInfo2>再化为List<DicInfoDTO>
+			  
+
+	>
