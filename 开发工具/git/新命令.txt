@@ -1,0 +1,4 @@
+1.问题：
+	>http方式：
+		>获取：git pull http://
+		>上传：git push --set-upstream http://gitlab.58corp.com/lishaoping/house.united.hugwlistesb.git master

@@ -1,0 +1,20 @@
+1.问题：
+	>debug:
+		>Application:
+		>Memory:
+		>Network：
+		>Sources:
+			>还可以全局加断点、中断事件断点EventListenerBreakpoints-----的Mouse下选择click比如，那么接下来只要有点击事件，就会被监听到，debug进去。
+		>Console:
+			>还可以手动输入：来查看变量等
+				>格式化数据：console.table([{"name":"bob", "age":8}])
+				>查看dom元素以对象方式：console.dir($("body"))
+				>js函数调用栈：console.trace()
+				>页面数据提取：js代码的执行方式
+				>直接输入执行js代码：
+						>
+				>最近一次计算结果：$_。最近一次访问元素$0
+			>
+		>Elements:
+		>Security:
+		>Audits:

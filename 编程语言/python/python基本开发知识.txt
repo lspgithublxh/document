@@ -1,23 +1,134 @@
-1.问题：理论和实例-编程实例。第一个：hello world  第二个：pai的计算    第三个: 排序算法（如冒泡排序）
+1.问题：实际开发中常用的实用的模式、常遵守的规则。。分主题描述：
+	理论和实例-编程实例。第一个：hello world  第二个：pai的计算    第三个: 排序算法（如冒泡排序）
 	>设计思想、语言特性、
-	>解释器：运行原理：如何执行整个python文件的、加载整个文件的，解释器，数据区
-		 内存管理：
-	>语法：
+		>高效的高级数据结构：使你可以在一条语句中表达复杂的操作
+		>简单高效进行面向对象编程
+		>简洁语法：语句缩进来代替大括号--来组织语句组
+			   变量或参数无需声明
+		>脚本语言特性：闭包、map、函数指针、字符串动态定义函数（key-value方式，value为函数）、log函数切面编程--方便构造代理、字符串直接当脚本执行
+		>解释型语言：无需编译链接，直接运行，不用编译，即改即运行，测试方便。
+	>解释器：
+		>运行原理：如何执行整个python文件的、加载整个文件的，解释器，数据区
+		>内存管理：
+		>执行python abc.py <arguments>时做了什么？
+			>代码一行行被执行：遇到表达式和函数分别：
+			>__name__将被赋值为__main__
+			>参数输入到了sys.argv里，可以import sys来获取到输入参数
+		>扩展新函数和数据类型：用c/c++
+			>
+		>解释器集成到某个C应用程序：
+		>运行并和解释器交互：cmd中输入python，则进入和解释器交互的模式
+			>如果需要换行：会自动根据语句是否结束而...展示从属提示符
+		>最近表达式的值：_下划线来表示。
+	>虚拟环境：virtualenv
+		>
+	>模块：可以（.py）
+		>可以：独立的脚本来执行
+		>可以：导入的模块来使用
+		>构建、发布、安装：
+			>打包上传到PyPI,从而开源自己的包：https://pypi.python.org/pypi
+		
+	>程序文件类型：
+		>.py
+		>.pyc
+	>位：32位的python安装包：不能超过2G内存。
+	>开发环境：Pycharm,IDLE（右键py文件可以打开）,eclipse
+	>下载：官网上(2.7.14  python-2.7.14.amd64.msi就自带pip,其他版本可能包不全)。https://www.python.org/downloads/windows/
+	>语法：语义
 		>数据类型：
+			>int:
+			>float:
+			>分数：Fraction     Fraction(4, 5)
+			>小数：Decimal  且可以识别多种小数的写法（如科学技术法）以及对应的特殊处理方法
+			>复数：1 + 2j表示和计算
+			>字符串： 'abc', "abc"  字符串中标识引号： '"ab", dd' 或者转义符\'
+				  >原始字符串：r'abdf'同一当作字符串\没有转义功能	
+				  >三引号表示多行字符串，否则每行字符串都用'' '' ''
+				  >字符串运算： * 重复 +连接
+				  >没有字符类型：单字符串表示
+				  >直接正负整数来索引：截取。截取时对起止整数没要求
+				  >字符串不可变：不可复制。
+				  >unicode字符串：表示方式：u'adb\u0020'  原始模式ur'\u0020abd'
+				  >编码解码转换：unicode ascll utf-8 latin-1可以相互转换:编码-解码-再编码...。。。显然的是：一个unicode的中文是无法转换为ascll码的。
+					>告知解释器该字符串是用什么来编码的、要编码为什么目标码
+					>不同编码类型：对同一个中文进行编码，结果的十六进制数是不同的：
+							>‘眉’字：utf-8:\xc3\xbc    
+								   unicode:\xfc
+			>列表：[a,b]可以被索引和切片:切片是一个副本
+				>运算：拼接式合并： +
+				>元素修改： a[2] = '3'  a[3:4] = [3,4]   索引式修改和切片式修改
+				>嵌套其他列表：a[1] = [3,4,5,6]
 		>运算符：
+			>基本： + - * /(全是整数则整除) //(小数整除)  **幂乘方  round(a,2)刚好5舍大于5入
+			>赋值：=
+			>多重赋值： , =     先计算赋值者再赋值给被赋值者，计算从左到右
+			>
 		>流程控制：
-		>异常处理：
+			>if -elif -else
+			>for:只能是对序列进行： for item in ['b', 'a',2]: 
+				>for - else :当for执行完毕了也没有执行过break命令那么就会执行else里的内容。
+			>range(起，止，步长)：生成一个整数list
+		>变量作用域：
+			>变量：使用前必须定义（赋值） 。。
+		>包管理：
+			>安装到哪里：
+				>单文件模块：直接放到$python_dir/Lib下
+				>多文件模块(是一个包结构，有setup.py)：安装方法:解压：python setup.py install
+					>会被安装在Lib\site-packages下：
+					>有的包依赖VC++9.0 
+				>自定义setup.py文件来安装模块：使用setuptools 中的setup函数和find_packages函数
+				
+				>pip方式：放在了Scripts文件夹下。。且在Lib\site-packages下也有
+					>且包是.exe格式，比如wheel的安装，后为wheel.exe
+					>pip search $module_name
+					>pip install $module_name
+						>本质：是先从PyPI上找，然后下载到本地仓库。所以可以离线下载包。离线安装：pip install abc.zip
+					>pip list（查看已经安装的包）
+				
+				>whl文件：
+					>pip install .whl
+				>.exe自定义安装：numpy-1.9.2-win32-superpack-python2.7.exe
+					>
+			>仓库：
+			>pycharm包管理:Project Interpreter下
+		>文件目录：
+			>一个文件一个模块
+				>一个文件中：一个类，几个类，或者若干个函数
+			>一个带__init__.py的目录算一个包
+				>__init__.py里的内容：all=['module1', 'subpackage1']
+			>
+		>异常处理：try/except/else (else在没有发生异常时执行)
 		>函数定义：和使用、调用
+			>传参：传的是引用。。（常量自然就是值了）
+			>参数初始化：数值可以来自函数外部。。。函数调用时就可以参数个数不定。
+			>带*参数和不带*参数：
+			>调用一个函数：
+				>会生成一个局部符号表： 变量引用首先在这个符号表里查找，然后在包含函数的局部符号表，然后是全局符号表，最后是内置名字表
+					>因为全局符号表是众多函数都要找的区域，所以其中的全局变量不能在函数中被赋值，只能取值（除非用global语句命名）
+					>
+			>重命名机制：一个函数定义之后，它的函数名会该函数所在空间的符号表中：这个名称指向该函数的函数体。所以这个名称是可以被使用的---而不是只能用来被调用()。
+		>局部符号表：一个变量：开头几行可以被定义为变量，后面可以被定义为函数。这是不定的。		
+						
+					
 		>面向对象思想的实现：类的定义、继承、覆盖、封装、多态
+			>继承：需要显式从object继承：class A(object):
+							pass
+			>封装：
+				>_单下划线开头实例变量protected不能import到,双下划线__开头变量类里private			
 		>特殊语法：简化语法：
 			>yeild:
 			>for快速赋值给数组
-			>
+			>print输出不换行： print 'sss',即加一个逗号结尾
+			>阻塞等待获取控制台输入：raw_input('please input a line')
+			>pass:什么也不做
 	>常见功能：(常使用包)（基本功能）
 		>文件操作：
 		>系统操作：
 		>多线程|进程操作：
 		>网络操作：socket编程和http编程
+			>套接字socket类型：服务器之间通信AF_UNIX、进程之间通信AF_INET
+				>普通的TCP类型SOCK_STREAM、UDP类型SOCK_DGRAM
+		>GUI用户图形操作：
 	>常见场景：
 		>web网站开发：常用框架
 			>bean管理：
@@ -28,8 +139,52 @@
 			>spacy
 		>大数据操作：hadoop集群、spark集群的访问：常用框架
 		>机器学习算法的实现和访问：常用框架
+	>常见问题：
+		>版本问题：python 32 /64位
+		>编码问题：程序中
+			>查看系统编码(ascii)：sys.getdefaultencoding()
+			>设置系统编码reload(sys) sys.setdefaultencoding('utf8')
+			>永久设置系统编码：方便pip安装包的时候不报编码错：UnicodeEncodeError: 'ascii' codec can't encode
+					>新建文件：Lib/site-packages/sitecustomize.py  内容为上述三句。
+			>源文件编码：文件内容编码-首行标记：#coding=utf-8 #coding:utf-8 #-*- coding:utf-8 -*-
+		>
 
 
+
+	>附加：
+		>python　IDE:开发环境
+		>python 
+			>编码规范：
+				>代码块的开始和结尾：（强制，否则报错）
+					>开始：按代码的层级关系缩进,每一行都是同样多的缩进（一个代码块，一级代码块）
+					>结尾：不用分号。
+				>代码块：包围不用大括号（包括流程控制if-else,for-while，函数定义方法定义），只用缩进和冒号。大括号是定义字典的。
+					>顶级定义：函数-类之间空2行，方法之间空一行（非强制，会告警）
+				>文件和socket:
+					>关闭：减小消耗文件描述符、减少处理它们的资源
+					>使用with管理文件
+				>import导入：
+					>自上而下：最通用到最不通用
+				>命名规范：
+					>module_name, package_name, ClassName, method_name, ExceptionName, function_name, GLOBAL_VAR_NAME, instance_var_name, function_parameter_name, local_var_name.
+				>导入文件时文件主功能不能执行：所以主功能放在main函数中，且要有 if __name__ == '__main__'检查
+			>注释：
+				>函数：三引号：''' 里面'''
+				>类、方法：三引号：'''
+				>块注释：#
+				>
+			>程序：
+			>
+
+
+	>20个demo
+
+参考文档：
+1.http://www.runoob.com/w3cnote/google-python-styleguide.html（编码规范）
+2.https://pypi.python.org/pypi（包网址）
+3.http://blog.csdn.net/qy924565830/article/details/53992708(各种模块的安装)
+4.https://www.lfd.uci.edu/~gohlke/pythonlibs/（64位模块的安装）
+5.https://www.cnblogs.com/wumingxiaoyao/p/7047658.html(socket编程详细)
 
 
 			
