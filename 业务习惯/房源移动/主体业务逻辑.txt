@@ -1,4 +1,12 @@
-1.问题：
+1.问题：/fangyuanmoveapi/index
+	>条件：/applyapi申请导入：都是网灵通用户、有相同的网灵通类别dispcate、数据源用户有相应时间内和类别的房源、日期合法、不是黑名单用户
+	>合法条件：信息审核通过（对一条）、没有导入验证、
+		   >每条信息都是：一个同意的房源
+	>进行房源导入：>一键导入：将/fangyuanmoveapi/phone看是否绑定了手机  （出现一键导入说明已经有房源可以导入了）
+			>/fangyuanmoveapi/import：看是否审核同意：HouseMove。。审核了才开始移动.
+			>获取到已经审核的房源：/importlist：可以看到查询逻辑。这个房源是数据源的房源。通过审批可以移动了。
+			>一键导入：/phone一个时期的房源一个一键导入按钮。点击进行手机绑定验证。
+			>确定：/import则开始导入，上已述。
 	>主要业务逻辑
 		>数据准备：
 			>请求移动的请求列表List<HouseMove>：IHouseMoveService.getFangYuanMoves(Date arg0, HouseMoveStateEnum... arg1)
@@ -11,3 +19,6 @@
 		>消息发送：
 			>发送给使用用户（目标用户，获取房源的用户）：IMessageV3.AppendSystemMsg(long arg0, String arg1, long arg2, String arg3, String arg4)
 			
+		>---------js一定可以找到：//fang.vip.58.com/js/fangyuanmoveapi.js。就在页面上。
+
+	/ajaxfymove/applyapi申请导入

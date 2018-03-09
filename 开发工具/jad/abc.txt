@@ -1,0 +1,4 @@
+1.问题：
+	>单class: jad -sjava abc.class
+	>目录class包： jad -o -r -dsrc -sjava tree\**\*.class
+	>复制jar路径：eclipse中：选中工程依赖下的jar,最下面有路径可以复制。

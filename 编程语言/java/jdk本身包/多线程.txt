@@ -4,3 +4,8 @@
 		>Executors.newScheduledThreadPool()可以周期性的执行任务：ScheduledExecutorService.scheduleWithFixedDelay(Runnable...)
 		>ConcurrentHashMap
 		>AtomicReference<long[]>
+
+	>多线程执行器：ThreadPoolExecutor。
+		>首先创建要给这个执行器对象。创建时说明了线程创建的工厂方法、异常处理的方法、初始化的阻塞队列。线程池大小等整形参数。
+		>用户submit提交一个任务给执行器。执行器获取一个线程来执行，并且返回一个Future把柄对象---指向有关任务的。
+		>Future对象.get()就会访问ThreadPoolExecutor自己的任务是否完成，有就读取结果没有就阻塞----直到Executor被结束的任务触发而再触发Future对象解开阻塞。返回结果了。

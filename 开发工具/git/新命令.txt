@@ -2,3 +2,6 @@
 	>http方式：
 		>获取：git pull http://
 		>上传：git push --set-upstream http://gitlab.58corp.com/lishaoping/house.united.hugwlistesb.git master
+		>创建分支：git checkout -b newbranch
+		>强行合并远程仓库里的一个分支：git pull http://gitlab.58corp.com/house.united/house.united.hugusercenter.git release:master
+			尝试合并可以用git fetch ---

@@ -1,0 +1,10 @@
+1.问题：
+	>mvn dependency-copy-dependencies
+	>mvn忽略test打包。否则会执行test里的类。且生成lib依赖。eclipse中自动生成。
+		mvn package -Dmaven.test.skip=true   
+	>mvn dependency:tree依赖树
+	>mvn deploy -Dmaven.test.skip=true发布。 
+
+	>如果mvn compile会出jdk问题，那么在eclipse中编译就可以。另外，每次编译前需要删除target里面的内容，否则会使用这个旧的内容。
+		>含有.的包名也能被mvn compile编译为正常的包名路径。或者认为是连续目录的路径。。。。从编译结果可以看到。
+		>
