@@ -1,4 +1,4 @@
-1.问题：
+1.问题：服务实例：PromotionAPIService， 服务接口：IPromotionAPIService， 服务方法：getPromotionWithBiz() ， 方法实现模式：模板模式（大量的模板方法，模板内编程。来统一库存、诚信、免税、优先推送、置顶列表）
 	>vip.fang里的调用的方法，可以在service项目里看到实现。
 	>测试类：RealHouseAPIServiceTest.java
 	>业务逻辑：切分为：（代码层次）
@@ -9,17 +9,20 @@
 
 
 	>数据来源：主干数据：List<Info>  ---  >  List<Promotion>
-		>2.a.usercenter用户中心/,IUserCenterService：获取用户的info帖子list:    getTuiGuangFangYuanList()
-		>2.b.imc获取信息帖子的完整情况：IInfoService
-		>3.a cmc获取表现地域：GradeDispLocal	补充进来  
-		>3.b newdict获取小区信息：ICommunityService  补充进来  
-		>3.c promotion 获取info的推广情况：IPromotionService    但是不补充从里面可以获取的数据--只是看是否存在等。  buildTuiGuangInfo
+		>2.a.usercenter用户中心/,IUserCenterService：获取用户的info帖子id list:    getTuiGuangFangYuanList()
+		>2.b.imc获取信息帖子的完整情况：IInfoService	InfoBuilderVO.getInfos()
+		>3.a cmc获取表现地域：IDispLocalService	补充进来  GradeDispLocal是两个DispLocalEntity的组合。PromotionBuilderVO.setInfoVO()
+		>3.b newdict获取小区信息：ICommunityService  补充进来  getUnitParamHtmlXiaoQu() //从info里的params中找到id
+		>3.c promotion 获取info的推广情况：IPromotionService    但是不补充从里面可以获取的数据--只是看是否存在等。  PromotionBuilderVO.buildTuiGuangInfo()
 		>3.d toppromotionscf 获取帖子top state状态：CommonTopService ..补充进来		setPromotionInfoTopState()	
 				这里补充了大量的top信息和allpv\adstate等信息
 		>3.e toppromotionscf 获取价格和数量相关信息  ITopUnitService 不补充进来。	getTopPriceTag()
 
-
-
+		>4.a 查询远程实例的结果缓存在本地：包含如下：
+			>3.c, 3.d查询数据没有缓存
+			>3.b查出的小区实体有缓存，在远程memcached上。
+			>3.a查出地域有缓存，在本地ConcurrentMap里。
+			>2.b,2.a没有缓存，包括infoid 和info信息实体
 	>数据设置时刻：
 		>数据前端获取：
 		>数据中间生产：

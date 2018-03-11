@@ -9,6 +9,7 @@
 		>解释型语言：无需编译链接，直接运行，不用编译，即改即运行，测试方便。
 	>解释器：
 		>运行原理：如何执行整个python文件的、加载整个文件的，解释器，数据区
+			>从最顶层模块开始，__buidin__到__main__模块--
 		>内存管理：
 		>执行python abc.py <arguments>时做了什么？
 			>代码一行行被执行：遇到表达式和函数分别：
@@ -150,7 +151,7 @@
 			>一个带__init__.py的目录算一个包
 				>__init__.py里的内容：all=['module1', 'subpackage1']
 			>
-		>异常处理：try/except/else (else在没有发生异常时执行)
+		>异常处理：try/except/else/finally (else在没有发生异常时执行) (finally最后执行，且推出try一定会执行，无论走excpet,else或者都没走，最后都会执行finally)
 			>两种错误：语法错误和异常：syntax errors 和 exceptions
 				>语法错误：报错信息里有尖括号：指明是哪个地方出了语法错误
 				>异常：运行期间产生的错误：没有尖括号，只有异常堆栈。
@@ -192,6 +193,16 @@
 			>dir()查看当前定义的命名列表：变量、函数、模块			
 					
 		>面向对象思想的实现：类的定义、继承、覆盖、封装、多态
+			>预备：
+				>命名空间：三大类：内置命名空间、模块命名空间、函数命名空间（对象的属性集也可以属于）
+					>空间区分了引用路径。
+					>空间中属性的访问.,属性可读
+					>命名空间的生存周期：
+						>每次函数调用生成一个局部命名空间：
+						>每次递归调用也生成要给局部命名空间：
+				>作用域：程序可以直接访问的命名空间的区域。
+				>全局变量：全局可以访问：但是在另一个命名空间访问时，需要加global
+
 			>继承：需要显式从object继承：class A(object):
 							pass
 			>封装：
@@ -272,7 +283,7 @@
 3.http://blog.csdn.net/qy924565830/article/details/53992708(各种模块的安装)
 4.https://www.lfd.uci.edu/~gohlke/pythonlibs/（64位模块的安装）
 5.https://www.cnblogs.com/wumingxiaoyao/p/7047658.html(socket编程详细)
-
+6.http://www.runoob.com/manual/pythontutorial/docs/html/errors.html（参考资料2）
 
 			
 	
