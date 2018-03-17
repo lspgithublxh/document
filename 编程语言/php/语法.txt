@@ -1,0 +1,171 @@
+1.问题：
+	>运行原理：
+		>运行面向过程、过程中使用了面向对象
+		>php脚本
+		>前端浏览器到后端的过程：
+			>apache启动，加载mod_pho5.so模块（即SAPI），将其中的hook_handler注册进来
+				>该模块执行：a.先mod_php5.c文件中的php_init_handler函数：创建一个sapi_globals_struct结构体，保存apache请求的基本信息，如header
+					     b.再初始化zend_utility_functions来设置zend函数指针
+					     c.加载php.ini配置、php内置扩展如array\mysl、php外部扩展
+			>url为php访问，apache就会将控制权交给SAPI
+			>
+		>运转方式：
+			>cgi模式:即apache调用php.exe来解析文件再将解析结果返回给客户端。  php.exe解释器放到web服务器的cgi-bin目录。。
+				>对每个请求，都要重新解析php.ini,载入全部dll扩展
+			>fast-cgi模式：有进程池。
+			>cli模式：php命令行模式：可以直接运行php脚本。php abc.php
+			>模块模式：如上2述
+	>语言特性：
+		>自动加载类：spl_autoload_register()
+		>如何建立名称空间的：
+		>如何引用其他文件中的类：
+			>单文件逐一加载小项目的时候：require_once 'php文件路径'；include_once ‘文件路径’
+						set_include_path('目录')  + include('该目录下的文件')
+			>多文件自动加载：__autoload($className),即php5以后再遇到没有加载的类时，就会运行这个函数。其内部实现找类的方式：类名和文件名的对应关系。所有有约定局限。
+					 sql_autoload($className, '扩展名如.php')实现原因：include_path。在include_path下寻找。。sql_autoload_register()可以指定加载函数
+					sql_autoload_call()有加载函数表，逐个使用来查找类，找到退出。实现原因：可以注册一个自己的加载函数。
+						>注册加载函数：spl_autoload_register('函数名')
+									
+	>架构规律-构造大项目的组织规律：
+		>
+	>语法：
+		>变量：$name
+			>超级全局变量：
+				>$GLOBALS:全部作用域里都可以访问。组合数组，全部变量。
+				>$_SERVER:web服务器创建的，各种属性的关联数组。从url里取数据和放在php文件脚本里要非常小心。因为可能有script脚本。_SERVER['PHP_SELF']
+				>$_REQUEST:用于存储HTML表单提交的form数据。即request里的数据。
+				>$_POST:用于存储html表单提交的数据$_POST['name']
+				>$_GET:也是用于存储表单提交的数据。
+				>$_FILES:存储文件实体
+				>$_COOKIE:取出cookie  $_COOKIE['name']
+				>$_SESSION:存储了session。和请求无关，所有的请求都可以访问。
+			>魔术变量：
+				>__LINE__当前行号
+				>__FILE__问啊金完整路径和文件名
+				>__DIR__文件所在目录
+				>__FUNCTION__当前函数名称
+				>__METHOD__当前所在类的方法名
+				>__NAMESPACE__访问当前名称空间
+				>PHP_SELF:当前执行脚本的文件名
+			>全局变量：
+				>访问：\NAME。。。开头就是\，是最顶级的名称空间
+					>比如：全局函数：\strlen('abc')  。这种全局函数，是系统函数，是当自定义的函数和此同名时候的区分。
+						如果没有同名，会在全局空间中去找--如果找到了调用，没就报错。
+		>常量：define(name, value)
+			>定义和引用：定义如上，引用：name
+			>PHP_EOL:换行符
+			>另一种定义和使用：const name = value;   使用：constant('name');
+		>数据结构：
+			>多行字符串定义：<<<EOF "abc"
+					  EOF;
+			>数组：array('a')
+			>关联数组：即map:array('a'=>'value', 'b'=>'cc')
+			>字符串：连接：.
+				>
+		>运算符：
+			>算术正则：/是小数除
+			>关系：
+			>逻辑：
+			>运算对象：数组
+			>组合运算符：a<=>b   值有三个，依次为-1, 0, 1
+		>流程控制：
+			>if-elseif-else:
+			>switch-case-default:
+			>for(;;){}
+			>foreach(map as key=>value){}  foreach(arr as value){}
+			>while(){}  
+		>关键字：
+			>echo 直接输出内容
+		>变量作用域：
+			>local:函数内：
+			>全局：在脚本内。且实际上在$GLOBALS里。
+			>静态作用域：是函数里的局部变量，只是下一次可以继续访问，而值为上次留下来的。
+			>参数作用域：函数参数。
+		>函数定义：function abc(){}
+			>定义和调用：function name($param1，$param2){}   name();
+			>动态调用：$b = 'name'; $b();
+			>常用函数：var_dump(variable)变量类型
+				isset()是否设置且不是NULL
+				instanceof()实例的类型判断
+				count()获取数组长度
+				htmlspecialchars()转换为html页面中的符号格式。比如<转换为&lt;
+				pre_match()正则函数
+				test_input()提交的信息过滤，里面是几个trim之类的过滤函数
+				date('Y-m-d')格式化日期	
+				session_start()启动session
+				filter_has_var(数组，属性)属性存在验证
+				json_encode()实体转换为json字符表达式
+				var_dump()json字符串表达式转换为json对象
+		>面向对象编程：
+			>类：
+				>定义：class a{}
+				>this: $this->a  
+				>属性：var $a;用var来声明表示公有，private, proteted, public，且要有$, 且访问的时候反而不能用$,比如：$this->a;
+					>先看是否定义，再看是否有权限调用
+				>方法：public static function abc(){}
+					>方法定义和调用:$o->sayHello();
+					>类调用静态方法:classA::method();
+					>构造方法：function __construct();
+					>析构函数：function __destruct()
+				>实例化：new A;或者new 'A';或者new A();			clone
+					
+				>动态实例化：一个变量，值是类名，那么可以  new 变量;   实现实例化。
+			>封装：public
+				>final 不可被覆盖
+			>继承：extends
+				>调用父类构造方法：parent::__construct()
+			>覆盖：trait
+			 	>trait是声明一个作用区域，包含方法。方法里访问父类的方法：parent::sayHello();
+				>
+			>多态：方法的多态：表现是方法接口的多态，实际上是实例的不同。因为，调用时可以根据内部判断决定调用父类的计算结果还是自己亲自计算结果。
+			>接口和实现：interface abc{}    implements
+			>类中的常量：Aclass::constant
+					const a = '';
+			>抽象类：abstract class A{}
+			>
+		>名称空间：namespace name:声明一个名称空间
+			>声明一个名称空间，后面的函数、常量、类都在这个名称空间里。namespace a; namespace a{}
+			>定义之前：可以声明编码类型：declare(encoding='utf-8')
+			>名称空间中的属性：name\abc\def
+			>使用名称空间、拉进名称空间--相当于import：是一种导入操作：use bac\cc as newname;
+			>直接调用当前名称空间里的变量、函数、类：namespace\abc\sss();
+			>如果某个php文件里没有定义namespace name, 那么默认就定义在全局名称空间\下
+			>当前名称空间中的名称的引用：直接名称即可。且直接名称就是当前空间下的名称
+		>文件导入：
+			>include:include 文件名
+			>require: require 文件名
+			>
+		>异常处理：try/catch/
+			>扔出错误：throw	new Exception()
+	>程序开发：
+		>基本模块：
+		>系统访问：
+		>文件操作：
+			>打开：fopen(file, type)
+			>结尾判断：feof(file)
+			>读取：fgets(), fgetc()
+		>网络操作：
+		>多线程开发：
+		>第三方包开发：
+			>mysql连接：
+				>mysqli(url, user, password)
+	>web网站：
+		>mvn模式：
+			>controller文件(php) + model文件(php) + view文件（html或者php，html文件中也可以嵌入php代码）
+				controller中直接require|include|autoload加载model文件和view文件。。
+				---所以url直接请求controller这个php文件。
+			>controller中可以将数据传递给view文件---因为它们在一个名称空间中。
+		>html页面输出：
+		>pdf文件、flash影片输出：
+	>
+
+
+参考资料：
+1.http://blog.csdn.net/tdcqfyl/article/details/52351140（搭建环境）
+2.https://www.cnblogs.com/imayanlong/p/6368882.html（安装xdebug调试工具）
+3.https://www.cnblogs.com/benjaminboy/p/4807218.html（eclipse调试）
+4.http://blog.csdn.net/21aspnet/article/details/54808850（netbeans调试）
+5.https://www.cnblogs.com/yujon/p/6209551.html（运行模式）
+6.https://www.cnblogs.com/peng0728/p/7149453.html（注册加载函数）
+7.http://www.thinkphp.cn/code/2328.html（php直接启动web服务器，内置的）
+8.https://jingyan.baidu.com/article/11c17a2c3d3628f446e39d20.html（mvc模型的请求过程）

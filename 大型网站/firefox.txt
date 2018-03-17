@@ -1,0 +1,4 @@
+1.问题：
+	>debug:
+		>堆栈跟踪：可以直接看到浏览器执行到那个自己的js了。比如：chrome://global/content/browser-child.js
+		>

@@ -28,3 +28,7 @@
 		>---------js一定可以找到：//fang.vip.58.com/js/fangyuanmoveapi.js。就在页面上。
 
 	/ajaxfymove/applyapi申请导入
+
+
+
+	>房源移动定时任务：处理产生的HouseMove，，期间房源移动计划

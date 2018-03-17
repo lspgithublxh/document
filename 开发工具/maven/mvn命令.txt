@@ -8,3 +8,4 @@
 	>如果mvn compile会出jdk问题，那么在eclipse中编译就可以。另外，每次编译前需要删除target里面的内容，否则会使用这个旧的内容。
 		>含有.的包名也能被mvn compile编译为正常的包名路径。或者认为是连续目录的路径。。。。从编译结果可以看到。
 		>
+	>mvn dependency:sources下载jar包源码

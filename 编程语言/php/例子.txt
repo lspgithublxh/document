@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<h1>My first PHP page</h1>
+
+<?php
+echo "Hello World!";
+$x = 1;
+$y = 1;
+	print $x + $y;
+function test(){
+	$x = 3;
+	print $x;
+	global $x;
+	print $x;
+	print $GLOBALS['x'];
+}
+test();
+echo var_dump($x);
+define('ANM', 'lishaoping');
+print ANM;
+#print $_SERVER('HTTP_HOST');
+class A{
+	var $name = 'world';
+	var $age = 18;
+	function __construct(){
+		echo 'okok', PHP_EOL;
+		echo $this->name;
+		echo $this->age;
+	}
+}
+echo '</br>';
+$a = new A();
+$b = new $a;
+$c = 'A';
+$c = new $c;
+const name = 'shouji';
+echo '</br>';
+print constant('name');
+print name;
+echo '</br>';
+#print __NAMESPACE;
+?>  
+
+</body>
+</html>
