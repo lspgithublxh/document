@@ -7,6 +7,12 @@
 			>#set{$var = 5}
 	
 		>Á÷³Ì¿ØÖÆ£º
-			>#if  #else #end
+			>#if()  #else #end
 			>#ifnull()  #ifnotnull()
 			>#foreach($var in list)
+			  #foreach($foo in [0...20])  
+			   #foreach($item in map)
+				 $item.key $item.value
+			  #end
+
+			  

@@ -25,6 +25,8 @@
 					 sql_autoload($className, '扩展名如.php')实现原因：include_path。在include_path下寻找。。sql_autoload_register()可以指定加载函数
 					sql_autoload_call()有加载函数表，逐个使用来查找类，找到退出。实现原因：可以注册一个自己的加载函数。
 						>注册加载函数：spl_autoload_register('函数名')
+				>自动加载的时机和条件：时机已经上述。即遇到没有加载的类，
+							必备条件：定义一个含有autoload函数的类，且在请求脚本中require了这个类，那么就会在不知道类的时候执行这个这个类里的autoload函数。
 									
 	>架构规律-构造大项目的组织规律：
 		>
@@ -96,6 +98,8 @@
 				filter_has_var(数组，属性)属性存在验证
 				json_encode()实体转换为json字符表达式
 				var_dump()json字符串表达式转换为json对象
+			>匿名函数：定义和使用
+				>定义：a.  $a = function($param1, $param2){}   $b = function($pa1, $pa2) use($outer1, $outer2){}
 		>面向对象编程：
 			>类：
 				>定义：class a{}
@@ -123,7 +127,7 @@
 					const a = '';
 			>抽象类：abstract class A{}
 			>
-		>名称空间：namespace name:声明一个名称空间
+		>名称空间：namespace name:声明一个名称空间。。且该名称空空间是顶级名称空间。即在其他文件中引用的时候要使用：/name的方式来引用use，或者require(文件后) ---new 该文件中的对象时也要new \name\class()这样的完整引用名。其中的类也是
 			>声明一个名称空间，后面的函数、常量、类都在这个名称空间里。namespace a; namespace a{}
 			>定义之前：可以声明编码类型：declare(encoding='utf-8')
 			>名称空间中的属性：name\abc\def
@@ -157,7 +161,10 @@
 			>controller中可以将数据传递给view文件---因为它们在一个名称空间中。
 		>html页面输出：
 		>pdf文件、flash影片输出：
-	>
+	>常见问题：
+		>类不能发现问题：是否完整名称空间？ 不止有路径，而且/开头--即是绝对路径
+				 是否加载函数正确？spl_autoload_register()
+				 use 不起作用：	
 
 
 参考资料：
