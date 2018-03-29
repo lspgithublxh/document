@@ -76,7 +76,7 @@
 				  >字符串运算： * 重复 +连接
 				  >没有字符类型：单字符串表示
 				  >直接正负整数来索引：截取。截取时对起止整数没要求
-				  >字符串不可变：不可复制。
+				  >字符串不可变：不可赋值。
 				  >unicode字符串：表示方式：u'adb\u0020'  原始模式ur'\u0020abd'
 				  >编码解码转换：unicode ascll utf-8 latin-1可以相互转换:编码-解码-再编码...。。。显然的是：一个unicode的中文是无法转换为ascll码的。
 					>告知解释器该字符串是用什么来编码的、要编码为什么目标码
@@ -84,6 +84,7 @@
 							>‘眉’字：utf-8:\xc3\xbc    
 				  				   unicode:\xfc
 							>dict打印中文来看，utf-8会是：\x..\x..格式，unicode会是\u1234形式。
+					>编码的：字符串表示--肉眼看到的、内存数据形态、软件标记读取认为的，软件展现出来的
 				  >格式化：.format包括数字都可以。。不用%这种旧的方式	
 			>列表：[a,b]可以被索引和切片:切片是一个副本
 				>运算：拼接式合并： +
@@ -296,9 +297,10 @@
 			>进程操作：
 		>网络操作：socket编程和http编程
 			>套接字socket类型：服务器之间通信AF_UNIX、进程之间通信AF_INET
-				>普通的TCP类型SOCK_STREAM、UDP类型SOCK_DGRAM
+					>普通的TCP类型SOCK_STREAM、UDP类型SOCK_DGRAM
 		>GUI用户图形操作：
 			>简单的demo。Tkinter  wxPython QT
+		>matplot数学运算：
 		>.py打包为exe: pip install pyinstaller   
 			>pyinstaller 
 		>远程调用：xmlpclib  SimpleXMLRPCServer
