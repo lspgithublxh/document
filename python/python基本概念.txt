@@ -1,0 +1,17 @@
+1.问题：
+	>web网站开发：任何语言、web框架必须解决三个问题：
+		>a.url-函数/资源的匹配(函数/方法级别)   
+		>b.数据库的访问(获取数据，序列化) 
+		>c.后端数据填充到模板(html + velocity)(非jsp时)。以及多种数据的返回：直接json,txt,html,图片。。。动态静态资源
+
+		>d.request,response,session三大实体必须提供。fiter,incepter也应当可以提供。
+
+	>django:
+		>安装和新建工程：pip install django   ；django-admin startproject projectname
+		>启动项目：进入项目：python manage.py runserver 0.0.0.0:8088
+		>
+ 
+	
+2.常见问题：
+	>安装好的包在pycharm中导入：即导入用户的site packages lib:即在settings /project incepter/ + / install to user site packages lib 勾选即可。
+	
