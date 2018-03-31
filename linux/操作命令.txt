@@ -9,5 +9,8 @@
 		>文件内容搜索匹配：grep 'abc' abc.log
 	>系统操作：uname -a 系统名称
 		>pwd:当前路径
+		>cpu信息查看：cat /proc/cpuinfo会显示逻辑cpu和物理cpu
+				>cat /proc/cpuinfo| grep "physical id"| sort| uniq| wc -l只看物理cpu
+		>内存查看：free -g 显示是G为单位。
 	>网络操作：
 	>线程操作：

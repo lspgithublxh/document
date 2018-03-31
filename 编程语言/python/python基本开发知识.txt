@@ -137,7 +137,7 @@
 					>有的包依赖VC++9.0 
 				>自定义setup.py文件来安装模块：使用setuptools 中的setup函数和find_packages函数
 				
-				>pip方式：放在了Scripts文件夹下。。且在Lib\site-packages下也有
+				>pip方式：在Lib\site-packages下有
 					>且包是.exe格式，比如wheel的安装，后为wheel.exe
 					>pip search $module_name
 					>pip install $module_name
@@ -223,7 +223,7 @@
 				>只属于实例的属性的定义：self.attribute, 
 					>a.定义在方法里:类的名称空间的函数里
 					>b.实例引用来定义：  比如： a = AA()  a.newAttri = 'abc'   那么a实例就能增加一个属性。
-
+				>tostring:定义__repr__()方法
 			>预备：
 				>命名空间：三大类：内置命名空间、模块命名空间、函数命名空间（对象的属性集也可以属于）
 					>空间区分了引用路径。
@@ -284,6 +284,8 @@
 			>解释器在执行被注解的函数的定义的时候，即还不是调用的时候，注解函数开始执行---从下到上---并最终把注解函数输出的函数指针给被注解函数名
 		>python3:
 			>nonlocal
+		>资源回收：
+			>引用计数，为0则会被回收机制定期自动回收
 	>常见功能：(常使用模块、包)（基本功能）
 		>文件操作：
 			>打开-读写：f = open(file, mode)返回文件对象.. w、a都可以没文件自动创建
@@ -360,6 +362,7 @@
 
 	>20个demo
 	>说的这些，只能给大家一个片面的认识，希望大家亲自了解和操作以便有全面的认识。
+	>缺点：太格式化，匿名函数定义不方便。
 参考文档：
 1.http://www.runoob.com/w3cnote/google-python-styleguide.html（编码规范）
 2.https://pypi.python.org/pypi（包网址）

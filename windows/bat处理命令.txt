@@ -1,0 +1,31 @@
+1.问题：
+	>准备：
+	>文件操作：
+		>进入某个文件夹：
+			@echo off
+			c:   #表示进入c盘
+			cd \wps #表示进入这个目录
+		>	
+		>获取当前目录：
+		>执行某个命令：
+	>最常用的命令集合：
+		>echo
+		>@
+		>call 同步调用其它的bat文件，而且在调用执行完毕后会返回继续执行。 call c:\ab.bat
+		>start 同步调用其它bat文件或者exe文件。会打开一个cmd窗口。不是内部调用。
+		>pause 暂停当前执行，等待用户输入命令。相当于显示Press any key to continue
+		>rem:这个的功能可以用::代替。仅仅表示注释的意思。不执行。
+	>高级命令集合：
+		>if:
+		>goto:
+		>choice:
+		>for:
+		>
+	>例子：
+		>dir c:\*.* > a.txt将c盘文件写入a.txt
+		>参数传递：cmd中执行命令a.bat  a.txt b.txt那么a.bat文件中的%1 和%2就表示a.txt 和b.txt这两个字符串。
+
+参考资料：
+1.http://www.jb51.net/article/5828.htm
+		
+		
