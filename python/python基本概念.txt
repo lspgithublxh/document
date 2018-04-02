@@ -6,7 +6,7 @@
 
 		>d.request,response,session三大实体必须提供。fiter,incepter也应当可以提供。
 
-	>django:
+	>django: 
 		>安装和新建工程：pip install django   ；django-admin startproject projectname
 		>启动项目：进入项目：python manage.py runserver 0.0.0.0:8088
 		>
