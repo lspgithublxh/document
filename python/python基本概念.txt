@@ -19,7 +19,19 @@
 			>
  	>django网站特点：
 		>url和视图改变不用重启服务器，自动可以生效。但是view处理器改变了需要重启。服务器自动监测代码并自动重新载入，无需手动启动。
-	
+	>pyspark:
+		>启动spark集群，在spark目录下执行：./bin/run-example SparkPi
+			>执行：./bin/spark-submit --master local[4] SimpleApp.py
+			     ./bin/spark-submit examples/src/main/python/pi.py
+				./bin/spark-submit examples/src/main/r/dataframe.R
+
+
+
+
 2.常见问题：
 	>安装好的包在pycharm中导入：即导入用户的site packages lib:即在settings /project incepter/ + / install to user site packages lib 勾选即可。
 	
+
+
+参考资料：
+1.https://www.cnblogs.com/yangzhang-home/p/6056133.html（python spark操作）
