@@ -1,0 +1,6 @@
+1.问题：
+	>配置被管理的ip:
+			cd /opt/soft/nginx/sbin
+			vi ../conf.d/usdt_appfang_upstream.conf(改这里面的沙箱机ip地址)
+			./nginx -s reload
+	

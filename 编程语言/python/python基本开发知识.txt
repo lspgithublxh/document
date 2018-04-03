@@ -298,8 +298,11 @@
 		>多线程|进程操作：
 			>进程操作：
 		>网络操作：socket编程和http编程
+			>socket:向网络发出请求和应答网络请求
 			>套接字socket类型：服务器之间通信AF_UNIX、进程之间通信AF_INET
 					>普通的TCP类型SOCK_STREAM、UDP类型SOCK_DGRAM
+			>法1：创建socket并初始化--》绑定端口ip--->收发数据
+			>法2：raw socket通信 AF_PACKET    linux上搞
 		>GUI用户图形操作：
 			>简单的demo。Tkinter  wxPython QT
 		>matplot数学运算：
