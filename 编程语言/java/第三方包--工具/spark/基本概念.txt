@@ -1,0 +1,14 @@
+1.问题：
+	>本地化运行：
+	
+
+
+
+
+
+参考资料：
+1.https://www.cnblogs.com/csguo/p/7800417.html（scala本地化运行spark）
+2.https://blog.csdn.net/u012882134/article/details/77893894(python本地运行spark任务)
+3.https://blog.csdn.net/bingoxubin/article/details/78592751(python本地运行spark任务)
+4.https://yq.aliyun.com/articles/25500（python本地运行spark任务）
+5.https://blog.csdn.net/qq_16365849/article/details/50698261（transfrom和action的各种比较）
