@@ -24,14 +24,32 @@
 			>执行：./bin/spark-submit --master local[4] SimpleApp.py
 			     ./bin/spark-submit examples/src/main/python/pi.py
 				./bin/spark-submit examples/src/main/r/dataframe.R
+		>常用actions:	count()
+		>常用transforms:	map reduce flatmap filter
+		>结果收集：collect()
+		>
 
+	>机器学习：
+		>numpy是c写的，所以速度保证快。
+		>scipy是c写的，所以速度快。
+		>scikit-learn构建在numpy scipy之上，所以速度也快。实现了经典的机器学习算法，如贝叶斯、随机森林
+			>安装：pip install sklearn   pip install scipy  pip install matplotlib
+			>
+		>nltk:自然语言必须的一个库。
+		>神经网络库：tensorflow\keras
+		>顺序：scikit-learn -->  keras --> tensorflow
 
-
+		>机器学习中的大量准备工作：
+			>测试、验证
+			>
+		
 
 2.常见问题：
 	>安装好的包在pycharm中导入：即导入用户的site packages lib:即在settings /project incepter/ + / install to user site packages lib 勾选即可。
-	
+		>或者不用，直接pip安装即可，但是需要看到External Libraries并且只有这个库。
+	>
 
 
 参考资料：
 1.https://www.cnblogs.com/yangzhang-home/p/6056133.html（python spark操作）
+2.http://scikit-learn.org/stable/auto_examples/plot_cv_predict.html#sphx-glr-auto-examples-plot-cv-predict-py(官方例子)
