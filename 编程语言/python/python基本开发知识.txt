@@ -379,7 +379,10 @@
 5.https://www.cnblogs.com/wumingxiaoyao/p/7047658.html(socket编程详细)
 6.http://www.runoob.com/manual/pythontutorial/docs/html/errors.html（参考资料2）
 7.http://blog.csdn.net/qq_31776303/article/details/78994763（微信小程序跳一跳）
-
+8.https://www.jianshu.com/p/ff24a81f3637（安装mingw拓展，g++编译器来进行）
+9.https://www.cnblogs.com/xudong-bupt/p/7025728.html（ctypes调用加载动态库来改善速度）
+10.https://www.cnblogs.com/huanjing/p/6701396.html（pandas大数据处理模块）
 			
 	
+
 
