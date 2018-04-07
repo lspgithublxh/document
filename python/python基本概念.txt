@@ -42,6 +42,10 @@
 		>机器学习中的大量准备工作：
 			>测试、验证
 			>
+	>pandas:install pandas  openpyxl pandas-datareader
+		>数据类型：series  DataFrame对齐
+			>series:索引和值对	
+
 		
 
 2.常见问题：
@@ -53,3 +57,5 @@
 参考资料：
 1.https://www.cnblogs.com/yangzhang-home/p/6056133.html（python spark操作）
 2.http://scikit-learn.org/stable/auto_examples/plot_cv_predict.html#sphx-glr-auto-examples-plot-cv-predict-py(官方例子)
+3.https://blog.csdn.net/kevinelstri/article/details/62043338(机器学习，详细简易到难的资料和论述)
+4.http://pandas-datareader.readthedocs.io/en/latest/remote_data.html#google-finance(官方资料，pandas)
