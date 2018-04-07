@@ -45,7 +45,8 @@
 	>pandas:install pandas  openpyxl pandas-datareader
 		>数据类型：series  DataFrame对齐
 			>series:索引和值对	
-
+		>数据定位：行(iloc())、列(筛选loc())、单元格、区域、直接查询(query()) 其他：groupby() count()
+		>数据操作：map()
 		
 
 2.常见问题：
@@ -59,3 +60,4 @@
 2.http://scikit-learn.org/stable/auto_examples/plot_cv_predict.html#sphx-glr-auto-examples-plot-cv-predict-py(官方例子)
 3.https://blog.csdn.net/kevinelstri/article/details/62043338(机器学习，详细简易到难的资料和论述)
 4.http://pandas-datareader.readthedocs.io/en/latest/remote_data.html#google-finance(官方资料，pandas)
+5.https://blog.csdn.net/liufang0001/article/details/77856255(资料pandas)
