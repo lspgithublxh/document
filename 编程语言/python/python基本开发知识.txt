@@ -325,7 +325,10 @@
 		>大数据操作：hadoop集群、spark集群的访问：常用框架
 			>spark:
 				>安装：pip install py4j \ pyspark (有211M)
+				>spark-submit --master local[4] D:\Users\lishaoping\PycharmProjects\abc_project\base\spark_handle\text_source.py
 		>机器学习算法的实现和访问：常用框架
+		>图像处理：opencv（轮廓检测）\image
+			>pip install opencv-python  pip install scikit-image
 		>微信公众号开发：
 		>微信小程序开发：
 		>微信小程序利用：
@@ -338,7 +341,7 @@
 					>新建文件：Lib/site-packages/sitecustomize.py  内容为上述三句。
 			>源文件编码：文件内容编码-首行标记：#coding=utf-8 #coding:utf-8 #-*- coding:utf-8 -*-
 		>包找不到：尤其当某个模块是拷贝过来的时候，需要拷完---不仅是文件夹--可能还有单个文件。
-
+		>cmd中pip安装的包如何在pycharms下访问到？除了每次都重启pycharms。还可以配置settings/ project intercepter/右边的设置按钮---add local  中选择system ...来实现。即不使用虚拟环境venv venv1,venv2,或者conda
 
 
 	>附加：
@@ -379,10 +382,18 @@
 5.https://www.cnblogs.com/wumingxiaoyao/p/7047658.html(socket编程详细)
 6.http://www.runoob.com/manual/pythontutorial/docs/html/errors.html（参考资料2）
 7.http://blog.csdn.net/qq_31776303/article/details/78994763（微信小程序跳一跳）
+8.https://blog.csdn.net/u013381011/article/details/78459057（大框轮廓）
 8.https://www.jianshu.com/p/ff24a81f3637（安装mingw拓展，g++编译器来进行）
 9.https://www.cnblogs.com/xudong-bupt/p/7025728.html（ctypes调用加载动态库来改善速度）
 10.https://www.cnblogs.com/huanjing/p/6701396.html（pandas大数据处理模块）
-			
-	
-
-
+11.https://github.com/srccodes/hadoop-common-2.2.0-bin/blob/master/bin/winutils.exe（winutils.exe下载）
+12.https://blog.csdn.net/u011391905/article/details/37929731（spark任务常见）			
+13.https://blog.csdn.net/wuxiaobingandbob/article/details/51751899(图像处理-经典)
+14.https://blog.csdn.net/gzlaiyonghao/article/details/1852726（图像处理）
+15.http://python.jobbole.com/85253/（轮廓检测,经典但是太老了）
+16.http://www.jb51.net/article/122475.htm（opencv轮廓检测）
+17.https://www.cnblogs.com/warcraft/p/8145894.html（摄像头灰度）
+18.https://blog.csdn.net/weixin_37554177/article/details/72884682（人脸识别）
+19.https://www.cnblogs.com/hanson1/p/7105265.html（简单人脸识别）
+20http://tech.ifeng.com/a/20180305/44895752_0.shtml（人脸检测关键文件xml， 更高级的人脸捕捉）
+21https://www.cnblogs.com/qwangxiao/p/6970372.html(最简单人脸检测)
