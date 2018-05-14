@@ -1,0 +1,17 @@
+1.问题：
+	>最简单的调用：下载chromedriver.exe即可，程序中定义位置。
+	>
+
+
+
+
+
+
+
+
+
+
+
+参考资料：
+1.https://www.cnblogs.com/BigFishFly/p/6380024.html（selenium参考资料）
+2.https://www.cnblogs.com/haiyan123/p/8317398.html（beatifulsoup参考资料）

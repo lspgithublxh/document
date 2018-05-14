@@ -1,0 +1,20 @@
+1.问题：
+	>禁止代理：
+		>
+
+	>map remote:
+		>https
+		>houserent.m.58.com
+		>443
+		>/web/list/*/efhousenew.shtml
+
+
+		>https
+		>appfang.58.com
+		>443
+		>/app/ershoufang/home.shtml
+
+
+
+
+	>代理服务器设置：禁止使用代理服务器：chrome中LAN设置为自动。firefox也改为自动-不使用代理。

@@ -1,0 +1,2 @@
+1.问题：
+	>invalid LOC header (bad signature)    用maven test来看是哪个jar包出错了。  最大的问题原因是 下载的jar有问题。

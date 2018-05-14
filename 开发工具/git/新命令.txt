@@ -5,3 +5,6 @@
 		>创建分支：git checkout -b newbranch
 		>强行合并远程仓库里的一个分支：git pull http://gitlab.58corp.com/house.united/house.united.hugusercenter.git release:master
 			尝试合并可以用git fetch ---
+
+		>回退：git log
+			git reset --hard  提交编码

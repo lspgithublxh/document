@@ -1,0 +1,18 @@
+1.问题：javafx的概念体系：自顶向下的概念体系。它对所见场景的概念划分。
+	>基本组件：Button\Scene\Pane\Stage\FXMLLoader
+	>基本概念：
+		>Stage:舞台 ：-- ：菜单栏 + 场景
+		>Scene:场景 ：-- ： container + Layout
+		>Container:容器
+		>Layout:布局
+		>Controls:控件 --: button   text
+		>
+		
+
+
+
+
+
+2.安装：
+	>e(fx)clipse:直接用market安装
+	>javafx scene builder:官网下载，配置安装路径在eclipse中

@@ -1,0 +1,4 @@
+1.问题：
+	>request远程调用路径配置：remote键在：Remote.class.php里
+				scf键在：ScfKey.class.php里。
+	>$app->config->里的一切配置，都可以在phpapps/houserent/public/下面的各个php文件中找到。比如app.index.php

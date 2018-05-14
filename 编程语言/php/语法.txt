@@ -165,7 +165,8 @@
 		>类不能发现问题：是否完整名称空间？ 不止有路径，而且/开头--即是绝对路径
 				 是否加载函数正确？spl_autoload_register()
 				 use 不起作用：	
-
+		>empty(obj) obj为0也会判断为true
+		>从左到右的运算：empty($detail['data']['business']) && $detail['data']['business']=array();即如果&&的左边为true那么就会执行右边的语句。
 
 参考资料：
 1.http://blog.csdn.net/tdcqfyl/article/details/52351140（搭建环境）

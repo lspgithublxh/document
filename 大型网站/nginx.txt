@@ -3,4 +3,7 @@
 			cd /opt/soft/nginx/sbin
 			vi ../conf.d/usdt_appfang_upstream.conf(改这里面的沙箱机ip地址)
 			./nginx -s reload
+
+	>一个nginx可以配置多个conf配置文件，对于同一个域名下，多个项目，或者说不同的url路径，可以urlmapping到不同的机器上去。但是从配置文件中看不出来-----所以是另一个总的配置文件来指明url-ip的关系。
+
 	
