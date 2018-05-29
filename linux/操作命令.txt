@@ -3,6 +3,7 @@
 		>文件查找：find -type d -name "dirname"  当前目录中找目录
 			   find / -type d -name "dirname" 系统中找目录
 			   find / -type f -name "filename" 系统中招文件
+		>文件内容搜索：find . -name "*.conf" | xargs grep -in "10.8.8.119"    当前文件夹：.  其他文件夹/  文件类型".conf" 文件内容"10.8.8.119"
 
 		>彻底删除目录：单步直接全部删除不对话：rm -rf  dir
 				有对话-一一确认：rm -r dir 
@@ -14,3 +15,7 @@
 		>内存查看：free -g 显示是G为单位。
 	>网络操作：
 	>线程操作：
+
+
+参考资料：
+https://www.cnblogs.com/jing1617/p/6482598.html（find grep）

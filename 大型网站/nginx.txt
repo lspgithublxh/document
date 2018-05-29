@@ -7,3 +7,91 @@
 	>一个nginx可以配置多个conf配置文件，对于同一个域名下，多个项目，或者说不同的url路径，可以urlmapping到不同的机器上去。但是从配置文件中看不出来-----所以是另一个总的配置文件来指明url-ip的关系。
 
 	
+
+	>本地windows环境配置nginx代理和转发：
+		>基本：
+			>nginx启动命令： nginx -s reload     nginx -s stop  nginx -s quit    打开日志：nginx -s reopen
+				>工作线程和主线程：  共有2个进程。
+			>原理：
+				>基本概念：
+				   >请求：
+			           >虚拟服务器virturl server:
+				   >默认服务器：listen 的 ip + port 一定则都可以指定一个默认服务器，即可以配置多个listen 的ip + port一样只是其中的server_name不同的server
+				   >路由规则：
+					>a.根据request里面的header 中的Host来决定路由到哪个server配置项对应的url, 如果没有Host或者没有匹配到，则到默认的server  ...默认的server是第一个，也可以指定某个server是nginx的默认服务器：在port里后面加：default_server
+					>b.拒绝连接，不想剩余的host被转发，且让nginx返回444的方式：则是配置默认服务器的server_name "" 为空的域名。且增加配置return 444
+				   >urI匹配规则：
+					>a.前缀匹配-部分匹配：/作为最终的求助，依赖。即右边可以不匹配，而只是左边有部分被匹配。
+						>uri组装规则：root + 请求中没有被匹配到的部分---原生复制过来。
+					>b.正则匹配：~$作为开始和结束。 中间正则表达式
+						>uri组装规则：可以自由组装，也可以 root + 提取到的uri + 自己的一些参数和数据。
+						>变量提取：用<name>来实现，后面可以用$name来引用。。
+							  或者(content)用数字形态，后面可以用$1来引用 
+				>a.先启动nginx， 启动了两个工作线程
+				>b.
+
+		>conf/nginx.conf各项配置解释：
+			>worker_processes 工作进程数：1比如。
+			>events
+			   >worker_connections 工作线程数：1024比如。
+			>http
+			   >include   比如mime.types
+			   >default_type 是应用数据类型application/octet-stream
+			   >sendfile on开启
+			   >keepalive_timeout 65 保持连接的最大时长
+			   >server
+				>location 正则匹配或者部分匹配：可以多个
+				   >proxy_pass 作负载均衡时，代理到哪个自定义在upstream里面的域名地址
+				   >expires
+				   >fastcgi_pass 转发到的php的fastcgi服务器的域名和port
+				   >fastcgi_param  截取php文件名如用SCRIPT_FILENAME, 并且拼接出最后转发的uri:$document_root$fastcgi_script_name
+				   >include
+			    	   >index  也是指令：作用是在只有/匹配到的情形下，去test后面指定的首页index.html等是否存在，从而转发root + index.html到目标服务器。
+				   >自定义location 请求配置--来获取nginx的状态，可以 比如/nstatus 
+				>listen:监听ip + port   可以只写port     并是否是默认服务器的指定。。。实际是一个socket在这个端口监听。
+					>可以多个listen指令  对应不同的ip + port组合
+				>access_log：日志位置  必须是unix风格
+				>server_name:转发到哪个域名，可以是正则：~^$     其中~表示这是一个正则，^$表示正则的开始和结束。
+						>可以写多	个，空格分开。
+						>可以是ip
+						>正则搜索规则：先开头模糊、后结尾模糊。。
+						>查找顺序：精准 <-- 模糊搜索 <-- 正则  （因为内部存储分为了3张hashtable,而且先后从3张表中搜索对应的域名host）
+				>proxy
+				>root 转发的根请求：是匹配到请求后转发到的新的uri的起始部分。比如/root/www    会被匹配到后加到转发的域名的直接uri前缀上。
+				>error_page 错误代码类型和转发到的页面配置：  code1 code2 code3 code4  /50x.html
+				
+			   >server_names_hash_bucket_size:域名太长时，需要用这个命令来设置大小,比如设置为64
+				
+			>
+		>附加指令：include 配置文件名。。  指令可以在各处，表示直接用文件内容放在这里。
+	>http server作负载均衡:负载均衡--分发策略-----圆环、最小连接、ip-hash 。。ip-hash可以根据ip相同则到一个web server服务器，是一种比较好的处理方式。
+		>conf/nginx.conf各项配置命令：
+		     >http:  当然，如果需要，自然配置为https指令
+			>upstream  名称 { content}
+			   >server 域名  即负载的机器     可以多个，从而是多个负载机器。。。可以加参数weight=3比如， 来控制权重，即请求不确定到哪个时到各自的概率。
+				>proxy_pass 负载均衡时配置的转发到的自己配置的负载均衡集群：比如 proxy_pass http://myloadbalance  而myloadbalance是定义在  upstream里的一个集群名。其中{}里有具体的机器访问域名。
+				>memcached_pass为memcached负载均衡。。。同理其他。
+			   >least_conn是最小连接策略的使用。
+			   >ip_hash是ip-hash连接策略。。
+			   >附加的:健康检测：一是超时没联系-就失效， 或者n次尝试连接也没收到响应则失效。
+			     >check interval=3000检测间隔时间
+			     >rise=2请求2次正常，则标记该负载机器为正常up
+			     >fall=5表示请求5次失败，则标记该负载机器为下线down
+			     >timeout=1000表示失效时间ms
+			     >default_down一般设置为false   /默认是true
+			     >type=tcp
+		>反向负载均衡：为http , https, uwsgi， fastcgi, memcached等的处理机器集合-集群：
+
+
+2.典型问题：
+	>多域名和多端口：
+	>http安全连接:
+	    >server指令下：同样，安全地址，也可以配置多个server
+		>listen 443 ssl;表示端口和安全连接。。可以再加一个listen 80;非安全连接这种。
+		>keepalive_timeout 70; 保持连接来减少多次请求、子请求导致的https新连接shakehands而要求验证，而消耗cpu
+		>
+	    >ssl_session_cache:多个worker的ssl回话连接共享
+	    >ssl_certificate:放在并列server的级别可以保证多个server共享。
+	>多配置文件：
+参考网站：
+1.http://nginx.org/en/docs/http/request_processing.html（nginx官方参考网站）
