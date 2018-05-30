@@ -2,6 +2,7 @@
 	>yb名词概念：
 		>native代码：
 		>配置数据：
+	>整体过程：加载activity，这个activity中，使用基本的布局配置文件构造基本的组件(即还是setContentView(R.layout.activity_main))，在获取其中的分视图(findViewById(R.id.test_js))且强转为ReactRootView视图，再用这个视图调用启动组件的方法--入参指定用户定义的在index.android.js文件中的RN的组件名。而组件本身会被解释为一个H5页面。
 	>工作原理：
 		>a.前提问题：如何动态的更改app？
 			>从server获取配置：一般是json数据，一般通过http请求
@@ -10,8 +11,53 @@
 	
 		>b.	
 		>c.
+	
 	>元素和架构：
-	>
+	>React: React组件 + js表达式
+		>是个javascript库,对DOM模拟，声明范式来描述应用。
+		>react jsx语法：
+			>javascript表达式：可以将js变量/对象的值转换为html中如style的值  ReactDOM.render()
+					   里面可以再次加jsx型对象/变量：即值是或者包含html标签/块  
+					   可以将React对象书写的标签转换为html标签/块。React.createClass()---会创建一个闭包对象。而该闭包对象返回的就是html代码块。
+		>react组件：
+			>React.createClass()创建的一个js对象/闭包，有三类方法：初始化全局可访问状态变量、用户事件响应函数(自定义的，在标签上的)、全局状态改变而激发的render函数：返回的是一个会被放到页面上的html标签块。另外还有默认属性设置函数。。
+				>这个js对象/闭包：有状态、有事件函数、有事件响应后改变状态后调用render函数返回新dom而重新渲染页面，的功能配置点。
+				>render函数：里可以通过this.props来访问到外层定义的标签属性。				
+				>组件引用的传递：即定义的一个组件，其变量名可以被另一个组件在render函数中引用。
+				>dom元素和react组件的转换：可以直接在dom元素上加ref属性那么可以this.refs.属性名来访问到。
+
+		>前提：jsx允许在javascript里添加html/css代码，最终会被转换为原生的javascript。。也允许使用react的标签。
+		>只用js来控制DOM：在内存中有js对象，这个js对象和dom对象一一对应：从而dom变化而可以高效改动dom而不用重新绘制dom
+		>react写网页方便
+	>React Native:
+		>编写移动端应用，而不用navtive代码--不用ios或者android原生代码。
+		>Objective-C调用javascript代码：用javascript引擎执行。而这个引擎是Objective-C写的，所以自然是特殊的，可以调用Objective-C的方法并且，允许Objective-C调用js的代码。同时，还会准备一系列的配置数据，比如全局变量、全局对象等，从而在执行js代码时已经足够了
+		>js调用C和C调用js的方式：调用方传递 模块、方法、方法参数，，被调用方搜索到方法并反射方式执行。具体实现是两个bridge(必然都是Objective-C写的，这种语言就是没有逗号--空格分开，没有括号--冒号分开)
+		>性能不及原生、android/ios独立。
+		>正如访问一个html连接，访问一个react native的js连接也是一样的效果。即显示元素还是dom。
+
+		>开发页面的思想：构造自己的组件component, 注册组件，显示组件。组件事件响应。而RN已经有很多编写好的组件了。所以开发方便利用，以便构造出页面这个最大的组件。
+			>组件-事件， 数据-样式。。  组件有事件，数据有样式，事件改变数据。   
+			>
+		>嵌入到android app中：
+			>在app工程的build.gradle文件中，等等，来事先将react-native嵌入到app中，而js/css资源由后台下发----每次下发覆盖旧有的资源文件，重启app即可重新加载资源；不用重新编译打包。
+			>app本地有http服务器，请求后台获取下发的zip文件夹，解开后放到http服务器上运行，从而请求本地资源。
+			>native加载RN资源的方式：http方式访问：本地资源或者后台资源：http://localhost:8081/index.ios.bundle?platform=ios&dev=true
+			>android上rn应用的入口文件：index.js
+			>android上原生代码启动RN应用：启动RN运行环境和让RN工作
+					>android本身：原生代码产生一个页面，就是先编写Activity类的子类，实现其抽象方法：方法中设置页面的主视图。如果这个主视图是ReactRootView,那么这个是RN产生的视图，这个视图的内容通过这个视图运行一个方法产生---而这个方法的参数之一就是用户自定义在js中的组件的名。RNinstanceManager会管理这个RN组件视图并且传递native事件和其他信息。
+							最后配置用户写的Activity类到<activity>配置文件中。
+					>跳转到新页面就是启动一个activity: 使用Activity类的startActivity(组件:包括其他app包名和组件名即activity名)方法。。只是分是RN的组件构成的activity还是native本身的组件构成的activity。h5当作一个activity的content视图内容。
+						>activity之间的关系：都在一个stack里。屏幕最前端就在stack最前端。
+						>activity之间消息通信：通过Intent这个全局类：往里面放数据。
+						>activity的action（系统的）
+		------优点：改样式比较方便	
+	>Flux 架构：
+		>action：被dispatcher分发对应到store数据结构
+		>dispatcher:转发action到对应的store数据结构
+		>store:存储数据结构，可以发送事件给controller-view，促使dom树重新渲染。
+		>
+
 
 
 

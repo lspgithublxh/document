@@ -1,0 +1,15 @@
+1.问题：
+	>H5非纯浏览器运行：否则无法访问到手机重要特性。
+		>android上：加载h5页面的视图类WebView：webView.loadUrl("https://www.baidu.com");调用js方法：webView.load("javascript:js中定义的方法名/函数名");
+				>WebView就是一个轻量级的浏览器。
+				>android app中本身可以使用布局文件activity_main.xml--其中使用android的组件component来描述一个activity：
+						>在继承AppCompatActivity 的用户编写类中：onCreate()方法里：setContentView(R.layout.activity_main)这样就可以把该xml配置布局文件当作是activity的视图页面。
+							而native组件通过findViewById(R.id.布局配置文件中组件id名)来获取，然后往这个组件中添加WebView： 组件.addView(webview)。。
+
+					
+				>整体过程：加载一个activity，这个activity里，通过布局配置文件构造了基本的native组件,往组件中增加WebView,webview中再加载H5内容，从而activity构造完成。
+			
+		>h5作用：描述界面和渲染样式
+			>其中js可以访问到在native代码中增加的javascript可以以js对象名方式等效访问的实体java类对象：在native里面已经写了java类对象映射到的js对象类名。
+		>
+	>和RN的比较：view不同，描述H5的方式不同（RN有自己的标签，纯H5则没有）
