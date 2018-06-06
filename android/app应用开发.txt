@@ -1,0 +1,44 @@
+1.开始：
+	>名词概念：
+		>AVD:安卓虚拟设备
+		>SDK:安卓系统工具包，api集合。
+		>DDMS:安卓调试工具
+		>adb:命令工具
+			>安装软件：adb install 
+			>查看端口占用的进程：netstat -ano
+		>DX：.class文件转换为.dex文件
+		>AAPT:安卓资源打包工具：
+		>R.java:打包工具根据app内的资源自动生成。字典文件。
+		>AnroidManifest.xml:app包名 + 组件声明 + 程序兼容的最低版本 + 所需权限等程序的配置文件
+			>app包名定义
+			>app图标、主题定义。
+		>
+	>基本观点：
+		>android持有虚拟机：Dalvik
+		>app打包过程：
+			>android project 编译打包 为.apk文件
+			>androidManifest.xml配置文件配置
+			>签名 + 放到移动设备上。
+		>app安装过程：
+			>xx.apk拷贝到/data/app/xxx.apk
+			>data/data目录下创建本app包名的文件夹：
+			>在data/system/package.list和package.xml中注册本app。app包名和签名的信息。
+		
+		>工程结构：
+			>java:
+			>res:
+				>资源文件的访问：在java中：R.resname.valuename 比如：R.string.name R.layout.main  R.id.txt_name(访问控件)
+						 在XML中：@resname/valuename 比如：@string/hello_world
+		>反解压：将apk文件转换反编译为文件夹。
+		>组件结构：
+			>View/ViewGroup: 布局组件和元素控件组件
+				>容器组件：ViewGroup    组件的顶级组件View
+				>布局方式：java代码中；xml配置文件中。
+				>布局组件：也是容器组件LinearLayout：线性布局--可以垂直或者水平  RelativeLayout
+				>布局思想：组件的位置只能由父容器决定，父容器可以决定padding margin gravitity方向 oritation translationY rotationY等，从而控制里面内容的位置和布局。
+					   LinearLayout  可以控制。RelativeLayout可以根据外部如父容器、兄弟组件来控制自己的相对它们的位置。
+			>
+		
+
+参考资料：
+1.http://www.runoob.com/w3cnote/android-tutorial-android-studio.html（studio下载）
