@@ -1,0 +1,10 @@
+1.问题：
+	>命令完成的功能：是否可以手动完成：比如包管理中，手动把某个包从一个环境考出来而放到另一个环境里。
+
+	>Dos下启动不同版本的python环境：py -3    或者 py -2 即可进入程序编辑环境。
+		>安装包环境venv: py -3 -m pip install venv  py -2 -m pip install virtualenv
+	>防止安装错误的版本：查看支持安装的whl包 格式：pip._internal.pep425tags.get_supported()  
+		>比如python版本：必须有amd64后缀---27或者36版本都是。
+	>环境导出包：并安装到另一个环境：pip freeze > requestments.txt    # 编辑此文件对需要的包进行删减
+					pip install -d pgk/ -r requestments.txt
+	>最终安装tensorflow：pip3.6 install D:\\download\tensorflow-1.12.0-cp36-cp36m-win_amd64.whl

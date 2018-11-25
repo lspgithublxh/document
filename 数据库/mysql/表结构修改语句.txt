@@ -1,0 +1,4 @@
+1.问题：ADD  /MODIFY是 函数
+	>增加一列：ALTER TABLE tuijian ADD comment_num INT
+	>修改列类型：ALTER TABLE tuijian MODIFY comment_num INT(3)
+	>修改列名：ALTER TABLE tuijian CHANGE comment_num comment_text VARCHAR(32)

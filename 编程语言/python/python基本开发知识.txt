@@ -131,7 +131,7 @@
 			>全局变量：
 			>__all__变量：
 		>包管理：
-			>安装到哪里：
+			>安装到哪里：(对于同一个版本的python可以，对于不同版本，一般不手动处理)
 				>单文件模块：直接放到$python_dir/Lib下
 				>多文件模块(是一个包结构，有setup.py)：安装方法:解压：python setup.py install
 					>会被安装在Lib\site-packages下：

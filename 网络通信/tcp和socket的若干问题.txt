@@ -29,6 +29,7 @@
 					>accept()调用端收到K+1退出阻塞，返回内核创建的新socket,且该socket的localport都是服务端监听的端口本身：即与客户端无关。说明本地多个socket可以绑定同一个端口作为localport。
 				>通信销毁的四次握手的触发：两端的close()函数调用：
 					>一端close()调用：则发送FIN M ,另一端返回ACK M+1
-					>另一端调用close():则发送FIN N, 一端返回ACK N+1
+					>另一端调用close():则发送FIN N, 一端返回ACK N+1。。。。这也是绑定端口的结果：TIME_WAIT，关了一端还在监听。
+						>对于一端关闭而呈现TIME_WAIT状态，这一端可以REUSE端口---被新的socket使用？
 				
 				>

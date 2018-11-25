@@ -1,0 +1,12 @@
+1.µü´ú£º
+var obj = db.getCollection('beijing').find({},{"id":1});
+while(obj.hasNext()){
+    var item = obj.next();
+    print(item['id']);
+}
+
+2.Ñ­»·£º
+var dis = db.getCollection('beijing').distinct("id");
+dis.forEach(function(item){
+    print(item);
+});

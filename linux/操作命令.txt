@@ -2,20 +2,76 @@
 	>文件操作：
 		>文件查找：find -type d -name "dirname"  当前目录中找目录
 			   find / -type d -name "dirname" 系统中找目录
-			   find / -type f -name "filename" 系统中招文件
+			   find / -type f -name "filename" 系统中找文件
 		>文件内容搜索：find . -name "*.conf" | xargs grep -in "10.8.8.119"    当前文件夹：.  其他文件夹/  文件类型".conf" 文件内容"10.8.8.119"
-
+				find . | xargs grep -in "appfang.58.com" 当前目录下的所有文件中搜索 包含有"appfang.58.com"的内容---体现出文件和在文件中的位置。
+				find /opt/web/hbg_api_miniapp/conf/ -type f -name "*server*" | xargs grep "GlobalNamingResources" 指定目录搜索指定内容 -in可以不要。但xargs必须要。
 		>彻底删除目录：单步直接全部删除不对话：rm -rf  dir
 				有对话-一一确认：rm -r dir 
 		>文件内容搜索匹配：grep 'abc' abc.log
+			>搜索到的内容导出到文件：grep "stat" hbg_web_aroundweb.log > abc.log
+			>上下文查看 ：grep -C 5 "InfoHelper" catalina.out  -B -A也可以。
+				
+		>文件上传到linux: rz filename			
+		>文件下载到本地：sz filename	
+		>当前文件夹大小：du -sh	
+		>系统磁盘空间及其使用率：df -hl
 	>系统操作：uname -a 系统名称
 		>pwd:当前路径
 		>cpu信息查看：cat /proc/cpuinfo会显示逻辑cpu和物理cpu
 				>cat /proc/cpuinfo| grep "physical id"| sort| uniq| wc -l只看物理cpu
 		>内存查看：free -g 显示是G为单位。
+
+
+		
 	>网络操作：
+		>curl -l -H "Content-type: application/json" -X POST -d '{"type":4, "district_param":[{"district_id":1146}]}' http://panshi.a.ajkdns.com/panshi-cities/district-service?method=getDistrictInfoByDistrictIds
+		>curl -l -H "Content-type: application/json" -X POST -d '{"school_ids":[115427]}' http://panshi.a.ajkdns.com/panshi-cities/school-info-service?method=getSchoolListBySchoolId
+		>多报头：可以从charles里考出来curl requests选项。curl -H 'a:b' -H 'c:d'   比如这个：curl -H ':method: GET' -H ':path: /api/list/ershoufang?action=getAnxuanFilters' -H ':authority: appfang.58.com' -H ':scheme: https' -H 'lon: 116.511391' -H 'osv: 6.0' -H 'id58: 98665451376082' -H 'rimei: 861498039727957' -H 'totalsize: 11' -H 'maptype: 2' -H 'bundle: com.wuba' -H 'imei: 861498039727957' -H 'dirname: bj' -H 'bangbangid: 1080866410612465910' -H 'version: 8.12.0' -H 'productorid: 1' -H 'osarch: arm64-v8a' -H 'nettype: wifi' -H '58ua: 58app' -H 'uniqueid: 9754f1ca7f325ca6055cb6caba85624c' -H 'apn: WIFI' -H 'apkbus: ' -H 'xxzlsid: 8BaX8k-VwW-MIg-Q8b-284LtVkzb' -H 'androidid: 395e7a319d9aa8f1' -H 'cid: 1' -H 'm: A8:C8:3A:0D:D4:50' -H 'deviceid: 395e7a319d9aa8f1' -H 'owner: baidu' -H 'ltext: %E5%A4%A7%E5%B1%B1%E5%AD%90' -H 'os: android' -H 'rnsoerror: 0' -H 'nop: 4150239883787' -H 'currentcid: 1' -H 'platform: android' -H 'ua: NCE-AL10' -H 'uid: 35667656346895' -H 'channelid: 58585858' -H 'r: 1208_720' -H 'lat: 39.993806'  'https://appfang.58.com/api/list/ershoufang?action=getAnxuanFilters'
+			又比如：curl -H 'imei: 861498039727957' -H 'dirname: bj'  -H 'version: 8.12.0' -H 'cid: 1'  -H 'os: android' -H 'uid: 35667656346895' 'https://appfang.58.com/api/list/ershoufang?action=getAnxuanFilters'
+				curl -H ':method: GET' -H 'lon: 116.511378' -H 'id58: 98732770446857' -H 'rimei: 861498039727957' -H 'imei: 861498039727957' -H 'dirname: bj' -H 'version: 8.12.0' -H 'productorid: 1' -H 'nettype: wifi' -H 'cid: 1' -H 'deviceid: 395e7a319d9aa8f1' -H 'owner: baidu' -H 'os: android' -H 'currentcid: 1' -H 'platform: android' -H 'location: 1,1142,7551' -H 'uid: 35667656346895' -H 'channelid: 58585858' -H 'lat: 39.993829'  'https://appfang.58.com/api/list/ershoufang?tabkey=allcity&action=getListInfo&signature=c1d792cdf241ac9412a4264a67cea7fc&curVer=8.12.0&appId=1&localname=bj&os=android&format=json&geotype=baidu&v=1&ts=1542699614319&location=1%2C1142%2C7551&filterParams=%7B%7D&sidDict=%7B%22GTID%22%3A%22167293312202204723760992853%22%2C%22PGTID%22%3A%22189593566202204723764000342%22%7D&page=2&geoia=39.993829%2C116.511378' > llxxx.txt
 	>线程操作：
+		>一个进程的线程数：cat /proc/pid/status
+	>jvm查看命令：top  jmap最常用最有价值。
+		>查找最耗cpu的线程和代码：
+			>ps -ef|grep "应用名关键字"  jps也可以。
+			>top -Hp pid  得到最顶层的pid， 比如pid1
+			>printf "%x\n"  pid1 得到16进制数me
+			>jstack pid1 | grep me   匹配出nid是 me的线程。
 
+		>消耗mem的情况：jvm
+			>jmap pid
+			>jmap -histo:live pid  查看各个类的实例的个数， 占用空间的总共大小
+				>jmap -histo pid | sort -n -r -k 2 | head -10  查看实例最多的10个类	
+				>jmap -histo pid | sort -n -r -k 3 | head -10  查看实例占用空间最多的10个类  [B [C [I  分别是byte char int的数组   [J是Long型 [Z是boolean型   ConstMethodKlass代表静态方法的字节码太多了---可能动态生成和反射使用多了。methodKlass表示实例方法字节码多了，constantPoolKlass表示类代码多了。都在Perm区域。。<instanceKlassKlass>也是。
+			>jmap -heap 823   查看jvm各代空间大小和使用百分比、使用和空闲情况。
 
+		>gc情况：
+			>jstat -class pid
+			>jstat -gc pid
+		>手动清理内存: free -m //这个还需要进一步考虑。
+			
+
+	>Redhat:
+		>yum软件安装方式。ubantu上是apt-get
+
+	>cpu-网络-内存：
+		>dstat
+		>vmstat
+		>netstat
+		>iostat	
+		>iftop/iptraf
+		>netstat/ss
+		>awk
+		>crontab
+		>telnet
+		>ps
+
+2.定义：
+	> | 是管道的意思，即前面的输出是后面命令的输入  ps -ef | grep "xx" 显然就是前面的输出是后面的grep命令的最后一个输入参数----文件对象。 同样 ps -ef|less -10也是文件翻页查看的意思。
+	>
 参考资料：
 https://www.cnblogs.com/jing1617/p/6482598.html（find grep）
+https://blog.csdn.net/jueshengtianya/article/details/46315033(jmap返回参数参考)
+http://ldbjakyo.iteye.com/blog/759586(综合参考资料)
+https://blog.csdn.net/zlzlei/article/details/46471627(参考jvm回收)

@@ -1,0 +1,13 @@
+1.
+   基本配置：
+	>内存大小：maxmemory
+	>登陆密码：requirepass
+	>启动： redis-server.exe redis.windows.conf
+ 	>服务安装：redis-server --service-install redis.windows.conf --loglevel verbose
+
+	>登录redis:redis-cli.exe -h 127.0.0.1 6379
+
+
+参考文档：
+https://blog.csdn.net/u012343297/article/details/78839063
+https://yq.aliyun.com/ziliao/292657 (详细)

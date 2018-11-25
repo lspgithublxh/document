@@ -1,4 +1,6 @@
 1.问题：
+	>mvn archetype:generate -DgroupId=com.scrapy.test -DartifactId=JustScrapy -DarchetypeArtifactId=maven-archetype-quickstart -DinteractiveMode=false
+		开始
 	>mvn dependency-copy-dependencies
 	>mvn忽略test打包。否则会执行test里的类。且生成lib依赖。eclipse中自动生成。
 		mvn package -Dmaven.test.skip=true   

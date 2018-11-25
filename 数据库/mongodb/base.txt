@@ -1,0 +1,18 @@
+1.基本：
+	>启动：mongod --dbpath D:\data\db
+	>服务化：mongod.exe --config "D:\mongodb\mongod.cfg" --install
+		启动服务：net start MongoDB
+	>进入Mongo cmd: mongo.exe
+	>创建数据库：use abc
+	>创建集合：db.createCollection("test")
+	>导出集合为json文件：mongoexport.exe -d detail -c detail -o D:/detail.dat	
+	>导入json文件：mongoimport.exe --db detail --collection test --file D:\log\detail2.log 文件编码方式需要是UTF-8
+
+	>文档操作：
+		>删除文档：db.getCollection('detail').remove({"id":null})
+		>查询文档：db.getCollection('detail').find({"id":null}).count()
+		>返回指定字段：db.getCollection('beijing').find({},{"id":1})
+		>指定字段是否存在：db.getCollection('quanguo').find({"baseinfodetail":{$exists: false}}).count()
+
+	>js脚本：
+		>迭代：

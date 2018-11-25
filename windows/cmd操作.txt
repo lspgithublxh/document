@@ -6,4 +6,5 @@
 	>线程操作|进程操作：
 
 	>任务杀死：taskkill /IM httpd.exe /F   
-	>任务查看：tasklist /fi "imagename eq nginx.exe"
+	>任务查看：tasklist /fi "imagename eq nginx.exe"   比如杀死chrome.exe进程也是tasklist /F /fi "imagename eq chrome.exe"。
+	>创建特殊文件：type nul>.gitignore

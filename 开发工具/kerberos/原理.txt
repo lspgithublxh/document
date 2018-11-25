@@ -1,0 +1,26 @@
+1.问题：	
+	>在kdc参与下client-server通信过程：
+		>a.client先后请求KDC两次。然后开始请求server。
+			>第一次，client只简单请求，KDC返回 用 client密钥 来加密 “会话密钥” 的结果  。client收到此结果后用自己的client密钥解密，获得“会话密钥” （当和server通信时，用来加密 时间戳 + 自己的信息）
+			>第二次，client只简单请求，KDC返回 用 server密钥 来加密 “会话密钥 + client基本信息” 的结果   。client收到后直接保存，（当请求server时直接发送给server）。
+		      >client请求server:
+				>先发 第二次请求KDC所获得的结果  直接给sever。
+				>然后 第一次请求KDC的结果解密后保存的 会话密钥，用来加密 “时间戳 + 自己的信息” 所得的结果 直接发送给server
+		>b.server解密用户发来的两个包：
+			>第一个，用自己的server密钥，并解出会话密钥；再用会话密钥解密第二个包；得到用户信息和时间戳。
+
+	>KDC保存的信息：
+		>client密钥、server密钥、client-server会话密钥、client基本信息
+		
+	>client保存的信息：
+		>client密钥
+	>server保存的信息：
+		>server密钥
+
+
+	>加密方式：同一个密钥来加密解密
+	>加密原理：至少向对方发送一个使用 对方 有的密钥来 加密信息的结果数据包。对方通过解密这个包可以获取密钥或者其他什么信息如客户端的信息。
+
+
+参考：
+https://blog.csdn.net/pzqingchong/article/details/79772404

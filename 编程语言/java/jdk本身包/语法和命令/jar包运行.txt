@@ -1,0 +1,2 @@
+1.windows:
+	>java -jar -classpath abc.jar arg1 arg2  即参数直接在最后写，会传递给args[] 比如：java -jar Direct-0.0.1-SNAPSHOT.jar detail.txt来跑一个详情任务。

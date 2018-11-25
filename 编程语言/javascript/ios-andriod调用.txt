@@ -1,0 +1,7 @@
+1.问题：
+	>安卓最终：_andr4Native: function(t) {
+        "undefined" != typeof window.stub && window.stub.jsCallMethod(t)
+    	}
+	>ios最终：this.iosFrame = this._createIframe(),
+            this.iosFrame.src = "nativechannel://?paras=" + encodeURIComponent(t),
+            document.body.appendChild(this.iosFrame),

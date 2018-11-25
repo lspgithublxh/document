@@ -67,7 +67,7 @@
 	>http server作负载均衡:负载均衡--分发策略-----圆环、最小连接、ip-hash 。。ip-hash可以根据ip相同则到一个web server服务器，是一种比较好的处理方式。
 		>conf/nginx.conf各项配置命令：
 		     >http:  当然，如果需要，自然配置为https指令
-			>upstream  名称 { content}
+			>upstream  名称 { content}  负载均衡的服务器列表配置， 这个名称会作为上面的配置里的虚拟服务器server配置里的location的proxy_pass请求转向配置的值。虚拟服务器server和upstream并列配置可以。
 			   >server 域名  即负载的机器     可以多个，从而是多个负载机器。。。可以加参数weight=3比如， 来控制权重，即请求不确定到哪个时到各自的概率。
 				>proxy_pass 负载均衡时配置的转发到的自己配置的负载均衡集群：比如 proxy_pass http://myloadbalance  而myloadbalance是定义在  upstream里的一个集群名。其中{}里有具体的机器访问域名。
 				>memcached_pass为memcached负载均衡。。。同理其他。
@@ -93,5 +93,11 @@
 	    >ssl_session_cache:多个worker的ssl回话连接共享
 	    >ssl_certificate:放在并列server的级别可以保证多个server共享。
 	>多配置文件：
+
+	>本公司的测试配置方案：
+		>主配置：main_conf/nginx.conf 配置基本的一次性的东西
+		>分配置：conf.d/**_58_com.conf 配置虚拟服务器server{} 包括其中跳转到
+			 conf.d/**_**_upstream.conf 配置负载均衡的服务器列表， upstream的名称即是作为nginx内部转发的域名--自然的，域名对应的机器就是服务器列表中的机器。
+		
 参考网站：
 1.http://nginx.org/en/docs/http/request_processing.html（nginx官方参考网站）

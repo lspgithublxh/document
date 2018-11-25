@@ -1,0 +1,6 @@
+1.问题：
+	>3种时间类型的字段插入：
+		INSERT INTO `test`.`tuijian`(id, title, html, comment_text, insert_time, insert_date, insert_timestamp) 
+		VALUES('news_8431947548272952237', '教育的首要问题是什么？习近平给出了这个答案',
+ 		'https://mbdcdn.bdstatic.com/newspage/data/landingreact?tplver=75fa3e93&ver=2018082500&sid=&nid=news_8431947548272952237&select_title=1&follow=0&os=android&ext=%7B%22ts%22%3A1536585922538%7D', 
+		'86评论','2018-09-11',DATE('2018-09-11 11:08:28'),CURRENT_TIMESTAMP())

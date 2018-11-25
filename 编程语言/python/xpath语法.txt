@@ -1,0 +1,10 @@
+1.base:
+	>定位元素并且取属性：//div[@class='city_list']//ul/li[@class='CLICKDATA']/a//@href
+	>定位元素并且取文本内容：//div[@class='city_list']//ul/li[@class='CLICKDATA']/a//text()
+	>定位元素并且取数组中元素：//div[@class='city_list']//ul/li[@class='CLICKDATA']/a[0]
+
+
+
+
+参考文档：
+https://blog.csdn.net/soyabean555999/article/details/79101557

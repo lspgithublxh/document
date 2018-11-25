@@ -1,0 +1,3 @@
+1.问题：
+	>堆分区：Eden、Surivor、Tenure、Perm四个地方而已。 Survivor(From, To)  。。回收流向：Eden ---> To From--->To From-->Tenure  To和From交换
+		linux中：concurrent mark-sweep generation 就是老年代

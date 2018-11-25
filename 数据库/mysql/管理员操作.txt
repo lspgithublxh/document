@@ -1,0 +1,6 @@
+1.问题：
+	>给指定用户 访问 某数据库 定 权限：
+		>grant select,insert,update,delete,create,drop on 数据库名.表名 to joe@10.163.225.87 identified by ‘123′;
+		>grant all privilleges on *.* to root@'%' identified by '123'  指定口令为123... grant all privileges on *.* to root@'%' identified by '123';
+	>重启：net stop mysql   net start mysql；注意java连接时，只能有一个mysqld进程，否则会报连接拒绝的异常！！！
+	>设置链接包大小： set global max_allowed_packet=1024*1024*16;查看：show global variables like 'max_allowed_packet';

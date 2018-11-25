@@ -1,0 +1,7 @@
+1.问题：
+	>生成id_rsa和id_rsa.pub公钥ssh-keygen -t rsa .....并放到.ssh目录下，，必须要输入passphrase---这个密码可以如12345。。并把公钥放到gitlab/igit网站上。
+	>运行ssh -T git@igit.58corp.com这个非常关键的动作，来在.ssh目录下生成一个known_hosts文件--并且增加该域名对应的ip， 以及公钥进来。其中igit.58corp.com管理网站就是我们的网站的域名，可以是其他比如gitlab,github,自研的也可以。
+	>此时可以运行git init / git remote add ..... /  git@igit.58corp.com:house.ershoufang/house.ershoufang.aroundweb.git 从而访问到相应的项目了。且此时如果push的话，会要求passphrase密码。
+
+
+	>此外：isa公钥 自然可以多个仓库使用----github  gitlab都公用一个可以。
