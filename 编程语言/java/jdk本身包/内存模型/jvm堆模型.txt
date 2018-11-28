@@ -1,3 +1,5 @@
 1.问题：
 	>堆分区：Eden、Surivor、Tenure、Perm四个地方而已。 Survivor(From, To)  。。回收流向：Eden ---> To From--->To From-->Tenure  To和From交换
 		linux中：concurrent mark-sweep generation 就是老年代
+		>GC：复制阶段、调换阶段。复制阶段：Eden(幸存算法\TO未满)、From(年龄小\TO未满)--->TO， From(年龄大)--->Tenure, Eden(TO满)、From(TO满) ---->Tenure
+					 调换清空阶段：From和To调换，下次GC相反认为---所以没有GC的时候To都是认为空的。
