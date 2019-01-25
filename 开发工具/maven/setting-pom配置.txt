@@ -7,3 +7,12 @@
 
 	>settings配置：
 		>servers（私服的登陆用户名密码） ---  mirrors （令私服去找的镜像）--- profile （私服的地址） 三级配置。实现私服代理。
+
+	>dependency配置；
+		>scope: 生命周期：给maven看的，打war包才用得到--一般jar不需要--因为不会生成lib--因为没有WEB-INF/lib：一般如果自己等待提供而自己不依赖的话：则配置为provided   而不是compile   这个是强依赖--运行时必须--否则会报错--如httpclient里的依赖commons-logging, commons-codec。
+			>provided:编译和测试范围有效， 打包不打入生成的lib中。
+			>system:编译和测试范围有效，不仅不打入lib，而且maven不从仓库找，而是从<systemPath>参数确定。
+			>test:测试阶段有效，。
+			>compile:默认的scope, 编译和测试范围(整个仓库周期)有效，打包会打入生成的lib中。
+		
+		   ---scope描述这几个问题：1.从哪里找这个依赖jar(system--指定路径/compile仓库路径),2.打不打到WEB-INF/lib下(provided不打到/compile要打到) ，3.哪个阶段使用这个依赖(test--junit测试用/runtime--动态加载--反射方式--代码上看不到) 

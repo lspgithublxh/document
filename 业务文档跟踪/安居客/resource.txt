@@ -1,0 +1,8 @@
+1.http://search.anjuke.test/getversearchresult/v1/city_id=11&is_list=1&info_type=2/
+2.https://shanghai.anjuke.com/sale/?from=navigation&debug=1
+3.http://search.tj.a.ajkdns.com/getversearchresult/city_id=11&is_list=1&facet=rank_type&start=0&size=10
+4.http://c.58corp.com/pages/viewpage.action?pageId=26151292
+//安居客文档
+5.http://igit.58corp.com/_site/document/blob/master/%E7%99%BD%E7%9A%AE%E4%B9%A6/%E6%88%BF%E6%BA%90/%E6%90%9C%E7%B4%A2thrift/%E6%90%9C%E7%B4%A2db/README.md
+//搜索房源
+6.http://search.anjuke.test/getversearchresult/v1/city_id=11&is_list=1&info_type=2/

@@ -3,3 +3,12 @@
 		linux中：concurrent mark-sweep generation 就是老年代
 		>GC：复制阶段、调换阶段。复制阶段：Eden(幸存算法\TO未满)、From(年龄小\TO未满)--->TO， From(年龄大)--->Tenure, Eden(TO满)、From(TO满) ---->Tenure
 					 调换清空阶段：From和To调换，下次GC相反认为---所以没有GC的时候To都是认为空的。
+		>配置参数：
+			>-XX:NewRadio=2是Eden+Survivor和Old代空间的比值
+			>-XX:SurvivorRadio=8是Eden:from
+			>-Xmn:年轻代：Eden+Survivor？
+			>-Xmx:
+			>-Xms:
+			>-Xss1024k
+			>-XX:MaxPermSize=512m
+			>-XX:PermSize=256m

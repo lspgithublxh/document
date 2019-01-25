@@ -32,6 +32,8 @@
 				curl -H ':method: GET' -H 'lon: 116.511378' -H 'id58: 98732770446857' -H 'rimei: 861498039727957' -H 'imei: 861498039727957' -H 'dirname: bj' -H 'version: 8.12.0' -H 'productorid: 1' -H 'nettype: wifi' -H 'cid: 1' -H 'deviceid: 395e7a319d9aa8f1' -H 'owner: baidu' -H 'os: android' -H 'currentcid: 1' -H 'platform: android' -H 'location: 1,1142,7551' -H 'uid: 35667656346895' -H 'channelid: 58585858' -H 'lat: 39.993829'  'https://appfang.58.com/api/list/ershoufang?tabkey=allcity&action=getListInfo&signature=c1d792cdf241ac9412a4264a67cea7fc&curVer=8.12.0&appId=1&localname=bj&os=android&format=json&geotype=baidu&v=1&ts=1542699614319&location=1%2C1142%2C7551&filterParams=%7B%7D&sidDict=%7B%22GTID%22%3A%22167293312202204723760992853%22%2C%22PGTID%22%3A%22189593566202204723764000342%22%7D&page=2&geoia=39.993829%2C116.511378' > llxxx.txt
 	>线程操作：
 		>一个进程的线程数：cat /proc/pid/status
+	>进程操作：
+		>查看进程详细信息：ps -ef|grep java
 	>jvm查看命令：top  jmap最常用最有价值。
 		>查找最耗cpu的线程和代码：
 			>ps -ef|grep "应用名关键字"  jps也可以。
@@ -51,7 +53,13 @@
 			>jstat -gc pid
 		>手动清理内存: free -m //这个还需要进一步考虑。
 			
-
+		>jhat:强大工具：对象查询的基础
+			>创建dump文件：jmap -dump:live,file=a.log pid
+			>分析dump文件而启动专门服务器:jhat -J-Xmx512M a.log
+			>访问server在页面上看结果：http://10.8.12.185:7000/
+				>查看：所有类、所有可以引用到的对象、所有实例的个数----平台的或者不是平台的-----点击甚至可以查看到所有的实例：每个都一一列出来：比如字符串；；以及每个对象的内存地址和引用它的对象和它的值和成员值：：神奇!。
+				>实例的个数、大小统计。
+				>对象查询：
 	>Redhat:
 		>yum软件安装方式。ubantu上是apt-get
 

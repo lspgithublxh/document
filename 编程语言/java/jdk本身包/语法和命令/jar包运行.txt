@@ -1,2 +1,18 @@
 1.windows:
 	>java -jar -classpath abc.jar arg1 arg2  即参数直接在最后写，会传递给args[] 比如：java -jar Direct-0.0.1-SNAPSHOT.jar detail.txt来跑一个详情任务。
+	   >增加系统运行参数：java -Dcom.sun.management.jmxremote.port=1234 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=falsent.jmxremote.ssl=false -jar tokenService.jar
+	   >监控虚拟机而增加的启动参数配置：java -Dcom.sun.management.jmxremote.port=1234 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=falsent.jmxremote.ssl=false -Dcom.sun.management.jmxremote.password.file="D:\Program Files\Java\jdk1.8.0_151\jre\lib\management\jmxremote.password" -jar tokenService.jar
+	   >启动jconsole或者jvituralvm
+		>jconsole的妙处：
+		  >监控线程：有对每个线程的描述和控制：！！比如线程启动栈、堆栈跟踪。总活跃线程自然明确。
+		  >监控内存：堆内存、非堆内存、各代占用量。对内存使用情况进行基本描述--并且实时的。
+		  >MBean控制：最强大的独特的。
+			>属性：
+			>操作：
+			>通知：
+			------功能1：
+			>远程主动垃圾回收：memory下有gc()方法	
+
+	   >堆转储：在抛出异常时：-XX:+HeapDumpOnOutOfMemoryError
+		
+	>maven 工程的pom配置plugin来自动打包依赖到lib里， 和 配置Main-fest..那么此时需要package然后将包放到一个目录下，在这个目录下，将生成的lib文件夹内容考进来，直接java -jar xxx.jar 即可----相应参数也可以设置
