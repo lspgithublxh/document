@@ -712,3 +712,4 @@
 13.https://blog.csdn.net/xbinworld/article/details/50932559?utm_source=blogxgwz2(纳什均衡)
 14.http://www.win-vector.com/dfiles/LogisticRegressionMaxEnt.pdf(从最大熵原理推导出逻辑回归模型的函数为sigmoid函数)
 15.https://blog.csdn.net/Katherine_hsr/article/details/79382249(聚类算法若干)
+16.http://www.360doc.com/content/18/0818/15/7669533_779233297.shtml（生成对抗网络的各种拓展）
