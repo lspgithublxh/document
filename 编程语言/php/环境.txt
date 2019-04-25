@@ -1,0 +1,6 @@
+1.问题：
+	>采用phpstorm开发的时候：自带的http服务器有问题，不采用。httpd 专门配置httpd.conf--同样加文件目录，然后独立启动，并且phpstorm里配置deployment---添加server---这个会和具体的目录工程绑定；
+		>然后配置：一个PHP web application。：指定server和文件路径。
+	>有个致命的问题：就是php.ini配置debug环境的时候，不能使用D:\download\php-7.2.3-Win32-VC15-x64\ext\php_xdebug-2.7.0RC2-7.2-vc15-x86_64.dll这个这样的xdebug动态库，因为这个是有问题的，会导致phpstomr2017.1.4不能在step over之后到下一行----而在那一行就卡死了。
+		>分析推理的时候：很明显，是没有返回正确的数据，或者没有发送下一个命令，所以可能是phpstorm的问题，或者xdegug的问题，换了一下xdebug，问题解决了。所以就是xdegug的问题！！！此外，两个xdegug的区别在于正确的那个是用的是http://xdebug.org/dbgp/xdebug非https协议；导致phpstorm2017.1.4在接收到stack_over的返回之后能够再发送stact_get命令，而https方式的那个则不行！！
+	

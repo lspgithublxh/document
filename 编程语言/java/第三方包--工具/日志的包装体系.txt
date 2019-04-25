@@ -1,13 +1,22 @@
 1.问题：
 	>>日志的包装体系：（级别和控制器）（可以控制到包）（还可以控制日志文件过期则加日期为一个老文件---而且修改日期不变；然后创建一个新的同原名文件）
-			>log4j:最强大的日志系统
+			>log4j:最强大的日志系统 log4j2
 			>logback：也强大的日志系统：slf4j使用它做日志系统时，不需要适配jar。直接就可以用（）
 			>java.util.logging:自带的日志系统
-			>slf4j:简单日志门面for java:是方便变更日志系统的一个facade。日志的门面。从而可以切换日志包：
+			>slf4j:简单日志门面for java:是方便变更日志系统的一个facade。日志的门面。从而可以切换日志包：在部署的时候---替换具体的日志实现框架都可以。
 				比如使用log4j日志系统,还是java自带的日志系统。
 				>本身提供：slf-api-***.jar包。。且用户用这个里的api来开发。
 					   >对其他日志系统的适配：slf4j-jdk14-***.jar(对java自带的日志系统)
 								  slf4j-log4j12-***.jar(对log4j日志系统的适配)		
 				>使用来开发：切换日志系统时：需要提供slf4j对该日志系统的适配和日志系统本身的jar及其配置文件：jdk自带的则不用。
 								（在classpath下）
+				>问题追踪：
+					>SLF4J: Failed to load class "org.slf4j.impl.StaticLoggerBinder".这个就是因为没有slf4j对该日志系统的适配造成的。适配可以是其中之一---第一个最靠谱--： 
+						>slf4j-simple.jar,:其他什么都不用依赖就可以在控制台输出
+						>slf4j-nop.jar, ：什么日志都不打印
+						>slf4j-log4j12.jar, 
+						>slf4j-jdk14.jar
+						>logback-classic.jar
+				>使用log4j具体时log4j.properties默认搜索位置：src/main/java下面  。且log4j.properties里面文件路径配置方式需要是/ 这样的url形式。log4j.rootLogger=debug这个需要--也可以选择为info。
+					>第二：具体里面Threshold也可以配置级别。
 			>common-logging:也是一个门面系统，需要提供具体的日志系统比如log4j

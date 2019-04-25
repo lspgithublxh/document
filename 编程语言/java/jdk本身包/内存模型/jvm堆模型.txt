@@ -1,14 +1,163 @@
 1.问题：
 	>堆分区：Eden、Surivor、Tenure、Perm四个地方而已。 Survivor(From, To)  。。回收流向：Eden ---> To From--->To From-->Tenure  To和From交换
 		linux中：concurrent mark-sweep generation 就是老年代
+	     >整个堆：划分标准：生命长度。
+		>年轻代：Eden+Survivor为新生代(hotpot)
+		>年老代：Tenure为老年代(hotpot)
+		>持久代：java 8已经去掉这个区域，交由jvm自己管理---而不用预先设置。
 		>GC：复制阶段、调换阶段。复制阶段：Eden(幸存算法\TO未满)、From(年龄小\TO未满)--->TO， From(年龄大)--->Tenure, Eden(TO满)、From(TO满) ---->Tenure
 					 调换清空阶段：From和To调换，下次GC相反认为---所以没有GC的时候To都是认为空的。
+		 >FullGC:当老年代满的时候激发；永久代满的时候;永久代将满的时候。
+		 >YoungGC:
+		 >MinorGC:
+		 >PS GC:一种FullGC方法，像CMS
+		>GC导致程序中断，所以GC策略重要。
+			>GC策略：
+			  >串行GC:一般对老年代
+				>-XX:MaxTenuringThreshold 最大垃圾年龄，越大，则在年轻代逗留、来回复制次数多；容易被年轻代GC。
+				>
+			  >并行收集：一般设置来对年轻代
+				>-XX:+UseParallelGC使用并行收集器，对年轻代
+				>-XX:ParallelGCThreads并行收集器数量：建议和处理器数量同
+				>-XX:+UseParallelOldGC对老年代并行收集
+				>-XX:MaxGCPauseMillis	每次年轻代垃圾回收最长时间；为了满足这个指标，jvm会自动调整年轻代参数。
+				>-XX:+UseAdaptiveSizePolicy自动选择年轻代大小和Survivor区比例
+				>-XX:GCTimeRatio回收时间占程序运行时间的比值。
+				>-XX:+ScavengeBeforeFullGC准备FullGC前进行Young GC
+			>GC类型：
+			  >Minor GC: 是年轻代提升的过程，会导致年老代增长。mark-copy  mark-sweep过程。
+				>触发原因：年轻代空间分配失败。
+				>
+			  >Major GC:
+			>GC日志：
+			  >Minor GC: 标记 eden -survivor one 活动元素 复制到 survivor two 和old space ，然后清空eden -suvivor one 来保证空间没有碎片-完整一块-(为什么2个survivor的主要目的)。
+				>触发时间 触发原因 收集器名称(四类) 回收前后年轻代的大小 年轻代总共空间大小 回收前后堆的大小 堆的总共大小  标记-复制耗时 清除耗时
+			  >Major GC:  
+				>标记年老代(GC Roots和被年轻代引用的对象) initial Mark: stw方式。触发时间 触发原因(initial mark) 回收前后老年代大小 老年代总容量 回收前后整个堆的大小 堆总容量 标记时间
+				>Concurrent Mark:遍历全部老年代对象，而标记老年代所有存活的对象
+				>Concurrent preclean| abortable preclean: 
+				>Final Remark:stw方式，
+				>Concurrent Sweep: 清除没有标记的对象，回收空间。
+				>Concurrent Reset: 重设清除算法数据结构。下次回收。
+			  >查看日志：
+				>简要查看：jstat -gc pid查看各空间容量和使用量， 年轻代和年老代回收的次数和总耗时。
+					>
+				>实时打印到日志文件里：需要配置启动参数-XX:+PrintGCTimeStamps -XX:+PrintGCDetails -Xloggc:../logs/gc.log
+					>推论：minor gc中，年轻代减少量(转移和清除) - 堆总共减少量(清除) = 年老代增加量(转移到年老代的量)
+				>图形化工具：Visual GC作为插件在Visual VM中查看。
+					>推论：每次minior gc时候，都会清理eden和survivor并且转移survivor--不管survivor有没有满。
+					>远程gc: 在bin下创建权限文件，后启动jstat服务，然后远程可以访问。参考：https://blog.csdn.net/gtuu0123/article/details/6025484
+						>bin下创建文件：命令vim jstatd.all.policy 内容：grant codebase "file:${java.home}/../lib/tools.jar" {permission java.security.AllPermission;};
+						>启动jstat监控：jstatd -J-Djava.security.policy=jstatd.all.policy
+			>具体收集器：一个jvm有4个。选择不同，影响性能。吞吐量和停顿两个指标。
+			  >CMS: 非jvm默认。并发标记和清除。为获取最短回收停顿时间为目标。标记-清除 算法。
+				>-XX:+UseConcMarkSweepGC启用cms GC
+				>-XX:+UseParNewGC将并行收集作用于年轻代。
+				>-XX:CMSInitiatingOccupancyFraction设置年老代空间占比多少时开始回收：默认68%.所以不能在old将满的时候才回收。
+				>标记复制、标记清除算法， 产生空间碎片。只有Full GC时候才进行空间compact。
+				>-XX:+UseCMSCompactAtFullCollection在full gc后附加一个碎片整理，但是导致停顿。
+				>一次GC时不能回收浮动的垃圾，只能等下次。
+				>暂停应用时间：初次标记根对象、并行收集时改变了堆状态。
+				>提升失败问题：从年轻代到年老代，原因在收集年老代时不够快。promotion failed
+				>不花时间整理压缩年老代。
+				>占用较多cpu,但减少了应用的停滞。
+				>回收时机：old:-XX:CMSInitiatingOccupancyFraction=70年老代的利用率达到多少。
+			  >G1: 垃圾优先选择器。对年轻年老代都是复制copy 算法， 可以空间整合。堆空间>4G考虑。。。
+				>划分多区域region，并行扫描，标记垃圾，最多区域来回收--回收价值最大。一边收集一边整理空间。
+				>－XX:+UseG1GC启用。***
+				>-XX:+UseStringDeduplication将重复的string对象指向同一个char[]数组，避免多个副本存在堆里。是G1收集器在java8 u20中做的最好的优化---string 去重。
+				>-XX:GCPauseIntervalMillis =200暂停间隔
+				>-XX:MaxGCPauseMillis=200暂停最大值***
+				>-XX:+G1YoungGenSize=512m   年轻代大小
+				>-XX:+ExplicitGCInvokesConcurrent 如果用了System.gc()并行回收老代
+				>吞吐量更大，pause time更可控。
+				>回收时机：看GC日志容易得出。eden:分配eden region失败(G1 Evacuation Pause)。old: 年老代对整个堆空间的占用比例大于某个值(Allocation Failure)
+					>XX：+InitiatingHeapOccupancyPercent ***占用整个堆多少开始并发收集，越高full gc越频繁。
+				>-Xmn不要设置，否则干扰G1。
+				>-XX:G1HeapRegionSize=n分区大小。
+				>-XX:G1HeapWastePercent=n愿意浪费的堆空间百分比，会启动混合垃圾回收----包括对年老代的回收。估计是	
+				>-XX:G1MixedGCCountTarget=8并发周期后执行多少次混合收集。
+			  >Seiral: 要停顿程序来执行回收。服务器环境下不采用。
+				>-XX:+UseSerialGC 启用。
+				>-XX:-UseParNewGC只在年轻代应用。
+			  >Parallel Scavenge: 多线程，minior, full gc时候暂停应用。占用cpu低，吞吐量高。
+				>-XX:+UseParallelGC启用年轻代的并行回收。
+				>-XX:+UseParallelOldGC启用年老代的并行回收。
+			  >Incremental：
+				>-Xincgc启用。
+				>
 		>配置参数：
-			>-XX:NewRadio=2是Eden+Survivor和Old代空间的比值
-			>-XX:SurvivorRadio=8是Eden:from
-			>-Xmn:年轻代：Eden+Survivor？
-			>-Xmx:
-			>-Xms:
-			>-Xss1024k
+			>-XX:NewRadio=2是Eden+2Survivor容量和Old代空间容量的比值：
+			>-XX:SurvivorRadio=8是Eden:from+to
+			>-Xmn:年轻代：Eden+2Survivor？建议配置为：整个堆的3/8
+			>-Xmx:最大堆
+			>-Xms:初始堆
+			>-Xss1024k每个线程堆栈代销
 			>-XX:MaxPermSize=512m
 			>-XX:PermSize=256m
+			>-XX:NewSize初始化新生代大小
+			>-XX:MaxNewSize最大新生代大小
+			>-XX:+PrintGCTimeStamps -XX:+PrintGCDetails -Xloggc:../logs/gc.log 可以看日志年轻代-堆区YoungGC、持久代系统FullGC的回收大小和时间和频率。
+			>-XX:+HeapDumpOnOutOfMemoryError内存溢出时dump出堆数据。
+		>调节根据：
+			>新生代大小越大，则MinorGC时间越长，频率就越低。
+			>GC日志：主要根据。。GC日志上有：时间基点-GC耗时-详细分的三个耗时-GC前后年轻代大小和堆区大小
+			  >MinorGC(GC)的持续时间和频率：得出方法：持续时间----根据时间基点计算；；频率----根据GC耗时来计算
+			  >FullGC的持续时间和频率：
+			 	>
+			>参数观察：
+				>各代动态占比：jmap -heap pid
+				>NewRadio和SurvivorRadio设置：
+				>TargetSurvivorRatio设置：
+		>调节原则：
+			>尽量MinorGC掉更多对象，而更少的对象到老年代；避免对象更多到老年代。
+		>实际观察：
+			>老年代：数量在不断增长，阶梯式增长。
+			>新生代：增长-断崖下降，反复周期变化。
+			>
+		>调节手段：
+			>增减新生代大小：
+			>保持老年代大小：提高吞吐量
+			>替换垃圾回收器：比如用CMS
+			>程序FullGC:System.gc()
+			>设置FullGC时间间隔：-Dsun.rmi.dgc.client.gcInterval=3600000
+			>gc参数调节：-XX:+UseParallelOldGC -Xms1g -Xmx1g -XX:NewRatio=3
+		>优化目标：
+		   >线程方面：
+			>减少大量处于等待状态的线程：资源浪费
+				>避免使用syso:因为这个方法是阻塞方法，用的是this来进行同步synchronized的。。所以说会慢不说，如果某个方法外部使用了A锁而里面又运行这句而等待B锁，而另一个线程进入了B锁而等待A锁，就会blocked!!
+				>在jconsole中的显示状态：Thread1: 未占有而等待别人释放的锁 Blocked  该锁拥有者 Thread0     阻塞了几个线程-等待几个线程    下面的堆栈跟踪：则是等待别人释放的锁锁住的代码块最后一行的行号及对应代码  已锁定-自己进入的锁
+							 Thread0: 未占有而等待别人释放的锁 Blocked  该锁拥有者 Thread1	   阻塞了几个线程-等待几个线程	   下面的堆栈跟踪：则是等待别人释放的锁锁住的代码块最后一行的行号及对应代码 已锁定-自己进入的锁
+				>在网络开发中、事件开发中最容易出现：
+			>减少大量线程、避免来回切换消耗时间：性能下降，也消耗时间。
+			>减少从操作系统底层单字节单字节地读取数据：而是缓存区，一块一块的读。
+			>减少原生的NIO socket: 因为底层实现的epoll 有空轮询bug而使得cpu暴涨100%
+
+		  >GC方面：
+			>减少full gc次数。一天不发生一次。可以减小Eden而调高一点NewRatio=4这些。
+						
+		>具体问题：
+			>jvm 0ld占比过大：99%
+				>
+	>线程类：
+		>方法调用：
+		  >调用栈耗时trace: 
+		  >方法本身：每一次的调用耗时、调用参数记录。
+		  >追踪框架：Zipkin，Drapper，trace4j
+
+
+	>原始模型：比架构图重要。形象化的物理模型，重要。对象化<属性-动作-功能>的模型<框图-箭头>、数据结构化模型、单元功能模型。
+
+	>代码覆盖率：看main程序到底有哪些代码执行了,可以快速定位问题。
+
+	>jvisual手段：
+		>手动gc:
+		>手动导出堆：
+参考资料：
+1.https://github.com/alibaba/arthas/blob/master/README_CN.md（jvm运行时查看工具二次开发）
+2.https://blog.csdn.net/ljz2016/article/details/84137908（方法调用trace记录）
+3.https://blog.csdn.net/u012129558/article/details/79270259（垃圾回收器的年老年轻回收组合）
+4.http://www.importnew.com/1993.html（经典5篇-垃圾回收）
+5.http://www.importnew.com/2057.html（-gc结果说明）
+6.https://www.jianshu.com/p/a3e6a9de7a5d(gc回收及其参数)
+7.http://www.importnew.com/3146.html（例子--gc参数调节）

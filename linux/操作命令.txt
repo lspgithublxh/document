@@ -37,7 +37,9 @@
 	>jvm查看命令：top  jmap最常用最有价值。
 		>查找最耗cpu的线程和代码：
 			>ps -ef|grep "应用名关键字"  jps也可以。
-			>top -Hp pid  得到最顶层的pid， 比如pid1
+			>top -Hp pid  线程总数、活跃数、休眠数、停止数，得到最顶层的pid， 比如pid1。。
+					2000个总数就算多的了，而静态没访问最多应该只有200左右。
+					且线程总量不会降低下来----就算没有任务了没有请求量了。
 			>printf "%x\n"  pid1 得到16进制数me
 			>jstack pid1 | grep me   匹配出nid是 me的线程。
 
@@ -51,15 +53,65 @@
 		>gc情况：
 			>jstat -class pid
 			>jstat -gc pid
+			>jstat -gcutil pid最常用。可以查看 YGCT * 1000 / YGC来看年轻代平均回收一次用了多少ms ：<50ms无需  。以及 FGCT * 1000 / FGC 看年老代平均回收一次回收用了多少时间。 
+			>jstat -gcutil 961 1s 更常用，是直接的动态输出。
+				>年轻代回收频率：看jconsole  >10s一次都ok
+				>年老代回收频率：看jconsole >10min一次都ok
+			>远程jstat: 通过visual vm方式：
+				>
 		>手动清理内存: free -m //这个还需要进一步考虑。
 			
 		>jhat:强大工具：对象查询的基础
 			>创建dump文件：jmap -dump:live,file=a.log pid
-			>分析dump文件而启动专门服务器:jhat -J-Xmx512M a.log
+			>分析dump文件而启动专门服务器:jhat -J-Xmx512M a.log    在远程机器上访问也可以。
 			>访问server在页面上看结果：http://10.8.12.185:7000/
 				>查看：所有类、所有可以引用到的对象、所有实例的个数----平台的或者不是平台的-----点击甚至可以查看到所有的实例：每个都一一列出来：比如字符串；；以及每个对象的内存地址和引用它的对象和它的值和成员值：：神奇!。
 				>实例的个数、大小统计。
-				>对象查询：
+				>对象查询：string, array, map也可以查看显示值--比如想看tokenServe中缓存map中的token的值， 也可以显示一个类的实例成员和静态成员	
+				   >筛选数组长度达标的：select a from [I a where a.length >= 256
+				   >筛选字符串长度达标的：select s from java.lang.String s where s.value.length >= 100
+				   >筛选正则匹配到的字符串： select s.value.toString() from java.lang.String s where /java/.test(s.value.toString())
+				   >查询所有的文件对象：select file.path.value.toString() from java.io.File file
+				   >查询所有的加载器对象：select classof(cl).name     from instanceof java.lang.ClassLoader cl
+				   >查询一个类的静态属性： select heap.findClass("java.lang.System").statics.props
+								 select heap.findClass("com.bj58.fang.hugopenapi.sdk.TokenService.provider.TokenProvider").statics
+				   >查询某个包下所有类： select filter(heap.classes(), "/com.bj58./.test(it.name)")
+				   >显示多个查询结果：select { name: t.name? t.name.toString() : "null", thread: t } from instanceof java.lang.Thread t
+				   >查询类属性：select s.areaName.toString() from com.bj58.fang.service.hughouselist.contract.entitys.data.ShangquanEntity  s where s.areaName = "包河"
+				   >查询类的某整数\英文非中文的属性值的实例：select s from com.bj58.fang.service.hughouselist.entity.ajk.SanwangLocalEntity  s where /20024/.test(s.id)
+				   				select s.pinyin.toString() from com.bj58.fang.service.hughouselist.entity.ajk.SanwangLocalEntity  s where /20024/.test(s.id)
+								select {"pid":s.pid, "pinyin":s.pinyin.toString(), "name":s.name}  from com.bj58.fang.service.hughouselist.entity.ajk.SanwangLocalEntity  s where /^916$/.test(s.pid)
+								select {"pid":s.pid, "pinyin":s.pinyin.toString(), "name":s.name.value.length}  from com.bj58.fang.service.hughouselist.entity.ajk.SanwangLocalEntity  s where /^916$/.test(s.pid)
+				   			map方式查询： select map(heap.objects('com.bj58.fang.service.hughouselist.entity.ajk.SanwangLocalEntity') ,       function (it) {          var res = '';          if(/^3165$/.test(it.pid)){           res += toHtml(it.pinyin.toString());           return res + "<br>";          }else{           return "";          }                 })  
+							查询属性值为null的元素： select map(heap.objects('com.bj58.fang.service.hughouselist.entity.ajk.SanwangLocalEntity') ,       function (it) {          var res = '';          if(it.id == 0){           res += toHtml(it.pinyin.toString());           return res + "<br>";          }else{           return "";          }                 }) 
+							                            select {"pid":s.pid, "pinyin":s.pinyin.toString(), "name":s.name}  from com.bj58.fang.service.hughouselist.entity.ajk.SanwangLocalEntity  s where null == s.pinyin                                                                                                         
+			>jviturvm:自带jhat可以处理分析！！		   
+				>Btrace监控例子：
+					/* BTrace Script Template */
+					import com.sun.btrace.annotations.*;
+					import static com.sun.btrace.BTraceUtils.*;
+
+					@BTrace
+					public class TracingScript {
+						/* put your code here */
+					@OnMethod(clazz = "com.bj58.fang.hugopenapi.sdk.TokenService.runnable.RequestHandler", method = "run", location = @Location(Kind.RETURN)) 
+					public static void traceExecute(@ProbeClassName String name,@ProbeMethodName String method,@Duration long time){ 
+					long durationTime = time/1000000;
+					if(durationTime > 0){
+					String output = strcat(name,".");
+					output = strcat(output,method);
+					output = strcat(output,"#");
+					output = strcat(output,str(probeLine()));
+					output = strcat(output,">>");
+					output = strcat(output,str(durationTime));
+					output = strcat(output,">>ThreadId:");
+					output = strcat(output,str(threadId(currentThread())));
+					println(output);
+					}
+					} 
+					}
+			>jconsole:检测死锁：
+
 	>Redhat:
 		>yum软件安装方式。ubantu上是apt-get
 

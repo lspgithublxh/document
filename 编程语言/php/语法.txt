@@ -1,4 +1,13 @@
 1.问题：
+
+	>架构体系：多进程模型
+		>Zend引擎：转换php文件命令为opcode操作指令，在执行opcode指令，内存分配等。
+		>extensions: 围绕Zend的扩展函数，供php文件调用；内置函数，标准库。
+		>Sapi:php程序和其他应用通信、交换数据。被调用后，会自己初始化，并且启动多个解释进程，等待来自webserver的连接，连接到了之后，FastCGI管理器连接到一个CGI解释器，webserver就将数据发送给这个CGI解释器--fastCGI子进程，等待它完成处理，并且它会主动关闭连接而返回数据，然后这个fastcgi子进程等待fastcgi进程管理器的下一个连接。
+			>比如和apache通信、交换数据、被调用：apache2handler
+			>和nginx通信、交换数据、被调用：cgi,fastcgi
+			>以脚本方式运行：cli
+		>顶层的php文件。
 	>运行原理：
 		>运行面向过程、过程中使用了面向对象
 		>php脚本
@@ -167,6 +176,9 @@
 				 use 不起作用：	
 		>empty(obj) obj为0也会判断为true
 		>从左到右的运算：empty($detail['data']['business']) && $detail['data']['business']=array();即如果&&的左边为true那么就会执行右边的语句。
+
+		>查看已经安装的扩展：php  -m
+			>启用ext下已经有的拓展：extension=php_sockets.dll之类。
 
 参考资料：
 1.http://blog.csdn.net/tdcqfyl/article/details/52351140（搭建环境）

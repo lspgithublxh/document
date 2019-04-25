@@ -7,4 +7,6 @@
 			尝试合并可以用git fetch ---
 
 		>回退：git log
-			git reset --hard  提交编码
+			git reset --hard  提交编码  如git reset --hard 0484928e3f8aa9a7fb744c387c3911f080eb8a90
+
+			

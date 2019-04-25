@@ -1,2 +1,18 @@
 1.问题：
 	>javap -p A.class反编译A字节码文件，看源码。
+	  >javap -c Comparable.class >test.txt
+
+	>javac -encoding UTF-8 IntranetTest.java单独编译一个文件。
+
+	>javac -d d:\abc com.bj.Hello.java 外部路径和内部路径--文件夹层。
+	  -------------也可以javac -cp D:\maven\repository\redis\clients\jedis\2.9.0\jedis-2.9.0.jar -encoding UTF-8 Test.java直接编译，其中Test.java在com......之内,Test.java有package声明。
+	>java com.bj.Hello只有内部路径。。
+	 java com.bj58.fang.servercluster.ServerCluTest.Server 即此时需要在com所在的目录下执行这条命令行，才可以；而不是在Server.class所在的目录下。（这是eclipse编译和运行的原理）
+	 ---------------对应的，也要在com所在目录执行：java -cp D:\maven\repository\redis\clients\jedis\2.9.0\jedis-2.9.0.jar; com.bj58.fang.hugopenapi.sdk.OPENTEST.redis.Test  自然的-classpath 是为了指代外部路径---比如target目录下。
+							java -cp D:\maven\repository\redis\clients\jedis\2.9.0\jedis-2.9.0.jar; -classpath D:\project\workspace\OPENTEST\target\classes com.bj58.fang.hugopenapi.sdk.OPENTEST.redis.Test
+	>javac -d . A.java 带有包名test
+	 java test.A
+	>javac -cp D:\maven\repository\redis\clients\jedis\2.9.0\jedis-2.9.0.jar -encoding UTF-8 T.java
+	 java -cp D:\maven\repository\redis\clients\jedis\2.9.0\jedis-2.9.0.jar; T
+	  但在linux上：jar之间分割用冒号： java -cp /opt/scf2/service/deploy/hughouselist/lib/jedis-2.9.0.jar: T
+	  :因为只要有package,那么一定要建立包路径才可以，所以只能去掉包，来简化。
