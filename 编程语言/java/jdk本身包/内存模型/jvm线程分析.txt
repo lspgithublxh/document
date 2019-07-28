@@ -1,0 +1,20 @@
+1.问题：
+	>所有线程查看：top  后执行shift+h显示的则都是线程了。
+	>单个线程的5状态查看：等待锁释放(waiting to)、得到了锁并在执行中(locked) 、释放锁后等待中(已经释放锁但在等待notify唤醒wating on condition)
+				wait for(等待锁释放)
+				无限等待、有限等待、阻塞、运行、新建。
+				等待进入(Entry set)、用锁运行(The owner)、等待唤醒(Wati set)。
+				  synchronized处	synchronized内		wait()处
+		>jstack -m 951 仅仅展示线程堆栈信息。
+		>统计各个线程状态：各个锁下两个set和一个owner的数量和占用时间情况。
+			>jstack -l 951 > 951.pid
+			>top -H -p pid  找到一个线程id  printf %x 线程id 得到的十六进制数到线程日志里找。
+		>死锁检测：查看jstack日志里的“deadlock”关键字是否存在。
+		>线程内存占用率：top -H -p 950
+		>线程数量查看：因为创建的线程，只是对象，会同时创建操作系统线程--这个占用非jvm的内存。
+				全部线程ps -eLf | wc -l
+	>当前线程数：cat /proc/951/status    其中951就是进程名
+		    或者：ls /proc/951/task | wc -l
+			  ps -T 951 | wc -l
+			  ps -hH 951 | wc -l
+	>

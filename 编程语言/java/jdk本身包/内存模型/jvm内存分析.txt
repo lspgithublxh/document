@@ -1,0 +1,52 @@
+1.
+   >性能指标查看：判断是否需要优化(现象、原因、处理方案)
+	> 查看指标：			查看方法			值得优化的标准(指标区间)：	产生的原因(jvm参数\系统cpu/mem改善)		优化方案(jvm参数调整\系统cpu/mem改善)	
+	  FullGC回收频率：      			 		一天>40次 (正常：4次/3天)
+	  年老代回收一次平均耗时：jstat -gcutil pid			>100ms (正常：<50ms)
+				  FGC年老代回收总次数			
+				  FGCT年老代回收总耗时s
+	  YoungGC触发频率：
+	  年轻代回收一次平均耗时：jstat -gcutil pid
+				  YGC年轻代回收总次数
+				  YGCT年轻代回收总耗时s
+	  YoungGC收集耗时：	
+	  各代使用比例：	  jstat -gcutil pid
+				S0/S1两个survivor使用比例
+				E  是Eden使用比例
+				O  是老年代使用比例
+				M  是元数据(方法区)使用比例		大约99%正常
+				CCS 是压缩类使用比例			大约99%正常
+	  上一次回收的原因：	  jstat -gccause 951			G1 Evacuation Pause正常
+	  实例超多的类(大对象):
+	  
+
+
+	  jvm运行时间：		ps -eo pid,lstart,etime,cmd | grep java
+				进程启动时间和运行时间(jvm)
+ 	  所有Jvm配置参数：	java -XX:+PrintFlagsFinal
+				java -XX:+PrintCommandLineFlags
+				ps pid可以查看直接命令中的参数。
+				ps -ef|grep java
+	  获取gc信息到文件：	java -XX:+PrintGCDetails -Xloggc:./gc.log -XX:+PrintGCTimeStamps  	 
+				
+	  内存增长量：		快速增长				  稳步增长，内存泄露			线程增多-操作系统本身也会分配资源(非jvm而系统内存)、对象无法被回收
+	  内存实例占用量：	jmap -histo 970 | sort -n -r -k 2 | head -10 不正常实例个数：hashMap > 100w甚至上千万	
+	  内存各代占用量：	jmap -heap 970									jvm不能太大---太大则无空间分配给线程了。
+	>G1最优配置要配置：	-Xmx50m -Xms50m -XX:+UseG1GC -XX:MaxGCPauseMillis=200  如果没有-Xmx设置则G1的堆空间会非常大。
+				附加：-XX:InitiatingHeapOccupancyPercent=45 不要设置-Xmn（干扰g1） 不要设置XX:+PrintGCDetails (昂贵)
+				增加：-XX:G1ReservePercent=n 默认10
+					-XX:ConcGCThreads=n 
+				>原理上：标记-复制-压缩释放内存中哪些regions和多少-看设置的暂停时间（CMS不压缩内存，ParalleOld全堆压缩）
+					  regions的划分更方便精准和并行回收，同时隔离影响-避免对大量应用线程的影响。
+	  >
+
+
+   >指标优化方案：
+	>指标分析：
+	>指标方案：
+
+
+1.优化案例；
+https://blog.csdn.net/cml_blog/article/details/81057966
+https://www.oracle.com/webfolder/technetwork/tutorials/obe/java/G1GettingStarted/index.html（官方配置参考）
+https://www.cnblogs.com/princessd8251/articles/4076066.html（最佳g1总结和实践）

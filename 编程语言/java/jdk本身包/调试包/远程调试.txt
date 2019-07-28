@@ -1,0 +1,7 @@
+
+	>服务端：启动命令java  -Xdebug -Xnoagent -Djava.compiler=NONE -Xrunjdwp:transport=dt_socket,address=9999,server=y,suspend=y  -jar  JavaShell.jar
+		启动则等待连接。如果suspend=n则不等待客户端而自己先跑起来。 
+	>客户端：eclipse中配置：
+		>新增一个Remote Java Application实例
+		>
+		

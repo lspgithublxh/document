@@ -16,3 +16,6 @@
 	 java -cp D:\maven\repository\redis\clients\jedis\2.9.0\jedis-2.9.0.jar; T
 	  但在linux上：jar之间分割用冒号： java -cp /opt/scf2/service/deploy/hughouselist/lib/jedis-2.9.0.jar: T
 	  :因为只要有package,那么一定要建立包路径才可以，所以只能去掉包，来简化。
+	>java -Xmx256M  A.java
+
+	>java -Xcomp -XX:+UnlockDiagnosticVMOptions -XX:CompileCommand=print,*ThreadSerialTest.main_subThreadsSerilize -XX:+PrintCompilation 编译模式运行。并且打印编译信息。

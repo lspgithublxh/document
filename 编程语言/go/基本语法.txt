@@ -1,0 +1,5 @@
+1.问题：
+	>运行命令：go run hello.go
+	>编译为.exe文件命令：go build hello.go
+	>下载包和安装：go install golang.org/x/tools/cmd/guru
+	

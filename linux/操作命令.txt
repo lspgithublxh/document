@@ -6,16 +6,35 @@
 		>文件内容搜索：find . -name "*.conf" | xargs grep -in "10.8.8.119"    当前文件夹：.  其他文件夹/  文件类型".conf" 文件内容"10.8.8.119"
 				find . | xargs grep -in "appfang.58.com" 当前目录下的所有文件中搜索 包含有"appfang.58.com"的内容---体现出文件和在文件中的位置。
 				find /opt/web/hbg_api_miniapp/conf/ -type f -name "*server*" | xargs grep "GlobalNamingResources" 指定目录搜索指定内容 -in可以不要。但xargs必须要。
+				find ./* -type f -name "*.log" | xargs grep -in "井冈山" 任意目录下匹配也可以。
 		>彻底删除目录：单步直接全部删除不对话：rm -rf  dir
 				有对话-一一确认：rm -r dir 
 		>文件内容搜索匹配：grep 'abc' abc.log
 			>搜索到的内容导出到文件：grep "stat" hbg_web_aroundweb.log > abc.log
 			>上下文查看 ：grep -C 5 "InfoHelper" catalina.out  -B -A也可以。
-				
-		>文件上传到linux: rz filename			
+			>特殊符号查看：grep -m 10 "_price_ranges\":\[{\"" ajkhouse.log
+			>匹配次数查看：grep -c "TimeoutException" ajkhouse.log
+			>正则匹配：egrep -m 10 "wholeSave houseId,.+?, status\:0" catalina.out  正则匹配，命令不同，参数基本相同。数字需要使用[0-9]
+			>只输出匹配到的内容而不是完整行：egrep -m 10 -o  "更新失败\：error\s+num\:[0-9]*" catalina.out 
+			>分割输出指定列：awk -F'[ ,]' '{print $1,$2,$5}' log.txt
+			>正则行匹配：awk '/re/' log.txt包含有re的行
+			>awk匹配文件运行：awk -f a.awk log.txt
+			>正则匹配并提取：egrep -m 10 "结果" catalina.out |  awk '{match($0,/.+结果([0-9]+), cityId(.+)/,a);print a[1], a[2]}'
+				>sed提取：sed 's/.*\(ip"[^,]*,\).*/\1/'
+			>列式统计：见awk文件。先用egrep .. | awk提取获取生成列式文件，后用awk ...运行统计awk脚本文件。
+		>文件上传到linux: rz filename
+			或者直接拖文件到secureCRT 客户端页面选择z model			
 		>文件下载到本地：sz filename	
 		>当前文件夹大小：du -sh	
+		>文件打包解压：tar -zcvf hugwidejob.tar.gz ./hbg_scf_hugwidebizjob/*
+			  tar -xzvf hugwidejob.tar.gz
+		>文件清空：>text.txt重定向的原理。	
+		>文件显示10个：ls | head -n 10
 		>系统磁盘空间及其使用率：df -hl
+		>管道命令：wc grep sort
+		   >文件里的行数、字数、字符数：wc -l filename  wc filename
+		   >统计目录下文件个数：ls -al | grep "^-" | wc
+		   >统计目录下目录个数：ls -al | grep "^d" | wc
 	>系统操作：uname -a 系统名称
 		>pwd:当前路径
 		>cpu信息查看：cat /proc/cpuinfo会显示逻辑cpu和物理cpu
@@ -32,8 +51,11 @@
 				curl -H ':method: GET' -H 'lon: 116.511378' -H 'id58: 98732770446857' -H 'rimei: 861498039727957' -H 'imei: 861498039727957' -H 'dirname: bj' -H 'version: 8.12.0' -H 'productorid: 1' -H 'nettype: wifi' -H 'cid: 1' -H 'deviceid: 395e7a319d9aa8f1' -H 'owner: baidu' -H 'os: android' -H 'currentcid: 1' -H 'platform: android' -H 'location: 1,1142,7551' -H 'uid: 35667656346895' -H 'channelid: 58585858' -H 'lat: 39.993829'  'https://appfang.58.com/api/list/ershoufang?tabkey=allcity&action=getListInfo&signature=c1d792cdf241ac9412a4264a67cea7fc&curVer=8.12.0&appId=1&localname=bj&os=android&format=json&geotype=baidu&v=1&ts=1542699614319&location=1%2C1142%2C7551&filterParams=%7B%7D&sidDict=%7B%22GTID%22%3A%22167293312202204723760992853%22%2C%22PGTID%22%3A%22189593566202204723764000342%22%7D&page=2&geoia=39.993829%2C116.511378' > llxxx.txt
 	>线程操作：
 		>一个进程的线程数：cat /proc/pid/status
+		>一个进程的线程数：ps -hH 17695 | wc
 	>进程操作：
 		>查看进程详细信息：ps -ef|grep java
+		>查看最大进程数：sysctl kernel.pid_max
+		>查看运行中进程数：ps -eLf | wc -l
 	>jvm查看命令：top  jmap最常用最有价值。
 		>查找最耗cpu的线程和代码：
 			>ps -ef|grep "应用名关键字"  jps也可以。
@@ -43,7 +65,7 @@
 			>printf "%x\n"  pid1 得到16进制数me
 			>jstack pid1 | grep me   匹配出nid是 me的线程。
 
-		>消耗mem的情况：jvm
+		>mem内存实例的情况：jvm
 			>jmap pid
 			>jmap -histo:live pid  查看各个类的实例的个数， 占用空间的总共大小
 				>jmap -histo pid | sort -n -r -k 2 | head -10  查看实例最多的10个类	
@@ -59,6 +81,9 @@
 				>年老代回收频率：看jconsole >10min一次都ok
 			>远程jstat: 通过visual vm方式：
 				>
+		>线程情况：
+			>jstack -l pid 线程的状态(三种状态)
+			>ps -hH pid | wc -l 进程中线程的总数
 		>手动清理内存: free -m //这个还需要进一步考虑。
 			
 		>jhat:强大工具：对象查询的基础

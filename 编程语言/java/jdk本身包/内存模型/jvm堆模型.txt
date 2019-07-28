@@ -87,8 +87,8 @@
 				>-Xincgc启用。
 				>
 		>配置参数：
-			>-XX:NewRadio=2是Eden+2Survivor容量和Old代空间容量的比值：
-			>-XX:SurvivorRadio=8是Eden:from+to
+			>-XX:NewRadio=2是Eden+2Survivor容量和Old代空间容量的比值：实际为(EC + S0C + S1C) / (EC + S0C + S1C + OC)
+			>-XX:SurvivorRadio=8是Eden:from+to  实际为EC / S0C
 			>-Xmn:年轻代：Eden+2Survivor？建议配置为：整个堆的3/8
 			>-Xmx:最大堆
 			>-Xms:初始堆

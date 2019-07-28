@@ -4,3 +4,7 @@
 		>grant all privilleges on *.* to root@'%' identified by '123'  指定口令为123... grant all privileges on *.* to root@'%' identified by '123';
 	>重启：net stop mysql   net start mysql；注意java连接时，只能有一个mysqld进程，否则会报连接拒绝的异常！！！
 	>设置链接包大小： set global max_allowed_packet=1024*1024*16;查看：show global variables like 'max_allowed_packet';
+	>查看sql执行过程语句：SELECT @@profiling;
+				SET profiling=1;
+				SHOW PROFILES;
+				SHOW PROFILE  ALL FOR QUERY 2

@@ -17,3 +17,6 @@
 			>compile:默认的scope, 编译和测试范围(整个仓库周期)有效，打包会打入生成的lib中。
 		
 		   ---scope描述这几个问题：1.从哪里找这个依赖jar(system--指定路径/compile仓库路径),2.打不打到WEB-INF/lib下(provided不打到/compile要打到) ，3.哪个阶段使用这个依赖(test--junit测试用/runtime--动态加载--反射方式--代码上看不到) 
+
+
+	>dependencyManagement:可以用来消除冲突。统一版本。
