@@ -1,0 +1,1851 @@
+//不逞强，不用技术以外的词语
+1.深圳banner 修改url上线
+2.上线商业改版
+3.上线商圈经纪人+...
+4.修复一些bug .  
+5.经纪人发布页缓存上线 +   保存到wos实现  并测试在沙箱中   
+6.app新建小区后端开发基本完毕,  已部署沙箱--等app/前端使用
+
+开发完毕智能安选 + 新增banner
+
+
+
+1.请求改变：不请求minifang直接从云搜获取数据---因为总是超时
+
+
+----7.9
+//1.智能安选 + 新增banner
+//2.wos正式环境
+//3.经纪人分值
+//4.新建小区优化实现 ---填手机号固定--和test转正
+
+//5.地图8.2  1070渠道下线地图找房
+6.图片生成--背景图方式--自己生成一个空的大白圆形
+   -----------最好前端生成：或者点击分享的时候才生成图片--否则是浪费：目前就是
+7.请求改变：不请求minifang直接从云搜获取数据---因为总是超时
+//8.修复商业地产bug
+//9.日志分析--看访问的经纪人都集中在哪些人那里；并且自动每天发送报告。。。。对每次请求的报头和cookie进行分析。（时间-用户-类别-地点-版本）
+10.适配厂房-写字楼
+11.经纪人新入口
+
+排期很重要：别并行开发。到处奔波。----一天开发一个需求
+
+
+
+
+
+
+
+
+
+-----------7.15
+1.200000000673000100000010 new_other  埋点搜索
+2.wos改用http方式
+3.小工具如自动打包部署工具
+4.重写wos请求方式--不用demo的客户端，用Http + token方式。避免连接未释放的问题。
+
+
+
+
+-------7.30
+1.看有没有被筛选：小程序
+2.banner配置过程
+3.列表详情没有的帖子，展示出来了。 可能因为1077=0这一项
+4.城市问题  学校 和 地铁
+
+搜索的排序问题sort=的值
+
+
+
+--------8.6
+//1.智能客服
+2.banner
+//3.经纪人列表加星星
+4.防爬-日志(ip/version/deviceId/userId；；ip的多种维度统计--也是用户端统计，)-大类页。。。。。。时间被篡改为了1天。
+   ---存储到本地mysql数据库    当作业务功能
+//接入防扒
+
+
+
+
+-----8-13
+1.迁移miniapp.api到私有云
+//日志分析：获取集群的ip列表，自动上传脚本或者java程序--并且运行--执行命令发送日志回到windows本地系统，然后本机上分析日志--最后图像化呈现。
+//合并-打包编译-构建-升级-：自动化   脚本或者程序
+//直接shell脚本日志分析
+2.miniapp.api防扒；加wmonitor 看是否被扒   ;接入防扒系统 
+//二手房大类页  手机牌子 访问统计
+//14号拦截10k+爬虫请求30min. cpu：突涨最高到45%，mem最高涨到33%    此时尚未接入防扒系统
+//android开发--小应用app一个
+
+
+----8-14
+1.
+
+2.查看http://yun.58corp.com/cluster/group/getPods这个，可以看到的ip-webshell并且可以直接浏览器进入去看
+3.大调，配套修改详情页-经纪人信息部分、是否安选。增加wmonitor
+
+
+
+
+--------8-20
+1.二手房推荐
+2.日志继续看
+3.找二手房token验证方式：列表页穿js加密的结果  ---后端解开。加密 时间戳 + 设备id   ...  详情页  列表页的token + 单条帖子的加密的token  。。。。导致：每条帖子-每个列表的访问都要加token
+     //独特加密算法----构造一个新的加密算法---基于aes的原理，比如 两次异或  
+
+  :只有数据灵活
+    小程序接口：前端只能有一个请求接口到小程序后端？其他所有请求都要走 自己的接口---不能转发。
+    完全相当于浏览器模式。//标记用户唯一身份的必须有，否则只能其他基本用户信息：：：。。	
+	
+	
+1.大类页改版
+2.详情页数据
+
+
+视频看房---新的扣费---商圈经纪人服务范围
+
+
+---------8-27
+1.电话加密//或者加signnore验证  
+2.商圈经纪人服务范围
+3.详情页的请求url来源--找二手房/经纪人的房源
+4.openid 详情页/列表页都加  ;防爬手段之一
+5.首付预算的含义---其他项 的 含义
+6.详情页防扒：加 signature  简单的md5加密：infoid。。。不能反解
+   //同时接入 防扒 系统
+
+--问题明确：
+1.icon格式 不同： 会有调整吗
+2. wbmain跳转：专门写url写死是否更好
+3.埋点 是否会有遗漏
+4.新闻、特色、推荐等的协议格式
+5.底部tab协议
+6.缺logpagetype
+7.默认ad问题
+8.消息可以直接get取出来  传
+
+
+-----------
+1.大类页防扒---小程序 防扒
+
+
+运行的行走路径形式：每个类：下一个类：下一个功能结构：。  //需求场景 的直接实现方式的 不够简洁-以后在此基础上的新的需求会导致修改变动很大(而理论上或者技巧上可以避免--原理上可以避免)-不够效率    所以新的模式--新的方式。
+//这个日志 应用价值？学到了什么？
+网络结构图
+
+
+问题：
+1.没有经纪人 首页
+
+
+
+
+2.大类页数据  用例评审
+1）切换城市
+2) 切换城市
+3）跳转 到 列表页 
+4）定位失败--视频房源。。视频列表最后一个不传
+5) 推荐经纪人 跳转 有的失败
+
+
+
+"@cid"(58表现城市id), "@os"(操作系统类型), "@version"(58 app版本), "@clistName"(58表现城市简拼), "@lat"(手机定位纬度), "@lon"(手机定位经度), "@cateid"(58房产类型), "@cateName"(58房产类型字符串)
+四大主题 四大产品 四大平台
+
+-----------------------9-10
+1.全景看房问题  直接返回一个全景房源  的 info数据看能不能展示。
+2.视频房源不都是 安选 和  全景 
+3.给一个 参数文档---哪些可以配置
+4.pagetype给link--为common试试
+5.面积.0问题是否必要
+6.------是否有的地方加个缓存
+
+
+1.技术规划
+---工程代码自动生成器
+---本地轻量级索引
+---缓存自动化插件、缓存切换插件、缓存数据   拉到本地管理filecache  数据压缩和加密
+
+-----mysql/oracle 的索引、Innodob、B树等  数据压缩和加密
+
+
+1.全景//
+2.排序
+3.缓存//
+
+
+----9-21小程序
+
+9-26
+---列表页缓存
+---大类页可以配置::下架配置
+
+
+---vpn权限申请
+
+
+9-27改本地配置--项目重启
+    改wconfig配置--动态更新
+	
+	大类页--本身也加 缓存：不加：因为---智能安选要 不断更新。。。所以：对 几个服务 和 配置 进行缓存：：。。。服务(地图-视频-推荐经纪人)还需要。。配置已经加了。
+	      推荐--不加缓存：因为快
+		  
+	----重启项目 的 测试
+	
+	
+	
+10-8
+1.linux定时任务模块---比如删除日志
+2.推荐模块是否打开
+3.弹窗广告 是否ok
+4.调整之后，埋点该加的
+5.弹窗广告 更新周期问题
+  ----显示次数最好保存在前端-----因为这样就可以大大减小后端存储的工作
+6.小区 数据问题
+7.14:10:13,697 ERROR OtherServcie:429 - String index out of range: -1
+8.每10次备份一下配置数据
+9.config配置定期更新---1周一次
+10.视频不能播放，签名的问题：但是可以没有。。。可以处理
+http://58fang-10011010.video.myqcloud.com/58fang/1013370160846757888_3_22.mp4.f30.mp4?sign=F7w/mFCZ1UGDwVWIp3kPSCK5HMRhPTEwMDExMDEwJms9QUtJRDV4UDhscUtoSVd4eUpHbnJXd3NiY0xTRzJZRmJ2Zlp4JmU9MTUzOTE1NjUyNiZ0PTE1MzkxNTU5MjYmcj0zMTczNjI0MjgmZj0mYj01OGZhbmc=
+11.地图---数量单位
+12.全配置---style,buring,....都加上去---对一个item的。。。所以在content:最外层 再加一层结构
+
+13.小区详情页的其他页面开发
+ a.评测详情页
+ b.小区解读详情页
+ 
+ 
+ 
+14.自动缓存----注解、代理和反射
+----
+-----企业开发，大量的代码其实都是 处理各种出现的异常，第一点--就是一定要认为服务是不可靠的、数据一定是会异常的、残缺的。第二点，一定要认为自己的代码是还有点问题的，需要复查!!!
+
+ 
+15.小区图片 的 大小控制.. 户型图 没有说明的。
+16. 小区详情 缓存、防扒、优化 等工作
+
+
+17.贝壳房源
+18.依然没有自动删除 日志---8-17号都有
+19.Q3季度
+20.语句注解， 和语句上的注解
+  ----均价不同，均价不一样
+  
+  小区列表----小区历史详情
+  
+
+21.memcached缓存 重新缓存， 突然漂移 而缓存失效。---缓存不可用的情形
+22.
+
+
+
+中间的处理流程，为以后更多的爬取准备。
+
+
+
+#推荐下降的请求分析：
+  11号继续减小：然而11号并没有修改相关-----应该是房源的减小 --且因为房源还没有上线。。但是12号加进了一个return 会有影响但可以忽略。从此开始不是我上线。
+
+yiluofeixingzhen
+  
+本地 一个堆栈  ---一个队列：http访问
+
+图片服务器的灵活 而不是死 1
+2017*999999
+miniapp_日志直接回怼太低级问题：在于catalina.out是控制台的输出----包括e.printStackTrace()完整的路径。 可能缺一个滚动日志包--支持包
+
+代码上加注解进攻：：更高级的注解
+
+缓存内容的推导高频震荡 到逐渐稳定-----当有一个缓存键的值被改变时--会来回地震荡 最多 缓存周期为时期
+
+java化改造间接
+大数据工具---比如云窗的处理
+
+日志保留个数都没有生效----增加配置文件log.xml
+上传文件到私有云---公共地方
+周期 连接日志删除的脚本
+tomcat周期重启的脚本/配置
+spring-cloud的微服务文档；；企业开发就是一点一点的优化；；企业开发不可落
+
+内存使用率高的原因-----jvm分析---是哪个线程 和 代码块耗内存和耗时间。
+测试imei 861498039727957
+测试uid 35667656346895
+#大数据工具 - 训练工具  linux脚本工具 tcp/ip工具抓包工具---：网络端口级别
+代码方式监控jvm 看是那些代码产生了大量的内存占用
+提高性能--没事就看代码，而作优化工作
+为什么内存使用率稳定而cpu使用率随着网卡入口流量正相关变化
+参加也是无奈11:22:44,
+file:name 安选@2x.pngOk:https://pic1.58cdn.com.cn/nowater/ershoufang/nativehome/n_v27020e54e64d941dcaf57ecf3287dd769.png
+file:name 安选@3x.pngOk:https://pic1.58cdn.com.cn/nowater/ershoufang/nativehome/n_v27cc137cbce0f4bbd91e20a583d3f8580.png
+file:name 设置@2x(1).pngOk:https://pic1.58cdn.com.cn/nowater/ershoufang/nativehome/n_v2d168a8f5f13e46d0b0bc64e391a7d6da.png
+file:name 设置@2x.pngOk:https://pic1.58cdn.com.cn/nowater/ershoufang/nativehome/n_v2dba9287794324dcc9975d02415ced24d.png
+file:name 设置@3x(1).pngOk:https://pic1.58cdn.com.cn/nowater/ershoufang/nativehome/n_v26712e40d7ed44c129bddb28dce323550.png
+file:name 设置@3x.pngOk:https://pic1.58cdn.com.cn/nowater/ershoufang/nativehome/n_v27124bb6bd88f40daa90d25ff0dc1ce79.png
+
+
+列表的查询消耗：
+1次infoids  10次info  10次经纪人id  20次地域  1次小区交通 10次小区名  10 * n次属性获取---这里是最大的优化
+房源-小区：
+黑框1-2：  1-2-3
+性能和容灾
+自动登录跳板机
+免费缓存加载----连续数据内存块的访问；；
+    cpu核-缓存(从近到远、从独享独享到单槽共享、从快到慢、从小到大L1-L2-L3)-主内存：计算机一个槽上多个cpu核，有多个槽；；查找耗时从少到多(1ns-3ns-15ns-80ns)。cpu核先后从L1-L2-L3-主内存中取数据;;;寄存器：时间忽略。
+	缓存结构：单位：64B  称谓：缓存行 ；linux上一个docker总量：L1:64k, L2:256k L3:25600k  。。查看方式lscpu
+	加载过程：读取指令到了，cpu核从3级缓存中都没有读到，连续内存结构第一个元素被加载，则其他元素也被加载：比如一个数组。因此缓存中总能命中元素，因此遍历数组快。(但是元素多，其中一个值更新了，整个缓存行就失效了，失效也快，某些元素不想被加载)()
+	缓存失效：当主内存中数据被某cpu核更新了则其他cpu核对应的包含该数据的缓存行失效。---避免频繁失效：一个变量占据一个缓存行即可。----即补全剩下7B数据
+	
+内存屏障：一组处理器指令---保证对内存操作的顺序限制
+缓存行填充：读取到的内存操作数可以缓存，则读取整个缓存行长度的数据到缓存中。
+			缓存行中有内存地址。
+缓存命中：读命中，不是看值相等---而是看缓存行填充后下一次cpu核读访问的操作数的地址是否和这次一样---一样则从缓存行中读取操作数？？
+写命中：处理器将操作数写回内存时，先看缓存中是否有缓存行的内存地址是和这个操作数的内存地址一样，一样则写入缓存行，而不是写回内存。
+
+Volatile：修改某变量后还能共享读，线程级别排他锁写而共享读。。volatile标记的变量被修改后生成的汇编里包含lock指令
+		原理：lock指令锁住总线(或者缓存)-使得只有本cpu可以访问到内存--强制将结果操作数回写到内存--而不是在本cpu核的L1-L3缓存中
+Java语言规范：包含语法
+java线程内存模型：
+JIT编译器生成汇编指令：看CPU级别在做什么。
+IA-32软件开发者架构手册：看懂汇编指令的含义--cpu做了什么。
+缓存一致性机制：确保一个内存数据在多个cpu核的缓存中时，不会被多个cpu同时回写修改---而一旦被一个cpu回写那么其他cpu中的缓存就失效了。：：即锁住该数据在所有cpu核中的缓存-----缓存锁定。
+		失效办法：cpu核自己嗅探总线上的数据的内存地址--是否在回写是否在自己的缓存中
+CAS操作：cpu核级别的指令--汇编。。cpu级别的指令如：加载操作数到寄存器(加载指令)、寄存器中的数据加1(自增指令)、寄存器数据回写到内存/缓存(存储指令)
+内存严格一致性模型：各cpu核读取的某变量的值在时间线上都是该变量的最新写入值/最后写入值		
+发布订阅数据的Distruptor: 关键要素：内部一个环形队列RingBuffer, 自己维护一个Sequence--存储简便计算出下一个可用的索引的只需要不断自增的整数(更像AtomicLong)：实际上是指向最近加入的一个元素
+   >消费者维护一个Sequence: 指向下一个可读位置。。并行消耗型读时，获取Sequence是从。。。		
+   >开发：编写生产者--注入一个RingBuffer实现一个用RingBUffer api取sequence放入数据---并再发布(让消费者知道)的方法	
+          编写初始化一个Disruptor需要的：bufferSize, 根据值构造一个包装该值的--RingBuffer中的元素 的工厂类， 线程池Executor---给每个消费者用
+    >RingBuffer:写完之后加尾指针再判断(首尾相等)是否满了， 读完之后先加头指针再判断(首尾相等)是否空了；；； 尾指针指向下一个可写位置，头指针指向下一个可读位置。。。但这样还需要一个满空标记位
+		>反向设计：定义判断后才决定读或者写，读或者写之后先判断再决定是否增加指针，定义首-尾 = 1为空为不可读，首-尾=-1为满为不可写， ；；则自然要求：首指向最新已写入的数据，尾指向下一个可读位置；自然结果：首尾相等为剩余一个元素-既可写也可读, 初始化的时候---读指针=-1写指针为0
+				>判断指标：同一个指标，在读和写操作时看作不一样：
+				>新规则：前面是读指针不可再写，读写相等时读了之后读指针设置为-1，写了之后如果读指针为-1则读指针为写指针，读写自增。
+				
+参考文档：https://blog.csdn.net/aigoogle/article/details/41517213  指令和操作数
+火焰图就绪
+一个对象引用占4个字节
+如何将一个对象的引用占用的字节增加：一个对象的引用占用的字节数 等于 这个对象的所有属性占用的字节数之和。比如一个类有4个对象属性，那么一个这个类的对象就占用16个字节，并且是按属性顺序先后---所以可以在属性之间增加一些占位属性-变量。@sun.misc.Contended注解的类的每个属性都在单独的cacheLine中
+
+本地字典---远程更新：
+//json,缓存,三级缓存(数据版本，小批量数据的三级缓存)
+//打开文件加载全部数据 和 加载部分数据的区别：：占用内存的区别。
+//java纯锁代码段---类似python的方式：而不是用syncronized的方式ReentrantLock
+//java新的阻塞-通过：await(), signal()   实现在一个锁定代码块内让另外条件等待
+//好处指标分类：
+   >寻址速度：连续数据结构快
+   >GC次数：重新请求/分配内存刺激GC，只是覆盖已有分配内存不刺激GC
+   >运算：位操作
+   
+
+   
+技术痛点2：各段代码执行时间统计   
+//disruptor:  header指针，乐观锁， 取模运算改为与运算：（原因在于此时取余就是取模：m % 2^n = m & ( 2^n - 1 )）
+	>多生产者：请求Disprutor而各自获得了long型顺序值，而同时刷入数据到RingBuffer中，不会冲突。
+	>多消费者：请求Disprutor而各自获得了long型顺序值，而同时读取RingBuffer中顺序，不会有错。
+	>long型顺序值的获取：barrier:利用cpu级别CAS操作自增(实际上没有采取？)---比锁控制的自增更快；同时long型值又是非伪共享的方式存储在内存中的。
+//工作介绍：时间线顺序：
+新建小区：pc/app 
+app二手房大类页php切换java(h5)+增加底部bar--->增加推荐经纪人+广告运营位+猜你喜欢加精选贴+推荐经纪人模块...--->8.11大类页改版为native---->配置后台动态数据配置--->房产头条+安选模块改版+...
+app经纪人详情页php切java(native?加密算法-token生成)---->增加微信好友分享(wos内存增长的排查)---->8.11展现改版(评分、评价、接入商铺厂房)
+小程序二手房列表开发---->改进算法(pageIndex:使得节省50ms, 不传FilterInfo--绝大部分在20-80ms之间，性能定位:还可以优化--displocal就在内存里：用专门的缓存方法--少量热数据在内存--大量数据在文件)
+小程序二手房详情页增加小区房源+证卡+经纪人星级(磁盘占用率高的排查--日志不生效)--->
+小程序小区详情开发---->
+小程序小区列表页开发--->
+爬取房源数据100万
+商铺写字楼视频房源
+问题和性能改进
+打开文件读取某文件行方法
+文件读取的耗时---
+并发操作文件的可行性----以及耗时统计
+一行存一次读取耗时 与 多行存多次读取耗时统计
+ehcache使用
+本地搭建nginx做代理
+要点---痛点：：：：在ppt的时候讲解出来：：但是不写
+
+-----------时间-需求-技术 三线演进
+
+---统一处理：缓存mem(网络访问的地方+整体用户级别的)-防扒-访问量统计
+--提出技术：小工具，而不是平台、框架
+UI截图
+从多少版本到多少版本
+小需求：来一篇直接写
+某种框架的了解来介绍：比如redis,memcache,spring-cloud,spring-boot, lucence, mysql
+----经纪人接口场景
+
+二手房列表：ses: 查询条件得总量和infoids  ， imc: infoids得List<Info>   newdict:由小区id得小区Community名  cmcpc得displocal和category的内存和磁盘缓存(tcp://cmcpc/CacheService)
+         xiaoquapi 查询小区附近地铁 ， 
+		 磐石http接口 查询筛选项学校/(磐石接口可以根据58 areaid 获取安居客areaid 进而磐石接口查询该区域下的学校列表， 用unitycmc来根据安居客areaid查询58 areaid)(根据学校id查询学校)     ，unitycmc 根据安居客的areaid查询58 areaid(磐石返回的安居客接口)， unitydict根据地铁站id获取地铁站 根据城市id获取地铁线 根据地铁线id获取所有地铁站    ， 
+		 cmcslogic 根据参数id获取参数值列表(总价、厅室、面积、朝向、房龄、楼层、装修、产权、类型)(参数名和参数id的查询呢？) (特色房源标签---手动写死--根据不同城市) cmcslogic/PublishInf
+		  xiaoquapi 小区距离我的距离
+		 
+二手房详情： imc房源一条Info, cmcpc地区-商圈  ， cmcslogic(/PublishInf) 根据参数名取参数id 根据代数型参数值取文本(房源标签：满五唯一)楼层、朝向、建筑年代、建筑类别、佣金、供暖方式、楼型、电梯、核验, newdict 小区信息 ， ses -imc 同小区房源
+			安居客http接口 根据房源的58 userid 获取经纪人信息   ，  wcs 根据经纪人id获取经纪人服务地域-商圈，  本地  来电通城市判断  ， housedetail 根据经纪人电话 --没有则 umc根据经纪人id获取电话  、用户名、城市等返回加密电话  安居客接口 根据brokerid获取经纪人星级   netstorecsg 公司营业执照 brokerCert经纪人从业信息
+
+小区列表：xiaoquWebService 取小区列表、区域、地铁 等过滤项
+小区详情：newdict 小区详情、小区基本信息 ， xiaoqudetail 小区详细信息 、小区均价、小区图片、附近小区、小区评测、小区解读， brokerlist推荐经纪人
+
+			
+重新把业务梳理一遍
+public class ImeiUtil {
+
+	private static final String IOS_DEFAULT_IMEI = "0f607264fc6318a92b9e13c65db7cd3c";
+	
+	public static String getImei(HttpServletRequest request) {
+		String os = OsUtil.getOs(request);
+		String imei = HttpHeaderUtil.getHeader(request, "HTTP_IMEI", "imei");
+		if (imei == null) {
+			imei = CookieUtil.getCookie(request, CookieUtil.KEY_CIMEI);
+		}
+		if (OsUtil.IOS.equals(os) && IOS_DEFAULT_IMEI.equals(imei)) {
+			imei = HttpHeaderUtil.getHeader(request, "HTTP_OPENUDID", "openudid");
+			if (imei == null) {
+				imei = CookieUtil.getCookie(request, CookieUtil.KEY_OPENUDID);
+			}
+		}
+		return imei;
+	}
+}
+
+---自动化开发的问题 和性能优化的问题(高可用)
+//问题：web开发  中遇到的困境 和开发的工具
+//层次：问题--->架构--->算法---->接口---->时序图||数据流图||增长图(说服力)---->已应用场景/案例
+复杂的数据协议如何快速构建bean结构，或者直接是json结构。来协同前端后端开发。手动写：太慢，半天。自动生成结构1min以内，直接调整使用<10min。
+面对频繁的缓存使用，能否在调用时简化书写为一行配置，在配置中可设置各个缓存参数，而把精力集中到业务逻辑的梳理和思考中。而统一的模式可以为 对一个方法进行缓存配置--(形式参数构造key, 返回参数为value)，使用注解配置，则提出@memcached 缓存注解，加入插件库体系，扩展方向：更多介质的缓存
+面对总体数据量小、使用比较频繁的scf/http、调用参数比较少且大多为某一部分参数值的服务调用，把这部分参数值-结果缓存在本地，一可避免频繁过高的调用，二减少响应时间，三因为数据量只是热点数据所以内存消耗不大；比单纯缓存在mem更好，最后，适当的过期清除/低调用清除策略可以让缓存量的增长稳定在允许的速率左右。所以提出开发了热点数据缓存工具，案例：。扩展方向：过期策略--增长策略。应用场景：小程序二手房列表页
+
+工具演示：map存量变化图和取数耗时ms变化动态图；；项目中的实际统计时间消耗图
+
+性能比较、类图    
+3.实现简单，本身占用小0.31333733
+---linux定时任务和邮件发送
+设计思想1；非引用、继承、关联、聚合等代码内侵入式包装一个类、代理一个类(不限制方法名、---对一个类不做任何限制-代理类和被代理类没有任何关联--没有任何类关系-----就是继承--就是动态集成--就是动态创建它的子类---即使用动态代理--使用cglib实现， 在子类中重写父类方法，方法内只封装子类调用方法、调用实例、调用参数、可以反射调用覆盖的父类方法的调用代理类对象然后执行回调接口的Invoke方法-----回调接口用户注入，增加：创建的这个子类实例对象可以被管理起来clsMap,,也之前获取这个方法的注解中实现类继承了FPluginAnnotationAbstract的特定注解列表， 构造本次请求的各个注解可以访问到的上下文：方法名、时间、方法参数值组成， 然后环绕原方法调用来调用注解列表中的每个注解的实现类实例的先后方法---所有的先方法并行执行(初了缓存注解)--主程序不等待---，然后父方法调用---当有缓存注解时需要先串行调用缓存注解-然后有结果则不调用没有则要调用，然后后方法并行执行---包括缓存注解--内部会控制和主调用方法同步使得直到后方法都执行完毕才返回(未用Future而用CountDownLatch)，而回调接口的返回值就作为子类覆盖父类方法的返回值---)，只需要用注解标记要代理的类和该类中需要代理的方法----标记方法就是注解。。。无关联代理
+--为什么要代理方法：做一些通用处理、如调用记录(次数、消耗时间)，，，，第二是监控方法(因为此时作为主调方)，--如对方法调用时长做限制，对方法调用之后的结果做一些基本处理---(在此数据基础上做更上层业务相关的处理功能)---比如容灾、缓存：：：具体的实现具体怎么监控可以怎么监控想怎么监控---将这个需求用注解形式实现即可--然后加到该方法上--就是一个一个具体的标记-注解。
+--具体已经需要代理的地方：WF项目、SCF项目。。。。(对类做外科手术而不是内科手术)
+特点：一次调用创建一个上下文
+scheduledTaskByVisitTime(final IGetValByKey<K, T> source)
+基本问题+scf微服务+wf框架
+访问大类页的版本分布
+包装方法
+===========================
+数据协议图演示
+重讲技术轻讲业务
+时序图简化
+PuHotDataCache3<K, T>
+PuHotDataCache<K, T>
+configAndStartClean(CacheConfig config)
+getMapSize()
+AbstractCacheEntity<T>
+FPluginAutoMemcached2
+IGetValByKey<K, T>
+NoCallbackInterException
+
+Class<? extends ICacheKeyProvider> geneKey()
+FPluginAutoMemcachedImpl2
+FPluginAnnotationAbstract
+IFPluginAnnotationSerial
+before(FPluginContext fpContext, Annotation annotation)
+after(FPluginContext fpContext, Annotation annotation)
+generateKey(FPluginContext fpContext, FPluginAutoMemcached2 anno)
+FPluginMemcacheToolFactory
+FPluginMemCacheTool2
+PHCacheTestTool
+get(String key)
+String key, Object obj, int second
+getInstance(String mempath)
+testCache(PuHotDataCache<String, T> source)
+--
+数组元素是相同类型---不同类
+嵌套2层数组
+---某些人永不可信
+所说bug必须我先确认。-----问题也必须确认：：：好资源是好处---但是不能滥用。
+---是否是测试数据：：：再加一条判断。
+
+试讲：每张ppt, 只说几个名词，或者更概括，
+讲解模式：遇到的问题：解决的方法    
+(本身不做更多解释)
+
+限时热点：--之后不再动；输出热点小区----定期：
+==问题2：磁盘读写猛增的原因是什么？
+--问题写下来：
+printJSON(JSONObject target, String name)
+Object keyvalueHandle(Object a_val, String name)
+
+
+
+#简化描述，去除流程，主要图的讲解
+两种算法去除一种，技术选型问题---两种算法不是罗列--比较区别--各自使用场景和使用条件，结果演示----策略3的必要性。。业务引出技术，，，，比较结果要明显--数据量更大。
+数据流程图大家都了解，不重要--不用讲，直接从其中的问题--难点-技术引出---重点在于要把技术讲懂且凸显意义凸显必要点--- 而不是为技术而技术--业务不用也不行。
+内存工具应用--更多的体现，而不是只是小区名---
+
+
+----------小区名重新获取：：：用毫秒的办法
+---热点小区全国分布----把key打印出来--每天
+
+间隔周期T, T内的请求量N  缓存时间kT   
+那么(k+1)T时间内的请求量也只有N   ， 从而每分钟请求量为 N/(k+1)T   而之前是N/T 所以缓存降低了请求量----但是缓存时间必须大于间隔周期----即k>1
+
+
+把技术问题说明白。
+回收的机制---map排序的方式---
+知道这个是什么，问题，解决方案， 结果
+--------内存：：：
+对比图：要说有意义，不说不行，提高还是可以的。
+//---------减少类---即层级减少的算法。
+咬字清楚准确慢一点
+复查-反馈
+
+//
+
+
+
+
+
+
+
+
+A:使用clienId, clientSecret获取token
+A:使用token调用租房/二手房的发布http接口，将小区/房源传给B,B将数据导入公司专属房源库，B可通过brokerId将公司专属房源库数据导入brokerId对应经纪人的新三网房源库， 经纪人通过在新三网PC站点推广自己的房源，房源才会在客户端展示。
+   ---从发布到展示
+A:改动房源信息先调用发布接口修改公司专属房源库，会自动同步修改到经纪人房源库
+A:通过某个接口改动公司房源库房源状态，改为成交或者无效时，会自动同步删除经纪人房源----即在新三网后台对应的房源
+//不断请求最新新闻发送给我
+
+
+///shipinurl问题
+求和被N减
+
+
+1.如何获取房源标签的枚举值--ESFEntity中
+2.图片实体格式
+3.json不方便传--用okhttp可以吗
+4.区域-商圈的查找方法
+5.日志和okhttp
+
+规则：
+没有@Request
+
+params
+
+
+接口business---->目录分类business----->列表组合business------>
+									具体单一查询列表listbusiness---->查询接口：三网统一/安居客房源统一http/scf接口(索引出ids --> 封装出infos --> 补充信息)
+说明：
+1.定位到具体的business类(只进行多个房源列表的组合)
+2.按类别分(一般列表或者通勤或者精选 等额外的参数)---解析参数封装查询字符串、查询id列表-封装信息实体、补充信息-猜你喜欢business、封装返回列表信息格式
+   >列表组合：例如精选、再置顶、再安选视频、再一般普通房源列表
+   >business类下调用最基本的：第三级服务：纯粹列表数据返回的服务listService
+3.对business类、listbusiness类、查询接口作代理， 进行降级容灾缓存统计， 同时对http请求和scf请求也进行缓存； 
+	同时用wconfig工具进行城市灰度控制--限制部分城市才通过等等
+
+	
+-------fanglist服务查看：
+底层访问服务接口：tcp://genericlist/ListQueryService
+Query(List<Query>) --->QueryEntity(List)--->ResultEntity---->ListResultEntity
+对通用的数据接口进行反射调用：
+ 具体过程：反射前先取缓存----> 再判断本方法调用是否过载(本方法自带相关参数) --->  反射调用、推送openfalcon、统计耗时、加入缓存-----最后的过载参数输入---即本方法的调用时长来判断
+ 
+ 
+linux进阶：OpenFalcon
+java平台管理：MxBeans  Mananger 
+第三方自定义注解---插件器：：自己定义新的注解：：动态添加进去
+
+资源：
+1.搜索列表：http://api.corp.anjuke.com/#/home/project/inside/api/detail?groupID=167&apiID=1004&projectID=1
+1.全国独立经纪人房源去除灰度上线
+
+
+1.安居客列表文档：
+http://c.58corp.com/pages/viewpage.action?pageId=26958123 三网房源
+租房列表页接口：
+http://igit.58corp.com/_site/document/blob/master/api%E6%8E%A5%E5%8F%A3/%E7%94%A8%E6%88%B7app/%E5%AE%89%E5%B1%85%E5%AE%A2%E6%8E%A5%E5%8F%A3%E6%96%87%E6%A1%A3/%E7%A7%9F%E6%88%BF/%E5%88%97%E8%A1%A8%E9%A1%B5/%E5%88%97%E8%A1%A8%E9%A1%B5%E6%8E%A5%E5%8F%A3.md
+租房列表id:
+http://api.corp.anjuke.com/#/home/project/inside/api/detail?groupID=167&apiID=1004&projectID=1
+uv搜索：
+http://search.anjuke.test/getversearchresult/v1/city_id=102/
+app_id	列表 
+http://search.corp.anjuke.com/accesslist
+http调用查看：
+http://wf-manager.58corp.com/wfmanagement/index
+app_id
+http://search.corp.anjuke.com/accesslist
+各个枚举类型：
+http://api.corp.anjuke.com/#/home/project/inside/api/detail?groupID=164&apiID=951&projectID=1
+服务service文档：
+http://igit.58corp.com/_site-service/city-service-intf/blob/master/postman.json
+
+
+1.建议：前端多传cateid=区分租房，二手房，
+2.map_type的值不知道，建议去除
+3.个人房源没有图片  --- 新方法 
+4.除了经纪人、个人的AP之外，有没有其他的前缀类型
+
+协助调查房源不能展示的问题----独立经纪人房源已经处理。
+ip无法登陆：查看天宫平台--搜用户权限。
+5.专门获取标签的接口
+6.精装修map不确定
+
+5.日志没有出现的问题
+36703375894926
+36703215783944
+35821561620654----帖子是经纪人，但是人是个人。
+现在耗时：661
+----详情页被抓情况--详情页加sinature
+---nio--大多数都在用	memcache
+
+0--------防扒 封ip
+
+wconfig spend time(ms):11
+ call "AjkInfoService_isNearSubway" use time(ms):14
+ call "AjkInfoService_getBlockInfosByIds" use time(ms):26
+  call "AjkInfoService_getCommunityInfosByIds" use time(ms):17
+  
+  call "AjkInfoService_getAjkInfoList" use time(ms):76
+  call "AjkInfoService_getAjkIndexInfo" use time(ms):104
+  
+  total spend time:285
+  total spend time:355
+  
+-----cpu层面本来就是串行的。
+
+小区信息复杂形式的
+http://api.corp.anjuke.com/#/home/project/inside/api/detail?groupID=121&apiID=171&apiProtocol=2&projectID=1
+字典类型如装修：
+http://api.corp.anjuke.com/#/home/project/inside/api/detail?groupID=175&apiID=945&apiProtocol=2&projectID=1
+另一个房源信息获取接口：
+http://api.corp.anjuke.com/#/home/project/inside/api/detail?groupID=121&apiID=53&apiProtocol=2&projectID=1
+
+安居客租房列表页，有没有一个接口返回的是小区的详细
+
+一个列表的信息 = 搜索+房源+小区+经纪人+ 小区周边的数据
+
+信息更多---还有是否近地铁、近学校
+http://service.a.anjuke.test/service-community/community-info-service?method=getFullInfoListByIds
+
+经纪人批量：
+http://api.corp.anjuke.com/#/home/project/inside/api/detail?groupID=122&apiID=2726&apiProtocol=2&projectID=1
+
+###接口替换：：小区简单形式+
+
+
+
+1.远程调试：debug
+2.thrift测试接口
+3.会出现的问题：CustomTimeOutException{errorCode={code=10001, message='网络请求超时'},errorMsg=timeout}--remoteIP:10.252.62.125--remotePort:65101
+				"AjkInfoService_getAjkInfoList"
+				
+				
+4.area的补齐
+5.小区各个价格
+5.http请求的并行进行
+6.缓存为空的问题
+10.8.18.214  4.0.0.65性能好的版本
+
+web环境：
+http://apirent.anjuke.com/zufang/app/houselist/api_houselist_data?city_id=11&page=1&page_size=2&entry=11&select_type=0&source_type=2
+#并行任务：http请求小区等信息
+任务和问题：
+1.整租房源少
+2.房源不存在---详情页--线上也搜索不了
+3.
+
+-----------------------------
+1.miniapp项目的1.8改造
+2.memcache本地卡死的原因
+3.首页排序问题---默认的排序规则
+4.每个几个请求infolist耗时5000-10000ms
+5.获取所有的城市：
+6.安居客文档：http://igit.58corp.com/house.document/ajk_zufang/blob/fffde7a7a6c2934b672bd7f570d93eadb7ae194e/%E5%AE%89%E5%B1%85%E5%AE%A2%E7%A7%9F%E6%88%BF%E6%96%87%E6%A1%A3%E6%B1%87%E6%80%BB.md
+7.tags是否是完全的。
+8.并发测试、内存监控系统(NewRadio:2 SurvivorRadio:8使用率Eden:47% From:54%---静态时候)、统一调用架构--新的方式
+   当并发(12k/min 时候，Eden内存占用量飙升到90%以上:::所以动态生成的东西是重要的占据内存的------毕竟是1台机器4G),列表页如果有10k/min，则先至少申请10台
+   计算Map的大小：缓存的小区大约20M--猜测。地域-板块：20M 。地铁：20M。
+   --------------
+   jvm启动参数其实可以加：-D的系统监控参数---来远程控制
+   
+   选择新东西和对它的重视程度
+---------------------   
+Lsp2019*999999
+1.miniappfang 估计多了2倍的异常流量。。列表页白天4点应该只有130，据此详情页600左右，但是实际为1400，所以有800的流量是不正常的。
+2.token服务集群的方式
+3.先说出来即可
+4.python单例模式
+5.token刷新的问题，第一次获取的问题；；；因为无法判断当前请求是不是第一次请求：：所以要求在getToken失败之后继续refresh获取token一次
+
+
+6.堆内存分析工具,可以建立一个...直接对线上的进行分析.---------根据Ip则登陆机器运行命令导出数据查看内存占用情况----每个实例的数量和大小。以及所有线程---每个线程的占用cpu的时长、占用内存的大小、本身已经运行的寿命。
+7.分析一下线上的服务：：内存占用高的原因
+
+8.查看老年代各个类对象的数量
+
+9.命令行即时操作环境：https://github.com/alibaba/arthas/blob/master/README_CN.md https://alibaba.github.io/arthas/arthas-tutorials?language=cn&id=arthas-advanced
+  --也是Linux实际操作环境
+  
+  
+10.增加一个强制刷新接口：----强制服务器返回一个新的token----而不是等重启或者过期
+
+
+11.-javaagent:D:\download\AgentTest-0.0.1-SNAPSHOT.jar
+
+reactor线程模型
+
+12.pc list顺序问题
+ 调用栈是如何打印出来的
+ ----解决netty死锁问题
+ ---php文件路径：D:\download\ajk_code\user-site\app-mobile-api\controller\mobile\api\rent\List.php
+      pc  channel而找到的文件：D:\download\ajk_code\user-site\app-ershou-web\classes\ershou\web\seo\SeoZufangPropertyDataService.php
+	  app channel而找到的文件：D:\download\ajk_code\user-site\app-mobile-api\classes\mobile\api\rent\SearchBuildService.php
+		也可以根据app_id来获取到：
+		
+		
+13.index.php成功了
+14.m端的接入；
+15：c#开发， c++开发
+16.用户名问题：/fangdetail_esf/src/main/java/com/bj58/fang/detail/web/handler/utils/BuilderUtil.java 先联系人，后真实姓名。
+17.php /rout相关。。。server集群实现。启动ajk-code项目	
+
+17.  。。。use_type字典接口：getDictInfoByCityIdAndDictIds
+18.D:\download\ajk_code\user-site\app-ershou-web\config\route.php 加载路径配置
+19.日志问题， 独立显示
+20.主动释放变量--不等周期到了回收。
+21--------完全不能满足用来碰巧实现产生了当前仅有的业务：：而不动原理和变通。
+----------------------------------------------
+ $is_hp = 0;//ppc开通城市 1-开通, 0-未开通  $is_ppc_pricing = User_Common_MultiCity_City::isPpcOpen($city_id);
+ 
+ prexHouseIdMap问题
+ https://pages.anjukestatic.com/usersite/site/img/global/defaultImg/list-deft-img2.png
+ https://pic1.ajkimg.com/display/hj/bccf438317f2e26c4588736632f1dc3b/600x450c.jpg?t=1
+ (表明上看快可达，实际上慢才可以-清晰才可以)
+ 类型文档：D:\download\ajk_code(1)\ajk_code\user-site\vendor\service\property\php\service\property\constant\rent\Types.php
+ 
+ 2.日志观察 scf  内存缓存数据、hbg_scf_hughouselist#hughouselist_ajk
+ 3.何时可以读取隔离库了。
+ 
+ 4.内存分析----对全是response返回实体：9009个小区1.3M   9872个地域：434k,   ...一天之内已经缓存的量
+    --如果直接在机器上分析---会导致网卡流量增加几百kb
+	--凌晨更新小区：[03-14 02:01:53 588 INFO ] [pool-5-thread-4] hughouselist.hdmem.PuHotDataCache2 - update cache xiaoqu ok, total:8741, take 10345 ms完成。
+	--并未清除：因为小。
+
+5.报错分析：php调用方，http主调时。
+6.方法监控：
+   --- curr call method: "AjkInfoService_getCommunityInfosByIds" total count:0  瞬时速率小
+   
+7.paxos达到的结果：propposer的值都一样。。。但是accepter的值则大多数一样。
+8.统计监控：访问量wmonitor
+   类中不能有test字眼--包上也不能有。
+     ----TestX()方法已经表明已经执行了wmonitor的语句
+	 
+9.问题在于：gc频率太低了。设置FullGC时间间隔：-Dsun.rmi.dgc.client.gcInterval=3600000
+  堆内存太大，导致stw时候用户等待太久。
+  ---老年代内存增长情况：100M/3h
+  -------------------------------
+10.基于mysql, redis, zk的token获取与更新。
+  ---zkui启动命令：java -jar zkui-2.0-SNAPSHOT-jar-with-dependencies.jar &
+  
+  
+11.开放平台新接口。10个。
+12.年老代没有回收的问题(Full GC)，
+	对象不断增长的问题：比如：PropertySimpleInfoListResult有2万个---eden回收无效， PropertySimpleInfo有45万了---eden回收无效--52万。69万---强行执行gc剩余11万
+			CommunityInfo  15988个，没有增长。
+			BrokerInfo 40万，不断增长。eden回收无效。继续43万。58万 强行执行gc剩余10万
+			BrokerInfoEntity也是回收无效
+			SearchBrokerInfoList也是回收无效。
+			OneBlock 1万未增长。
+			RentSearchStruct不断增长。到200后降低为0.----伴随eden的回收。
+			ListResultEntity 增长到300--伴随eden的回收 而降低到0。
+			byte[] 400万 回收后降低到200万。
+			HouseEntity数量6300不断增长到1.3万，降低会200多。
+			RentSearchResultDto数量150不断增长，eden回收降低为0.
+			RentSearchResultPropList数量3100不断增长1.1万，回收后降低。
+	问题原因：
+			PropertySimpleInfoListResult：可能是其中有整数值被小区缓存用到了。而间接无法被回收。---手动清空map？清空对象？
+			SearchBrokerInfoList： 可能是因为引用了PropertySimpleInfo中的brokerid ,可能性很小。
+				----------最普遍的原因：还是被引用的问题----被HouseEntity引用，非常精细的内容；动态地看，总是存在活的HouseEntity, 而仅仅只是引用一个经纪人的名字，那么经纪人Map也不能回收----但是是批次的，
+	问题处理：主动垃圾回收：System.gc()或者手动点击---本质就是执行了这个gc()。Runtime.getRuntime().gc();
+			---------检测任务，定期gc()----执行了full gc
+			
+			--因为g1参数没有主动回收老年代的。
+			
+	53.102 oldgen 645M
+	        早上545M说明已经被回收过。
+			68.79260804918077% used 尚未回收
+			几乎老年代使用率近100%时才检测到回收，回收后只占20%多而已，几乎只有200M多一点。
+			
+
+
+---------
+1.http://igit.58corp.com/_uesearch/uesearch-docs/blob/master/manual/%E6%88%BF%E6%BA%90uesearch%E7%B3%BB%E7%BB%9F%E7%AE%80%E4%BB%8B/%E6%88%BF%E6%BA%90uesearch%E7%B3%BB%E7%BB%9F%E7%AE%80%E4%BB%8B.md
+  实时job读数据写到wtable,并生成索引数据
+  全量job读取wtable数据写到	builder并生成索引数据
+  查询系统：从多台searcher服务器上并行查询数据并合并。
+  
+  
+2.http://igit.58corp.com/_uesearch/uesearch-docs/blob/master/manual/start-guide.md
+  查询和写入uesearch注意文档。
+  
+3.http://igit.58corp.com/_uesearch/uesearch-docs/tree/master
+  主页文档
+			
+4.http://search.corp.anjuke.com/universalsearch查询页面
+
+5.http://igit.58corp.com/_site/document/blob/master/%E7%99%BD%E7%9A%AE%E4%B9%A6/%E6%88%BF%E6%BA%90/%E5%95%86%E9%93%BA%E5%86%99%E5%AD%97%E6%A5%BC/%E5%95%86%E9%93%BA%E5%86%99%E5%AD%97%E6%A5%BC%E6%95%B0%E6%8D%AE%E6%B5%81.md
+ 商铺写字楼查询业务逻辑
+0---------------
+redis.clients.jedis.exceptions.JedisConnectionException: java.net.SocketException: Broken pipe--remoteIP:10.145.38.22--remotePort:34988
+---时间扩长到400， 同时增加本地缓存，每次查询去重
+
+-----------------------
+1.问题：
+1.blockName is null242924802490 估计是因为前台传来的无效区域----完全不能识别。
+
+ System.arraycopy
+ 
+ RentSearchServiceImpl.php
+ 
+2.断定：10.126.73.157这个是安居客的而不是58的ip。所以可能是安居客那边的问题。
+
+
+开发提供给客户端调用的安居客租房列表筛选项数据
+
+1.三网城市关系：http://igit.58corp.com/bizdata/panshi-doc/blob/master/panshi-dict/%E4%B8%89%E7%BD%91%E5%9F%8E%E5%B8%82%E5%8C%BA%E5%9F%9F%E6%98%A0%E5%B0%84%E5%85%B3%E7%B3%BB.md
+		<dependency>
+	      <groupId>org.springframework.boot</groupId>
+	      <artifactId>spring-boot-starter-web-services</artifactId>  
+	      <version>2.1.4.RELEASE</version>        
+	 	</dependency>
+		
+-----打包到沙箱上测
+
+2.统一房源查询：http://fangbasic.58corp.com/hugparam/admin/three_nets/infoList.html
+
+
+
+-----------------
+4.15问题列表：
+1.getHouseModelPriceList() 会产生com.alibaba.fastjson.JSONException: syntax error, expect {, actual [, fieldName datas, pos 50, json : {"code":-1010,"message":"DATA_NOT_FOUND","datas":[]}异常。
+2.getAjkIndexInfo()搜索索引会产生网络超时错误。CustomTimeOutException{errorCode={code=10001, message='网络请求超时'},errorMsg=Read timed out}
+3.缓存未进行：因为key too long:java.lang.IllegalArgumentException: Key is too long (maxlen = 250). key is Info-ajklistpage_memkey_20;1;0;;;;;;;;;;;;;;;;1;20;;;;⭐ —— 象屿公园悦府 —— ⭐ 
+4.缓存key本身有非法字符：java.lang.IllegalArgumentException: Key contains invalid characters:  ``Info-ajklistpage_memkey_14;1;0;;;;;;;;;;;;;;;;1;20;;;;西城区广外大街305号
+
+
+
+a.查询宽表---是否会有地域信息？
+b.替换小区的方案？----不再使用http接口。。还剩余哪些？
+    1.小区id是统一的，新小区接口返回的小区id还是一样的：基本接口会返回：小区id\小区名\小区地址\小区房屋类型拼音\所在城市id 、区域板块id和名\建筑年代\
+	   >panshidict的进阶小区接口，才返回经纬度。另一个问题是：小区房屋类型是英文---如何转为中文?
+	2.http接口：小区基本信息(包含经纬度--来计算当前位置到小区的距离)\ 小区是否近地铁 \ 城市下的区域板块地铁信息 ---地铁信息仅仅获取地铁线名 \ 小区地铁距离 来获取小区附近的地铁线-和到附近地铁站的距离。\小区id获取小区各室均价格
+				\经纪人基本信息查询--目的获取经纪人姓名 \ 
+	   >
+	
+3.服管平台测试环境：http://test.manager.srvmgr.58corp.com/caller/gray/create?cid=62035445535486
+线下重新申请key
+4.查询隔离库数据：http://10.8.14.191:8001/
+	
+
+稳定环境测试隔离库。--查询出了一条数据
+4.0.13.57  54线下包。
+4.0.13.62  线上包。
+
+插件器一个bug:不能链式调用：-----或者说不能不用proxy来调用。。。每个方法，方法里都要用proxy对象来调用。。。即要知道proxy对象。
+安居客房源查询：http://search.anjuke.test/getversearchresult/info_id=578080333931141078&fields=local_ids/
+磐石接口文档：http://igit.58corp.com/bizdata/panshi-doc/blob/master/%E4%BA%95%E5%86%88%E5%B1%B1%E7%9B%B8%E5%85%B3/%E4%BA%95%E5%86%88%E5%B1%B1%E7%9B%B8%E5%85%B3%E7%A3%90%E7%9F%B3%E6%8E%A5%E5%8F%A3.md
+uesearch界面查询：http://search.corp.anjuke.com/universalsearch
+
+
+
+
+小区多商圈 存memcache， 并且并行读和存。----和memcache顺序读取60次进行耗时比较。
+
+区域商圈定期刷到memcache, 并行读取，没有读到则专门id来查并推到mem
+
+直接根据商圈ids 查商圈， 再对应查出区域ids, 再查区域详细信息，封装为。
+
+优化一下小区调用---------如果已经缓存了则不调用。
+jiufu问题。
+
+保持现状，只是改变更新时间----因为实际上只有最后一步-----所以不存在异步的问题。。不存在脏数据的问题。只有没有取到数据的问题。------没取到商圈怎么操作的问题。
+-------同时，每个线程只是读或者写 这样单一的工作，没有一个序列一样的操作。所以没有读取到null的问题，没有原子操作的问题。
+		----证明：通过jhat看堆中的更新的数据，也没有问题。
+		
+---------------------商业地产写入job:
+ 1.安居客的房源job都分别是谁来接的，接入app_id是多少。查看：http://search.corp.anjuke.com/accesslist
+ 2.房源job写索引写入uesearch分别需要哪些信息：过程是什么？
+ 3.房源job写房源数据库mysql分别需要哪些信息：过程demo是什么？
+ 
+ --------------
+ 4.商铺写字楼的数据流：列表页是如何获取房源数据的：从uesearch里搜房源ids, 再到从mysql 各个表取房源基本信息， 再从房源基本信息中的楼盘id取楼盘数据,再从基本信息中取出经纪人id从库里取经纪人信息，如果是58导入房源则去数据库取额外数据 http://igit.58corp.com/_site/document/blob/master/%E7%99%BD%E7%9A%AE%E4%B9%A6/%E6%88%BF%E6%BA%90/%E5%95%86%E9%93%BA%E5%86%99%E5%AD%97%E6%A5%BC/%E5%95%86%E9%93%BA%E5%86%99%E5%AD%97%E6%A5%BC%E6%95%B0%E6%8D%AE%E6%B5%81.md
+					   详情页如何取房源数据的：从mysql取房源基本信息，扩展信息，再根据楼盘id 查询楼盘基本信息、装潢、设施地图信息、区域板块、容积率等， 再根据楼盘物业id查询楼盘交通信息、地铁信息。
+					   物业列表(小区列表)查询
+					   事件->队列->任务->表：表达的后端所有的数据产生和处理过程-所有的过程。
+ 5.商业地产详细设计：http://igit.58corp.com/_site/document/tree/master/%E9%A1%B9%E7%9B%AE%E8%AE%BE%E8%AE%A1/%E5%95%86%E4%B8%9A%E5%9C%B0%E4%BA%A7
+	>表：http://igit.58corp.com/_site/document/blob/master/%E9%A1%B9%E7%9B%AE%E8%AE%BE%E8%AE%A1/%E5%95%86%E4%B8%9A%E5%9C%B0%E4%BA%A7/%E6%88%BF%E6%BA%90TABLE%E6%A6%82%E8%BF%B0.md
+	>表字段含义和建表语句：http://igit.58corp.com/_site/document/blob/master/%E9%A1%B9%E7%9B%AE%E8%AE%BE%E8%AE%A1/%E5%95%86%E4%B8%9A%E5%9C%B0%E4%BA%A7/%E5%95%86%E4%B8%9A%E5%9C%B0%E4%BA%A7%E6%95%B0%E6%8D%AE%E9%9A%94%E7%A6%BB%E8%A1%A8%E8%AE%BE%E8%AE%A1%E6%96%87%E6%A1%A3.md
+	>隔离表字段设计：http://igit.58corp.com/_site/document/blob/master/%E9%A1%B9%E7%9B%AE%E8%AE%BE%E8%AE%A1/%E5%95%86%E4%B8%9A%E5%9C%B0%E4%BA%A7/%E5%95%86%E4%B8%9A%E5%9C%B0%E4%BA%A7%E6%95%B0%E6%8D%AE%E9%9A%94%E7%A6%BB%E6%98%A0%E5%B0%84%EF%BC%8D%E6%95%B0%E6%8D%AE%E5%BA%93%E5%AD%97%E6%AE%B5.md
+	>展现对应的数据库字段：http://igit.58corp.com/_site/document/tree/master/%E9%A1%B9%E7%9B%AE%E8%AE%BE%E8%AE%A1/%E5%95%86%E4%B8%9A%E5%9C%B0%E4%BA%A7
+	>job具体做法过程设计：http://igit.58corp.com/_site/document/blob/master/%E9%A1%B9%E7%9B%AE%E8%AE%BE%E8%AE%A1/%E5%95%86%E4%B8%9A%E5%9C%B0%E4%BA%A7/%E5%95%86%E4%B8%9A%E5%9C%B0%E4%BA%A7%E9%9A%94%E7%A6%BB%E6%95%B0%E6%8D%AE%E5%88%9D%E5%A7%8B%E5%8C%96%E5%92%8C%E6%9B%B4%E6%96%B0Job%E6%96%87%E6%A1%A3.md
+	>查询商圈：http://igit.58corp.com/_site/document/blob/master/%E9%A1%B9%E7%9B%AE%E8%AE%BE%E8%AE%A1/%E5%95%86%E4%B8%9A%E5%9C%B0%E4%BA%A7/%E5%8C%BA%E5%9F%9F%E6%9D%BF%E5%9D%97%E9%80%BB%E8%BE%91.md
+	>其他筛选查询：http://igit.58corp.com/_site/document/blob/master/%E9%A1%B9%E7%9B%AE%E8%AE%BE%E8%AE%A1/%E5%95%86%E4%B8%9A%E5%9C%B0%E4%BA%A7/%E5%85%B6%E4%BB%96%E7%AD%9B%E9%80%89.md
+	>置顶项目的完整过程：http://igit.58corp.com/_site/document/blob/master/%E9%A1%B9%E7%9B%AE%E8%AE%BE%E8%AE%A1/%E5%95%86%E4%B8%9A%E5%9C%B0%E4%BA%A7/%E7%BD%AE%E9%A1%B6%E6%88%BF%E6%BA%90.md
+	>图片url获取：http://igit.58corp.com/_site/document/blob/master/%E9%A1%B9%E7%9B%AE%E8%AE%BE%E8%AE%A1/%E5%95%86%E4%B8%9A%E5%9C%B0%E4%BA%A7/%E5%9B%BE%E7%89%87%E5%B1%95%E7%A4%BA.md
+	>表搜索：只下架不删除。
+ 
+ 6.uesearch索引源表结构设计：http://igit.58corp.com/_site/document/tree/master/%E7%99%BD%E7%9A%AE%E4%B9%A6/%E6%88%BF%E6%BA%90/%E6%90%9C%E7%B4%A2thrift/%E6%90%9C%E7%B4%A2db#21-info_id-%E7%9A%84%E7%94%9F%E6%88%90%E7%AE%97%E6%B3%95
+ 
+ 7.uesearch索引-搜索：
+	>全量索引：从wtable里读取数据到hdfs,再从hdfs中读出来写入esearch的indexer, 生成若干索引文件，得到文件目录,发送给esearch的searcher。
+    >实时索引：uesearch将原始数据写入wtable,并发送消息，消息被RFS client消费发送给 RFS Server , 后者再从 wtable数据服务里读取加工原始数据后的结果数据生成文件，这些文件被 RFS Builder 读取, 写入到esearch的searcher...(未生成indexer??)
+	>搜索过程：http请求---->http服务器scf client----->scf server ------> merger服务器----->多个searcher服务器，searcher搜索结果并对结果排序---->merger收到之后对结果再次排序---->scf server。参考文档：http://igit.58corp.com/_uesearch/uesearch-docs/blob/master/manual/%E6%88%BF%E6%BA%90uesearch%E7%B3%BB%E7%BB%9F%E7%AE%80%E4%BB%8B/%E6%88%BF%E6%BA%90uesearch%E7%B3%BB%E7%BB%9F%E7%AE%80%E4%BB%8B.md
+		>网页搜索：http://search.tj.a.ajkdns.com/search/universal  具体参数需要加 schema参数，类似solr机制。
+	>搜索字段说明：http://igit.58corp.com/_site/document/tree/master/%E7%99%BD%E7%9A%AE%E4%B9%A6/%E6%88%BF%E6%BA%90/%E6%90%9C%E7%B4%A2thrift/%E6%90%9C%E7%B4%A2db
+	
+	
+	
+ 8.uesearch使用：
+    >评估数据量和请求量：比如增加近地铁字段：http://igit.58corp.com/_uesearch/ajksearch-src/issues/1而提接入需求， 只刷数据则不用
+    >写入uesearch源表，注意每秒写入量
+	>
+  
+ 9.uesearch中间表设计：http://igit.58corp.com/_site/document/blob/master/%E7%99%BD%E7%9A%AE%E4%B9%A6/%E6%88%BF%E6%BA%90/%E6%90%9C%E7%B4%A2thrift/%E6%90%9C%E7%B4%A2job/Uesearch%E4%B8%AD%E9%97%B4%E8%A1%A8%E8%AE%BE%E8%AE%A1.md
+ 
+ 10.商业地产房源变更wmb消息格式、消息主题toppic id：http://igit.58corp.com/_broker-architx/architx-doc/blob/master/%E5%95%86%E4%B8%9A%E5%9C%B0%E4%BA%A7%E7%BB%9F%E4%B8%80wmb%E6%B6%88%E6%81%AF%E8%A7%84%E8%8C%83.md
+	 商业地产房源统一wmb规范：http://igit.58corp.com/_broker-architx/architx-doc/blob/master/%E5%95%86%E4%B8%9A%E5%9C%B0%E4%BA%A7%E7%BB%9F%E4%B8%80wmb%E6%B6%88%E6%81%AF%E8%A7%84%E8%8C%83.md
+	 
+	 
+	
+ 11.精选推广系统过程：http://igit.58corp.com/_broker-docs/broker-my-docs/blob/master/docs/business/choice/%E7%B2%BE%E9%80%89%E6%8E%A8%E5%B9%BF%E7%B3%BB%E7%BB%9F.md
+	  >a.用户对自己的房源做精选，消息发送到队列，job消费后发送到房源日志表，其他各个服务会使用这个数据。
+	  >b.对新增的未推广的一个精选消息/数据作判断：经纪人已登录、房源存在、城市可精选...，则ok, ,,坑位表增加1，...插入冻结队列...
+	  >c.对精选队列中的数据，根据逻辑做停止精选处理，否则精选推广成功(计划信息序号<在线坑位6; 并且计划状态是11，更新计划状态为1--即推广中)，更新队列游标。
+			>精选逻辑处理：(一般分为：小区精选和板块精选) 各个详细的分支：http://igit.58corp.com/_broker-docs/broker-my-docs/raw/master/assets/images/choice/choice_croe_job.png
+			     >底层表：计划信息表、价格段表(某城市某状态某价格区间则有一个价格段id)、坑位表(某一个小区的某个价格段所能容纳的最大坑位量、使用坑位量和最大在线坑位量)。
+				 >一般处理逻辑：对一条计划房源消息：验证计划id,状态...(更新状态)  ；查询所在价格段，查询所在坑位表坑位信息(如在线坑位)，查询计划房源表里的排队中和推广中的精选房源，更新状态， 记录日志。
+				      >简单的说：某城市下某小区/板块下的某价格区间下---对应有坑位记录，对于做精选，就是如果该坑位记录表明有空余，那么可以做；对于下线精选，则更新该坑位记录----前面已经做了更新计划房源库里的数据。
+
+ 12.小区精选推广的各个逻辑过程：http://igit.58corp.com/_broker-docs/broker-my-docs/raw/master/assets/images/choice/ajk_choice_rent.png
+	  >
+ 13.精选整体逻辑：http://igit.58corp.com/_broker-docs/broker-my-docs/raw/master/assets/images/choice/choice_croe_job.png
+	  >
+ 
+ 14.定时推广系统：http://igit.58corp.com/_site-tools/timer-service/blob/master/%E5%AE%9A%E6%97%B6%E6%9C%8D%E5%8A%A1%E6%8E%A5%E5%8F%A3%E6%96%87%E6%A1%A3.md
+	  >
+  
+ 15.商业地产房源推广状态查询：http://igit.58corp.com/_broker-docs/broker-my-docs/blob/master/api/api-inner/usersite/houseState.md
+						http://igit.58corp.com/_broker-docs/broker-my-docs/blob/master/docs/business/house_choice_state_change_api.md
+						
+ 16.商业地产置顶房源推广状态查询：http://igit.58corp.com/_broker-docs/broker-my-docs/blob/master/api/api-inner/top/HouseTopState.md#3%E8%8E%B7%E5%8F%96%E5%95%86%E4%B8%9A%E5%9C%B0%E4%BA%A7%E6%88%BF%E6%BA%90%E7%BD%AE%E9%A1%B6%E6%8E%A8%E5%B9%BF%E7%8A%B6%E6%80%81
+						
+ 17.上下架消息格式(全网通)：http://igit.58corp.com/hbg-broker/plan-doc/blob/master/%E5%AF%B9%E5%A4%96%E6%8F%90%E4%BE%9B/WMB/%E4%B8%8A%E4%B8%8B%E6%9E%B6.md
+
+ 17.1：商业地产房源rank写入wmb:	http://igit.58corp.com/_microdata/recommend-api-doc/blob/master/%E5%95%86%E4%B8%9A%E5%9C%B0%E4%BA%A7/sydc-props-rankscore-wmb.md
+ 
+ 
+ 18. --------------开发接口：
+   >套餐和房源上下架接口：http://igit.58corp.com/_broker-architx/scf_common_doc/blob/master/comboplan.md#2-%E5%A5%97%E9%A4%90%E8%83%BD%E5%90%A6%E8%B4%AD%E4%B9%B0
+   >
+						
+						
+ 20. 代码审查：精准消息---才处理。
+   >消息收到后未存到log
+   >房源id取实体从 标准房源库取
+   >房源是否在 经纪人和城市灰度下，从灰度服务ajkhousebase里获取。
+   >写字楼-商铺-厂房：14-15-16  推广平台1 ajk ,2 28 , 3 全网通
+   >全网通消息处理过程：消息判断是全网通的，抽取信息封装到ComboQueue对象(城市id、状态、房源id、时间) ，调用ajkhousebase服务发送----服务端自然按照相应的逻辑立即处理了该对象。
+   >精选置顶套餐消息处理过程：ext和houseid不为null, 再从标准库取UnitedHouse实体，状态若还正常，则根据房源的参数信息中的地域信息来从磐石接口 获取商圈/地域/城市id,, 精选置顶套餐消息服务：调用ajkhousebase相关接口,只是发送给scf服务方。
+   >job游标查询和更新：用ajkhousebase接口获取任务游标，再根据游标id + 限制条数99 用ajkhousebase查询精选/置顶/套餐 计划房源库房源列表, 再根据houseids 从hugserver获取批量的标准房源；
+               验证精选房源状态：为上架；从unionbrokerscf查询安居客经纪人信息并封装， 从unitHouse构造基本信息实体、小区信息实体，；；封装为一个整体实体后，+info_id等，调用ajkSearchService服务 发送给宽表uesearch索引(区别于上述方法的地方)。
+								 为下架：直接设置is_aution=0 等，后调用ajkSearchService接口发送给uesearch进行索引----从而可以搜出精选，也即对这条房源做了精选。
+								---重试次数：1
+				----精选失败：调用ajkhousebase	写入失败信息记录。。
+				最后调用ajkhousebase更新job游标。
+			
+       ----同理，置顶 和  套餐 也是这个处理过程。
+    -----：上述3个服务为\ajkhouseadvjob项目的三个job。(表明有商业消息既要刷索引又要刷源库)
+	
+	>shangpuxieziloujob\service 为mysql查询和处理封装接口， 或者从wconfig获取配置信息。
+	>shangpuhousejob 为消费job  套餐排序----要写索引、套餐/精选/置顶发送给scf服务端、房源消费(如：商铺出租出售的更新和删除，更新：从UnitHouse构造基本信息扩展信息索引信息而存到mysql, 同时刷uesearch索引)
+	·
+	
+   ?问题：
+   >消息有双写标记则什么也不做：
+   >
+						
+						
+ 
+--------------------从demo到工程化推广：
+---工程：业务扩展、场景扩展增加--对应的工程-代码组织运行模式。
+---代码：完整的逻辑分支，完整的输入场景可能例子--对应处理规则逻辑均先考虑 和 日志记录 和 恢复处理 和 监控报警。确保代码，处理恶劣情况。。。重要是技术制度建立。
+---任务分割：可以独立并行开发的代码， 抽取出来。
+---需求测试上线：上线逻辑，上线先后，上线对其他业务的已有业务的影响。
+---效果分析：有何改变，如何进一步改变。
+
+
+-------------------主动事务：源于工程开发统一规范
+
+
+----排序、过滤、文档代码
+
+000-00000
+1.任务：C#开发openapi
+
+2.插件器的几个问题：
+ >a.初始化：目录包括那些，从哪里读取@FpluginService配置？---从：com.bj58下
+             加载器： ProxyServiceScan.class.getClassLoader()；从而获取上述包下的所有对象(包括pageckage, jar),  取它的url, 获取里面的所有文件names 然后将其中的class类型文件的完整带包名放到nameList里
+			 初始化各个类下的代理方法：对于Test结尾的类不做方法代理，对无@FPluginPluginService注解的类不处理，对Object类的方法不处理，获取每个方法所有注解， 再获取此注解的注解类的注解中的@DefinedPluginImpl注解(类上的注解，注解类上的注解)---如果有说明是插件器的注解---且它的一个属性值就是本注解的实现类，将这种注解放到对应方法的注解列表里， method-注解列表为FPluginServiceMethodFactory.methodMapList。
+			-------------
+            增加各个插件器注解，只是对初始化有用而已。	运行时要么主动寻找方法的注解来执行(在scf 框架进行method invoke时的前后)，要么获取方法所在的类的代理来构造一种invoke方式。		
+			
+ >b.对SCF: FPluginRequestFilter和FPluginResponseFilter只是执行了scf调用的方法的插件器的注解的实现类(其他方法，方法里的方法的插件器的注解实现类是不会被执行的)-----尽管可以获取到请求的那个方法及其参数。并没有真正代理
+         入口FPluginServiceInit也仅仅只是做了初始化的工作---所以不能作为scf的初始化入口。FPluginServiceMethodFactory.init();
+		 
+ >c.创建代理类：FPluginServiceProxy.getProxy(), 实际执行了FPluginServiceIntercept.intercept()方法，并且在里面执行了方法的插件器注解(before, after) 和 invoke了方法本身。
+        
+ >d.自定义新增注解
+		
+		
+3.wmonitor的问题：测试环境：要关注视图的ip是否包含测试ip。//测试环境，可以上传agent的zip包，unzip , tar解压 install, ./startup.sh即可。但其实不用也没问题。
+4.返回结果处理缺乏----保存信息之类。比如ComboRankConsume这个任务。
+5.删除商铺/写字楼基本信息和扩展信息，但是并没删除索引。
+
+6.UpdateToSearchTask更新uesearch，用游标服务查精选置顶套餐三类信息数据，封装uesearch实体，传递给uesearch---通过ajkSearchService服务。同上一个接口。
+  HouseConsume中为接收商铺写字楼出租/出售房源消息，消息有更新/增加/删除类型，都会既写到mysql, 也会写到uesearch----通过ajkSearchService服务。同上一个接口。
+  
+7.lamda表达式：不需要类的方法：：”方法表达式“。java1.8使得方法可以被引用
+8.注解里的参数类型设置成注解数组---使得注解中套注解。
+9.方便用户等外部介入jar包里的某个功能完成之后进行一个操作，那么jar包在开发的时候可以在这个功能调用之后调用一个拦截器的方法，而用户就实现这个拦截器方法。
+10.ThreadLocal的实例，只是一个非存储的纯方法工具，调用它的.set()方法设置一个值，就是设置这个值到当前线程currentThread的threadLocals对象里，这个threadLocals对象是个map类似的，会将传来的值和调用的ThreadLocal对象一起存起来[]。。。。所以其实是一种反向设置。绑定到线程的设置。是一种临时的设置方法---又不同于对象那种。
+    ---在业务代码里就可以.set()来设置进去。然后在AbstractRoutingDataSource.determineTargetDataSource()这个继承的方法里就可以查询而返回key, 而AbstractRoutingDataSource数据源会从当前线程里取出key对应的值-----从而实现任意值的传递给任意的jar包里的任意某个方法 而不用直接把这个值当作入参。--当前线程的threadLocals可以帮助我们保存太多信息来实现数据共享---而且线程安全。
+	---一个ThreadLocal对象--一般可以在当前线程的threadLocals对象里设置一个key-value。所以要在当前线程的threadLocals里存多个key,那么就要用多个ThreadLocal对象。一个ThreadLocal对象负责在当前线程设置一个key的值，固定key的值。因为这个key就是ThreadLocal对象本身。
+11.spring提供的实例值转移/复制方法：BeanCopier.create。。可以把一个类的实例的各个属性值赋给另一个类的实例的各个属性上。
+12.google的LoadingCache有详细的缓存设置，此对象一个对应一个缓存系统，可以用.get(key)查询各个缓存
+		当然本地可以用map而来存储多个LoadingingCache
+13.spring的提供的InitializingBean接口，则实现了该接口的bean在bean初始化setProperties之后会执行该接口的方法afterPropertiesSet()----即做些初始化的方法
+	
+	
+	
+---------------------
+商铺写字楼 的 list服务
+1.搜索接口：/service-search/shangpu-search-service?method=getShangpuSearchData
+2.房源详情获取：
+    >标准方式：从tcp://hugserver/HouseAjkService
+	>另外方式：基本信息从mysql获取
+			然后从tcp://hugserver/HouseAjkService补充房源
+			
+3.三网经纪人获取：tcp://unionbrokerscf/UnionbrokerServiceImpl
+  ---扩展房源：JinpuCrawlPropertyMapper查58房源，58经纪人查wtable
+  ---pickInfo
+ 
+------------------------
+1.商铺写字楼业务流程：认为调用端为java
+ >列表：参数封装分3端---但是search()是共同的。
+  >参数检查：认为其实什么都没做(保存了两个类型到threadLocals里)
+  >封装出查询实体：房源类型、操作类型、关键词、城市、定位(谷歌)、appid、device设备
+		>过滤筛选实体：区域ids\板块ids
+					   面积筛选项：分类别，所以会再次根据id从mysql里查出对应的面积的分段信息，封装到查询条件里，
+					   价格(日租金、总价..)筛选项：不是厂房：直接将传来的str分割为ids; 是厂房：分出租出售查mysql,来找出对应的。。---------价格区间或许有问题！！或许多个区间---则不会被分割！！而没有加价格区间限制。
+					   商铺状态、行业、类型都会被直接简单处理封装到Filter里，
+					   分页、排序
+					   
+					   
+ >post http查询出结果，获取里面的id list列表，去重
+      >对于已经开放城市或者厂房：
+		>ids 分组：分成58的和其他的 两组，
+				>对于非五八的即安居客的----从tcp://hugserver/HouseAjkService查询得到结果，并把房源一个一个地缓存到本地LoadingCache 的map里的一个LoadingCache里
+					>转换信息到HouseListItemEntity里：(分商铺写字楼厂房)
+					   >提取房源的所有brokerid，：对于非app平台，则会取经纪人详细信息：从tcp://unionbrokerscf/UnionbrokerServiceImpl获取并且缓存到LoadingCache里，
+					   >提取房源所有的楼盘id: 厂房无楼盘，写字楼有。利用loupan_id, 从eBuildingMapper.listByPrimaryKeys()获取并且缓存到本地LoadingCache里，
+					   >遍历每条房源：从http搜索查到的基本信息封装--如商业类型(套餐-精选)，再是从hugserver里查的House信息封装(cate类型、地址、prop_type|handle_type、价格(分出售和出租：单位-价格值<月租金、日租金、总价>；转让的总价和单位))	
+										title\mianji\status直接封装，区域名和板块名---直接从mysql里查询|结合缓存；，对于楼盘地址名称等---可以从上述查处的map里根据house里的楼盘的id而查出楼盘实体，封装信息到房源实体里，
+										对于楼层：厂房无楼层，商铺和写字楼的----所在楼层和总楼层直接获取封装到floor属性里，
+										对于封面图：house里返回的是imageid和host,构造url方式类似租房，
+										对于经纪人：非app端，直接从上述map里查出放到显示房源里，
+										对于发布日期：直接从house里获取设置
+					>					
+				>对于58的ids:-----从jinpuCrawlPropertyMapper.selectByPrimaryKeyList()查询房源信息list--就在mysql里查，对于非app的，还会查房源的扩展信息---从jinpuCrawlPropertyExtendMapper.selectByPrimaryKeyList()里查-并缓存到LoadingCache, 再用58 ids从wtable查询对应的brokerid,
+					>将查出来的房源列表数据转换到result里：
+						>图片：用58的图片路径拼接方式--只用imageid
+						>板块区域名：直接用房源的districtid 和brokerid查mysql得到实体而取出名字
+						>面积、地址、状态、日期、城市、prop_type\handle_type：直接设置
+						>单位价格、总价、月均价--：简单处理之后得到
+						>经纪人名称/图片/id: 直接获取名称和图片，id则从上述map里获取。
+						>楼盘名称：直接从house里取
+						>对非app: 对商铺：有个pick_info小信息块：包括跳转协议、title\area\定位图标\日期\地址\价格及其单位，标签(包括文本、背景颜色都设置)。。也会缓存到LoadingCache。
+									同理对写字楼也这么处理。
+				>查询写字楼地铁：实际并没有执行。流程是：取出房源的楼盘id, 从mysql里eBuildingTrafficMapper.listByPrimaryKeys查出来一条一条保存到redis
+				>查询所有是非58的房源ids里的不可用房源：iHouseMapper.listByPrimaryIds()
+				>遍历所有是非房源实体：不处理没有title的，属于不可用房源的--满足这两个条件的item加入到result里返回；再专门对非58的房源且是app端设置：
+						>增加标签：整体对象设置到houseitem的jp_new_item属性里。
+						  >对写字楼：通用的设置：面积、图片、日期、板块、地址(取title)、
+									 写字楼专门：tiltle(取楼盘地址)、总价、单价、图片、跳转协议
+												 类型标签(背景和颜色)-近地铁(利用metroMap)-精装修-可注册-新房-独栋(都是从house里的params里取出来)：背景色文本色统一设置
+												 
+						  >对商铺：基本同上
+									标签部分：新房、临街、可餐饮。。。
+						  >对厂房：基本同上
+									标签部分：类型、....
+				
+						  
+	  >对于非开放非厂房：
+		 >对于ids分组：也分成58的和非58的：
+			>对于非58的房源ids：
+				>写字楼：
+				  >出租：从OfficeRentMapper.listByPrimaryKeys()查出出租列表：对于结果中遗漏的某些id的实体，再通过查EOfficeRentMapper.listByPrimaryKeys()来补充，并且在每个单条结果里补充db_data_type字段；则两个源的结果合并为一个结果map(baseInfos)---并对每个entry存储到本地一个LoadingCache里。
+					  同理操作：从EOfficeRentImgV2..listByPrimaryKeys()里查出图片相关列表，对于补充--则还是这个Mapper---即相当于没有补充
+				  >出售：同上理；分别从：OfficeSale.listByPrimaryKeys()查出售列表，和EOfficeSale.listByPrimaryKeys()里补充出售列表，；从EOfficeSaleImgV2.listByPrimaryKeys()查询图片列表
+				  >对于app端：从tcp://hugserver/HouseAjkService.getHousesByInfoIds()查询并缓存到本地LoadingCache，形成一个map
+				  
+				>商铺：
+				  >出租：同上理，从ShopRentMapper里查询商铺出租列表baseInfos,无补充；图片列表：EShopRentImgV2Mapper里查，也无补充；扩展信息extendInfos：ShopRentExtendMapper里查，也无补充。
+						统一补充：只要某个id对应的baseInfos和extendInfos有一个为null,则该id再查EShopRentMapper来得到结果并补充到baseInfos或者exendInfos的那个id对应的entry的value 为null的value上。
+				  >出售：同上理，从ShopSaleMapper里查得baseInfos，从EShopSaleImgV2Mapper里得图片list,从ShopSaleExtendMapper里得extendInfos；
+						统一补充：同上理，从EShopSaleMapper里得到并补充。
+				  >额外房源：同上理，从IHouseExtMapper里查询得到houseExtMap
+			>房源转换：
+				>写字楼：从baseInfos里获取楼盘ids和经纪人ids;查询楼盘map:eBuildingMapper.listByPrimaryKeys()查询经济人map:unionbrokerService.queryBrokerList()
+					>城市id、title、对于出租(月租金、日租金)、对于出售(总价、单位价格)
+					 经纪人(非app端设置，仅仅brokerid)、
+					 楼盘相关:物业费、地址、名称、权属类型。。
+							districtId来源(先看楼盘，如果数据不对，出租从officeRentExtendMapper.selectByPrimaryKey()得到的扩展信息中取，出售从officeSaleExtendMapper.selectByPrimaryKey()得到的扩展信息里取)实体来源(districtMapper.selectByPrimaryKey())
+							blockId来源()实体来源(blockMapper.selectByPrimaryKey())
+					 面积、楼层名称(直接获取)、封面图-小图(从上述获取的imageInfo里取imageid host并拼接出url)、proptype\isauction\两个日期
+				>商铺：
+
+			>对于58房源ids:同上操作，得出房源
+			>查询所有是非58的房源ids里的不可用房源：iHouseMapper.listByPrimaryIds()
+			>查询写字楼的地铁信息：根据楼盘id从eBuildingTrafficMapper.listByPrimaryKeys()里查出来， 同时获取地铁线和地铁站的信息dLineMapper.listByPrimaryKeys()封装为map..。。从而在遍历中构造出房源的所有的地铁线的{线名-站名-距离}
+			>遍历所有是非房源实体：不处理没有title的，属于不可用房源的---满足此2条件加入result返回。再对非58的app端房源增加tag设置：	
+				>对于写字楼：同上设置
+				>对于商铺：同上类似。
+			
+		
+ >推荐列表：
+	>参数里houseid: 如果是58的，从jinpuCrawlPropertyIndexMapper.selectByPrimaryKey()获取58房源---取出城市id和soure_type;如果是安居客的：iHouseMapper.selectByPrimaryKey()取出房源的城市id, house_type
+	>参数里urlType: 来确定推荐查询url:区分like,history,pw,app,fyhistory。
+	>构造查询参数：对于app,会特别加设备参数，其他：则加cityid,guid,prop_type等
+	>http请求之后可以获取到推荐的房源ids,用iHouseMapper.listByPrimaryIds()来查出房源基本信息---选出状态不是删除的房源ids
+		>对于开放城市：调用http://broker.tj.a.ajkdns.com/usersite/choice/house_state/jp接口获取房源ids对应的房源，认为返回的都是精选，并且建立{房源info-精选标记}的map
+		>非开放城市：调用iHouseMapper.listByPrimaryIds()获取房源，再从中获取房源的BidSpreadId属性值，用这个属性值查eSpreadMapper.listByPrimaryKeys()接口得结果，每条item中的status==2来认为是精选--相应的houseid也映射到。
+		------从而获取到精选房源ids,对应有传来的全部房源ids
+		------从而情形就像 list搜索时从search接口返回的list数据一样，从而接下来用list数据所用的接口即可。----实际调用的是非开放且非厂房的list封装接口。
+		
+		
+----------------------
+>详情：
+ >对于58房源：
+	>索引：jinpuCrawlPropertyIndexMapper.selectByPrimaryKey
+	>基本信息：包括板块-区域id: jinpuCrawlPropertyMapper.selectByPrimaryKey()
+	>扩展信息：jinpuCrawlPropertyExtendMapper.selectByPrimaryKey
+	>经纪人信息：通过houseid 查wtable获取经纪人id, 用此id从http://javaapi.tj.a.ajkdns.com/service-unionbroker/rest/broker/union/queryByUnionBrokerId/取经纪人基本信息，从http://site-api.tj.a.ajkdns.com/broker/getLevelInfoBatch/c6fc09d70cb3174eaaf4e2ba1e5b740b获取经纪人等级信息，从http://api.tj.a.ajkdns.com/weiliao/user/getChatIdByBrokerId/%s/?from_idc=1&skip_auth=1获取经纪人微聊id，经纪人从业资格：tcp://brokerCert/BrokerCert， 公司营业证书：tcp://netstorecsg/CstCompanyInfoServerScfImpl
+ 
+ >对于安居客的：
+	>写字楼：房源基本信息检查：iHouseMapper.selectByPrimaryKey()通过 
+	   >出售：查询基本和扩展信息：officeSaleMapper.selectByPrimaryKey  officeSaleExtendMapper.selectByPrimaryKey 合并：简单直接。
+	          如果没有基本信息：则从源里取：eOfficeSaleMapper.selectByPrimaryKey eOfficeSaleDescMapper.selectByPrimaryKey。 合并：简单直接。
+	          再次获取扩展来设置：
+			查图片信息： eOfficeSaleImgV2Mapper.listImgByOfficeId，并查接口来进行排序。
+	   >出租：方法类似上
+	  >物业信息：调用许多接口来设置几个字段；对于地铁信息，专门两个接口调用；
+	  >区域商圈：从districtMapper.selectByPrimaryKey和blockMapper.selectByPrimaryKey里获取。和组装拼接。
+	  >经纪人信息：也是上面的获取方式。
+	  >统一标准库房源获取：tcp://hugserver/HouseService获取对应的统一房源，并重新设置和补充一些字段。
+	>商铺：基本信息，检测类上
+	  >对出租出售也是类上：
+	  >物业：类上
+	  >板块、经纪人、标准库房源设置：都类上。
+	  
+ >对于加传城市的安居客：
+  >写字楼:
+	>非开放城市：和上述一样接口。
+	>开放城市：
+	  >查标准库的房源:将基本信息设置到house里，区域板块id从标准库里取并用上述接口获取详情、经纪人如上处理，
+	  >对出租出售：设置价格
+	  >楼盘设置：和上述接口一致
+	  >....
+  >商铺：类似上	  
+	
+----------------
+>磐石服务：
+ >根据名称获取区域：根据名称从缓存取区域id,从tcp://panshicities/DistrictServiceImpl获取区域实体
+					从缓存里取板块id, 从tcp://panshicities/ShangquanServiceImpl直接一个城市的全部商圈刷到缓存里，缓存后再用id从缓存里取出来实体；然后试图从tcp://panshicities/ShangquanServiceImpl里根据id查询商圈实体
+>普通区域服务：
+ >区域：从districtMapper.selectByPrimaryKey获取
+ >板块：从blockMapper.selectByPrimaryKey获取。。也有个批量先获取而缓存的过程
+
+	
+-------------------------------------------------------------
+4.筛选项接口：
+  >老接口：安居客所有城市：从本地json文件加载。
+	        城市下的区域：districtMapper.selectByCityId()获取， 缓存到redis  。。并且提取cityid - {districtid -- entity}缓存到redis的哈希表里。
+			区域下板块：blockMapper.selectBlockByDistrictId()获取的是实体。
+			--等待理解：districtBlockMapper.selectByCityId这个接口来查出数据存到redis的目的---存储cityid---{blockid--districtid}这样的映射关系。后面会使用这种映射关系。
+			出租日租金筛选：filterDailyRentMapper.selectActivedByCityId() 缓存redis
+			出租面积筛选项：filterAreaRentMapper.selectActivedList()  也是from - to   缓存redis
+			出租总价筛选项：filterTotalPriceMapper.selectActivedByCityId()
+			销售面积筛选项：filterAreaSaleMapper.selectActivedList()
+			商铺出租日租金筛选项：shopFilterDailyRentMapper.selectActivedByCityId
+			商铺月租金筛选项：shopFilterMonthlyRentMapper.selectActivedByCityId
+			商铺出租面积、商铺总价、商铺出售面积筛选项：都是从mysql里查出来
+			----
+			排序：商铺出租/出售，写字楼出租/出售：全部是在本地枚举里。
+			商铺状态、商铺类型、商铺行业：都是在本地枚举里取得。
+			
+  >pc wap筛选项：
+		>从上述老接口查出FilterEntry。
+		  >磐石的安居客的区域商圈：从panshidict的cityService.getCityIdMapping查出unity cityid，再从panshicities的districtService.getDistrictInfoByCityId查出安居客的区域信息；再从panshicities里shangquanService.getDistrictShangquan 查出区域下安居客的商圈列表信息
+		  >处理老接口获取的出租日租金和面积筛选项：重新封装到List<FilterItem>。同理来处理 出售的总价和面积，转让的面积和日租金。
+				将上述处理的重新封装的结果和磐石的安居客区域商圈再次封装到FilterEntry里，作为最后的FilterEntry
+				
+				
+  >panshi 筛选项：
+		>城市实体：
+		>左边第一列：分类目录。本地常量。。
+		>区域商圈：对于写字楼商铺类别：取老接口的。对于厂房：就是磐石接口的。
+			出租日租金：filterDailyRentMapper.selectActivedByCityId()
+			商铺总价、商铺日租金、出租面积、总价、商铺出租面积、,,,都是准备
+			-----根据入参枚举，来确定把哪个总价、面积封装为FilterMore对象，放到List<>里，。。同时入参枚举里可以还有：状态、行业、类型、行业；都封装为FilterMore对象。加入List<>
+		----上述四大信息封装，返回string。
+		
+-----------------
+调用量：
+零散：
+ >HouseService.getAjkPlantDetail(Long,Integer)
+ >FilterService.getPcFilter(Integer)
+稀疏：
+ >FilterService.getFilter(Integer)
+多：
+ >FilterService.getFilter(String,String,Integer,FilterTypeEnum[]) qps:1
+ >HouseListService.plantHouseList(ListParamEntity) 纯调用HouseListService.houseList(ListParamEntity)接口   qps:3
+ >RegionService.getRegionByNameCode(Integer,String)  qps:3
+ >HouseListService.recommendHouseList(RecommendParamEntity) qps:15
+ >HouseService.getAjkShopDetail(Long,Integer)  qps:10
+ >HouseListService.houseList(ListParamEntity)  	qps:30
+ >HouseService.getAjkOfficeDetail(Long,Integer) qps: 10
+ >HouseListService.houseList(Integer,String,String,List<Long>) qps:75
+ 
+凌晨突然有一小块：
+ >HouseService.getDetail(Long,Integer)
+
+-------------------------
+方案：
+详情：商铺写字楼：在灰度城市接口里替换地域商圈为磐石地域商圈即可--城市灰度已经做了。开放城市：用磐石区域商圈，非开放城市：mysql区域商圈。。
+      厂房：只走磐石区域商圈(会在最后用标准库房源查出商圈地域覆盖)。
+列表：
+	>推荐：目前厂房也是调用非开放城市的list接口(mysql区域板块)。--------是否需要加？改变？--根据开放城市修改？
+	>纯列表houseList(单参)：开放城市：商铺写字楼是mysql区域板块(安居客)---只要子类覆盖父类的地域商圈方法即可(厂房有覆盖)， 商铺写字楼厂房都是mysql区域板块(58房源)(不分类型)。非开放城市：安居客：mysql区域板块；58:mysql区域板块。
+	>纯列表(多参): 中间过程一致，区别上：是这个接口已经获得了ids, 且不会不必再设置第一条房源类型为广告---精选。
+筛选项：				
+	>第一个getFilter(Integer)：mysql查询
+	>第二个getPcFilter(Integer city)：panshi查，区域和商圈都是标准..第三个getWapFilter(Integer city)也是。
+	>第三个getFilter(String channelType, String tradeType, Integer cityId, FilterTypeEnum[] typeEnums)写字楼商铺走mysql，而厂房走磐石
+	   没有城市灰度？-----还是在web端进行的？
+
+(详情页经纪人只取http查询的结果)----经纪人也有商圈-板块的信息
+----列表中58导入房源经纪人id从wtable里查，而安居客的从unionbroker里取
+----------------------------------------方案实现：
+筛选项：选第三个多参的。
+列表：修改单参，再推荐，再多参。
+详情：商铺写字楼的灰度城市下替换。
+？？RegionService:getRegionByNameCode方法有调用。是否切换？----但是PanshiRegionService这个全部的并没有调用。
+----------------------------
+app/wap调用：
+pc:查id磐石来覆盖区域商圈
+---缓存去掉，可以简化一半！！
+---最后统一加缓存
+
+------------实际：
+filter:ok
+列表：单参和多参都ok。推荐还是走板块。
+详情：ok
+-----------------新增问题：
+切标准库：
+------其实只是房源切标准库，区域商圈没有切。---------对商铺写字楼有效。---加二级判断----在标准库下和非标准库下都要。
+------但是厂房则全用标准库，且全用磐石区域商圈。
+
+---列表：老接口获取区域、商圈id从楼盘中。
+             方法1：将ajkid 转为unit id ; 再用unit id查楼盘基本信息得所属商圈信息。getBizCommercialIdMappingListByAjkCommercialIds  接口和 getBizCommunityInfoById 接口
+			 方法2：从hugserver里查出信息里就有商圈信息。()
+		：：井冈山：
+		    标准库:ok 
+			其他城市:ok
+		
+---详情页：
+		标准库城市：ok
+		其他城市：ok
+Hugserver里面的：安居客区域和板块： String p89 = params.get("89"); String p92 = params.get("92");
+				  标准库商圈：String p374 = params.get("374");-----但是并搜不出来
+		
+----------------商业地产中：楼盘和房源、小区的关系
+
+
+
+if (UnitedOpenCityHelper.isUnitedOpenCity(cityId)) {
+
+TypeUtils.isPlant(typeEntity.getPropType().getCode())
+
+100.db方面：
+  >application.xml里配置了所有的mydb.properties里配置的所有数据库的链接信息 所构成的dataSource bean及session和transaction
+	>对于所有的dataSource bean，在java里被引用的方法就是
+	>application.xml中的配置：对于<context:annotation-config/>，则是对java bean内诸如@Autowired注解的检测并相应处理
+							  对于<context:property-placeholder location=""/> 为加载文件中的属性到context上下文
+							  对于<context:component-scan base-package=""/> 则是检测在这个包下的加了spring提供的注解的类，当作spring bean来处理---即被代理被实例化放到context上下文中。spring提供的注解如：@Component @Repository @Service @Controller @RestController @ControllerAdvice @Configuration 对于bean里的这些@Autowired, @PostConstruct,  @PreDestroy, @Resource这些注解等，也会被检测识别。
+							  对于<aop:aspectj-autoproxy expose-proxy="true"/> 则使得@AspectJ 这个Spring AOP注解可以生效。因为会再AopContext新的context下。这样，就会对配置了@AspectJ的bean中配置的”切点“相应的包下的bean的相应方法进行代理(经常是对dao的方法进行切面处理execution(* com.bj58.fang.shangpu.dao.*Mapper.*(..)))，进而进行切面编程---写些before()处理--after()处理的代码。
+							  对于<mybatis:scan base-package=""/> 则会将指定包下的带@Mapper注解的接口实例化为MapperFactoryBeans。
+							  对于<bean id="dataSource_prop" class="com.alibaba.druid.pool.DruidDataSource">则是初始化数据源bean
+							  对于<bean id="" class="org.springframework.jdbc.datasource.lookup.AbstractRoutingDataSource"> 则可以将配置的多个数据源配置到自己内部的map里。
+							  对于<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean"> 则是实例化一个mybatis的会话工厂，并且配置参数包括：mybatis.xml配置文件--可以配置sql拦截器(即在生成了sql语句之后调用的一个拦截器的方法----从而对sql再进行一次统一的模板式的修改--比如替换什么字符串、打印这个sql字符串)、/mapper/*.xml 对各dao类各方法映射为怎样的入参和怎样的sql和怎样的返回值 这样的映射文件、数据源datasource
+							  ---------综上，会话工厂sqlSessionFactory，内部就dao->mapper->dataSource就都准备全了可以找到了。。从而可以用这个session来访问数据库---调用方式可以通用：传入指定的Mapper类全名.方法名 + 参数(dao类被反射地调用--或者名称来找到bean而被session调用)。。另外，既可以使用默认的session，也可以切换session--比如根据mapper上的某个注解的值而选择对应的session。
+												而dao就被代理了而代理类的切面编程为---在方法执行之前切换数据源为currentThread里的threadLocals里的对应数据源键的值。而MapperFactoryBeans里面肯定在session工厂实例化的时候就设置了对应的mapper.xml进去了，从而调用dao的方法时候直接可以从本地查询到mapper.xml从而转换为sql再插件拦截替换一下，再调用配置了事务的session来发送sql即可(发送前后可能会加事务)；；因此可以直接调用dao对象---毕竟已经被bean化了 --自然的@Autowired注解的属性dao bean也是可以的。。
+							  
+  >
+
+--------------------安居客租房app请求的url:https://apirent.anjuke.com/zufang/app/houselist/api_houselist_data?select_type=0&city_id=107&version=1554284599&app=a-ajk&_pid=4224&_guid=41d2530b-d373-4083-8cd2-6edad0c24147&macid=0f607264fc6318a92b9e13c65db7cd3c&version_code=500002&i=d4588c2b2603467d&m=Android-MIX%202S&uuid=4371e89f-67be-4fca-a3de-83d57499030e&manufacturer=Xiaomi&o=polaris-user%208.0.0%20OPR1.170623.032%20V10.0.3.0.ODGCNFH%20release-keys&qtime=20190418122847&cv=12.12&v=8.0.0&from=mobile&pm=b95&androidid=d4588c2b2603467d&_chat_id=0&cid=14&page=1&page_size=20&entry=11
+筛选项：https://apirent.anjuke.com/zufang/app/houselist/api_houselist_filters?city_id=107&version=1554284599&app=a-ajk&_pid=4224&_guid=41d2530b-d373-4083-8cd2-6edad0c24147&macid=0f607264fc6318a92b9e13c65db7cd3c&version_code=500002&i=d4588c2b2603467d&m=Android-MIX%202S&uuid=4371e89f-67be-4fca-a3de-83d57499030e&manufacturer=Xiaomi&o=polaris-user%208.0.0%20OPR1.170623.032%20V10.0.3.0.ODGCNFH%20release-keys&qtime=20190418122847&cv=12.12&v=8.0.0&from=mobile&pm=b95&androidid=d4588c2b2603467d&_chat_id=0&cid=14
+
+---------
+**做一个查mysql表的客户端，服务端部署在沙箱。
+**做集成工具，而不是重复一遍又一遍的操作。
+** 工单考试
+**是否需要替换panshicities里的区域接口为统一的那种？其实没必要
+
+
+--问题：
+1.web端调用了哪些接口？
+2.58导入房源--列表页还是mysql的地域商圈；而详情页是不分58-安居客的，商铺写字楼。----58导入房源如果要切--则在列表页要重新查58房源的标准房源。
+  厂房的58导入房源--详情页将不会展示---！！有bug
+3.商圈经纬度--用高德？
+4.无测试用例
+
+Lsp2020*999999
+
+
+-----切标准库和无楼盘的关系？
+----不绑楼盘的问题？有楼盘的显示？不绑楼盘不显示？===现在的逻辑？
+----推荐的展示问题：是否切换：
+
+
+---推荐也走了井冈山
+---五八房源：也走井冈山
+
+
+
+
+
+                        商铺写字楼               厂房
+标准库城市：     物业id: params228 
+				 物业实体(mysql)(含区域板块id)
+		 井冈山：问题1：问题2：问题3：          
+		          结论1：
+				  pd1:
+				  区域id-板块id(params89, params374为已经搬家的房源)
+				  区域板块实体(mysql + panshicities)
+		 非井冈山：区域id-板块id(params89, params92)
+					区域板块实体(mysql)
+非标准库城市：   物业id: 来自基本信息mysql
+				  物业实体(上述id查实体，mysql)(含区域板块id)
+		井冈山： 区域id(先物业实体的，若没有则基本信息的)
+					区域实体(mysql)
+					---板块id-name覆盖：用infoids获取对应的所有商圈实体
+				
+		 非井冈山：区域id-板块id(先物业实体的，若没有则基本信息的)
+					区域板块实体(mysql)
+
+
+
+		 
+		 
+		 
+		 
+------------厂房无楼盘：所以返回信息很少。(跳楼盘详情无需区域板块---楼盘信息里只有districtId 和blockId)
+------------厂房；已经是标准库的房源信息 + 标准库的区域商圈  。所以和井冈山无关。
+
+
+
+--本地的mysql地域数据有问题
+--house信息里应该还没有楼盘id数据。
+
+
+##C#程序调试。https://www.cnblogs.com/mrxy/p/8183558.html
+
+##为什么没有展示物业---在列表上。service.a.ajkdns.com service.anjuke.test
+问题1"building":{"$ref":"$.items[0].building"
+存在：https://wx.sp.anjuke.com/zu/74587962/?pt=1无法访问。
+#测试环境：也得配置
+
+
+#剩余问题：磐石数据问题
+           井冈山城市和标准库城市统一问题
+		   推荐实体也分是否走标准库(因为本来就走的列表)。
+		   导入房源没分标准库(走安居客的区域板块)(除非转id和反查--但是shangquan反查还不行--暂不管)
+		   ---测试房源被过滤了，加上。notuseFulid ######
+		   ---城市25写死了，需要处理。######
+		   （因为井冈山城市在标准库里面进行判断---所以井冈山城市可以更多--不影响。可以更少--如果没有写入地域和之前一样的从标准库取值）
+				(filter纯粹由井冈山控制)
+		   --日志清除	
+		   --redis过期问题 
+		   --沙箱配置环境mydb.properties ######
+		   
+		   
+---建议多加几个物业id
+---筛选项缓存问题---新的缓存key试试？
+合并代码
+use_type
+逻辑排查
+--厂房搜索问题
+--物业问题：非井冈山城市是否正常显示了？？
+
+？"安居客搜索服务，请求参数" "houseList查询参数" ANJUKE_PHP_VERSION_USER=beta
+pgpmt51673 	
+			
+先写标题(定点)(点正文去除点) ， 再tab定级别层次，再写文字
+
+月底开发。	
+远程调试接口。
+盐重则红
+
+#---job 
+函数式编程的目的：和java中的各种流操作的目的
+函数式编程，逻辑上更自然，更容易看出业务逻辑。减少了为达到业务目的的纯技术逻辑的操作。（技术逻辑隐藏在/封装在方法里/函数里）（目的：好维护？）
+    #纯技术逻辑：如if-else 等()
+##可以不用beancoper 而使用jsonObject先传str后传object的方式
+
+
+#job的功能简化：接收infoid， 打上“优推/热租/全网通”-"上架/下架" 标记，后传递这个infoid和标签给构建服务服务。
+
+ 具体：消息都有上下架
+	监听主题1：  五八热租或优推18011：
+		>对每个消息: 从中取信息判断：58热租或58优推？ 上架或下架？  。打tags/保存。
+		>
+	监听主题2：	  全网通58优推或者安居客优推101861：
+		>对每个消息: 从中取信息判断：58优推或安居客优推？ 上架或下架？(并注明是全网通上架/下架)  。打tags/保存。
+	监听主题3：		安居客优推101294：
+		>对每个消息: 从中取信息判断：上架或下架？(并注明是安居客优推)  。打tags/保存。
+	
+	
+#商业产品：（仅仅给会员购买）（会员购买之后会给他的房源施加使用）（摊位/sf）
+	>58优推:
+		>置顶展示：
+		>热租：
+	>安居客优推
+		>置顶展示/套餐:
+		
+	>全网通：
+		>只具有58优推功能：
+		>只具有安居客优推功能：
+		>两个优推兼具功能：
+
+#info job 
+	>定时任务：
+		>1.	-镜像表vip_ajk_mirror：调用保存服务来传递读取结果(认为是安居客优先推送)(同时http查是否禁发房源)。不分类别
+		>2.批量查大搜fangses(租房二手房，从0开始，去年到最近9个月)(个人经纪人特殊的房源)：查询到的房源 调用删除接口执行。分类别
+		>3.批量查隔离库-镜像表vip_all_mirror(租房二手房，从0开始，特殊状态，强制使用索引)：打标-全网通全量，打标2:58/ajk优推、是否胖子 、是否禁发。分类别
+		>4.批量查隔离库-镜像表vip_all_mirror(租房二手房，从0开始，特殊状态，强制使用索引,含cost=2胖子房源标记)：打标-全网通全量，打标2:58/ajk优推、是否胖子 、是否禁发。分类别
+		
+		>5.批量查hugindex(安居客城市、租房二手房、)(两小时地搜-不求和；搜到即返回，只返回第一条，一城一个)：打标-ajk免费全量。。分类别
+		>6.批量查hugindex(58城市、租房二手房、状态1-11)(两小时地搜-不求和；搜到即返回，只返回第一条，一城一个)：打标-58免费全量。。分类别
+		>7.批量查隔离库-镜像表vip_promotion_mirror得到58热租房源：调用hmc将infoid转为houseid, 调用brokerInfoScfDpl将58经纪人id转标准id--来判断是否禁发 ，打标“58热租”(实际这里没判断，有问题) 保存  。。只跟58租房有关，
+		>8.批量查隔离库-镜像表vip_promotion_mirror得到58优推房源：调用hmc将infoid转为houseid, 调用brokerInfoScfDpl将58经纪人id转标准id--来判断是否禁发 ，打标“58优推”保存。。58，分类别。
+		
+	>接消息：
+		>
+		
+		
+#任务：
+
+		
+//###批量缓存在本地DistrictBlockEntity
+39.0版本为最新的版本不配置jvm的512m	
+
+hugindex
+--增加消费监控
+
+
+
+###重新消费的条件：不是所有的抛错？而是只是调用保存的抛错？----消息不正确---就不用再消费了---因为结果是一样的-还是不通过。
+ 
+#wmb消息密钥：ok(线上online 其他线下)
+#wconfig配置key: ok (线上online 其他线下)
+#scf的key全是线上
+
+#wmb 主题-client：沙箱-正式都是自己的，且“开启接收消息+不空消费而调用服务”
+				  如果用了正式的主题：测试时沙箱可以开，而完毕后需要关闭
+
+				  
+
+#物理机：部署wconfig成功，tomcat成功，消息接收到，任务触发执行成功。
+
+				  
+				  
+				  
+				  
+				  
+				  
+				  
+				  hugwidejob也调用了这个服务，所以
+				
+
+fangbasic可搜：映射管理-映射参数配置params.350   参数管理-属性管理isBiz
+
+#小区变更：
+	>条件1：columns含有名称地址、areaid-blockid变更做处理
+	>条件2：含before或者after字段
+	>条件3：diff.before 或者diff.after有且只有一个为null
+	>条件4：小区出现新商圈、老商圈出现新键、老商圈老键出现新值
+	-----以上4占1则要更新
+	>更新动作：
+		>查询小区下的全部房源：
+			>限速保存每条房源：出现一条房源失败则全部停止---保存小区id到redis
+			>每条房源：
+				>非免费贴：不是经纪人不处理|不是收费的不处理|对于付费经纪人：优推、热租、预约看房的也不处理。
+				>免费贴：处理
+				 -----即处理免费贴房源和付费经纪人中非优热预的房源。
+				  -----每条先构建hugwidebuildserver再保存hugwideserver
+				  
+				  
+#经纪人变更：
+	>条件1：名字电话公司名-before/after的值不同。
+	>更新动作：	
+		>查询经纪人下的全部房源huglist:每条都保存：--同上
+#经纪人禁发：
+	>无条件：
+	>动作：
+		>查询经纪人下的全部房源huglist：每条都保存--同上
+	
+#job任务；
+	>弹出推到redis的三种错误发生时的key的list值--每次处理10条，。
+		(问题：弹出失败是否需要重新push上)
+				  
+				  
+				  
+待做：
+1.hugindex搜索时的索引名indexName
+2.商业地产---磐石请求的问题(搜索+列表+详情普遍调用----建议缓存)（问题在于存储的是视图，而不是原生的区域板块）+jvm内存增长的问题.
+		（已经缓存1min内的1w多房源在本地，用量大）
+3.批量接口的colkey问题----前后端是否统一
+		
+问题：NOSUCHMETHOD ----scf---一般可能是contract包多个而冲突了。
+2. 169.254.3.243:9999,10.8.23.164:9999,192.168.36.43:9999,10.126.85.85:9999
+3. ajk优推3城耗时：5min
+4. 全量任务保存失败的处理---(日志检查任务)
+5.逻辑是否正确(在痛苦的时候于我有帮助的人，少话的闷的---拒绝)
+6.标准城市：108,219,144,145,116,214,119,192,120,185,117,176,101,299,209,249,102,110,103,126,165,105,161,148,225,136,150,202,231,129,104,201,114,113,106,107,109,100,
+7.测试时，刷其他城市来测试，而不只是现在的城市
+  -3 58导入房源
+  -100 (含义是不处理)
+ 10min 17603条
+  3h 	404213条 安居客优推 
+    成功401679条
+			 2534失败：都是-1
+#房源删除没有按城市
+#发消息测试batchjob(protobuf看一下)
+#mysql查询的总量和保存的总量是否相等。
+####个人单页
+##背景：接手二手房小程序项目后，开发二手房列表遇到个人房源，因此在接口里增加个人信息获取逻辑；而房源信息里存在缺电话、姓名和pc/app不一致等个人信息问题，于是就从umc里取。
+         而经纪人单页接口里的信息获取也用同一个接口，所以此时传个人userid时候就会获取到个人电话；而后来开发其他需求没发现这个bug，又项目移交从而导致问题延续。
+
+ 
+#日志保留的问题
+#日志分开为多个文件保存的问题：比如success.log fail.log 
+  
+文档：
+索引文档：http://igit.58corp.com/house.document/public/tree/master/%E6%8E%A5%E5%8F%A3%E6%96%87%E6%A1%A3/%E5%A4%AA%E6%9E%81%E6%90%9C%E7%B4%A2
+经纪人代客操作：http://cms.anjuke.com/broker/brokerinfo
+安居客商业地产写入文档：http://igit.58corp.com/house.document/ajk_zufang/blob/master/%E6%88%BF%E6%BA%90%E6%95%B0%E6%8D%AE%E5%86%99%E5%85%A5/%E5%95%86%E4%B8%9A%E5%9C%B0%E4%BA%A7/%E5%AE%89%E5%B1%85%E5%AE%A2%E5%95%86%E4%B8%9A%E5%9C%B0%E4%BA%A7%E5%86%99%E5%85%A5%E6%96%87%E6%A1%A3.md
+select houseId, site, cost, brokerId from vip_all_mirror force index(idx_cateId_cityId) where cityId=108  and cateId in (14,15,16) and status=1 and houseId>0 limit 	
+wtable dump数据的服务：先http后到hadoop上下载文件，后本地解压转换提取houseid。。。参考文档：http://igit.58corp.com/house.document/hugwide/blob/master/wtable/dump.md
+---wmb启动一定注意有没有get config from registry server failed.这个启动错误。
+
+
+无锡 25 是 108 
+乌鲁木齐 103 是 219 
+东莞 34 是 144 
+长沙 27 是 145 
+哈尔滨 48 是 116 
+兰州 58 是 214 
+石家庄 28 是 119 
+廊坊 59 是 192 
+济南 23 是 120 
+惠州 52 是 185 
+佛山 24 是 117 
+南昌 41 是 176
+#
+
+
+查询总量：
+egrep -c "wholeSave.+?Ajk.+?" catalina.out
+
+##dump查询文件个数：
+http://webhdfs.58corp.com/webhdfs/v1/home/hdp_teu_spat/resultdata/wtable_dump/134021126/?op=LISTSTATUS&user.name=hdp_teu_search
+hadoop fs -ls /home/hdp_teu_spat/resultdata/wtable_dump/134021133/common2019_07_16_18_24_32/1/
+
+##dump自动化脚本：bash界面
+ssh hdp_hbg_fcrd_58@10.126.101.7
+hadoop fs -ls /home/hdp_teu_spat/resultdata/wtable_dump/134021126/
+hadoop fs -copyToLocal /home/hdp_teu_spat/resultdata/wtable_dump/134021126/common2019_07_14_00_29_47/* ~/hugwidebizjob
+
+##100min 下载完1400文件到本地，共50g大小。
+##2800s=46min本地解析完毕。2s/个
+
+
+测试库：
+hadoop fs -ls /home/hdp_teu_spat/resultdata/wtable_dump/134021133/
+请求新的dump:http://dump.wtable.58dns.org:9090/dump?bid=134021133&tableid=0&reqfrom=common&password=r99hs6RghWQeHTd0
+
+
+37w商铺 56w写字楼 1w厂房
+
+#测试例子：
+小区信息变更：{"unityId":102136223,"columns":["community_name"], "diff":{"before":{"shangquan":[{"base_shangquan_id":1,"else":"ll"},{"base_shangquan_id":2,"else":"ll"}]}, "after":{"shangquan":[{"base_shangquan_id":1,"else":"ll"},{"base_shangquan_id":3,"else":"ll"}]}}}
+
+(严肃才能平静，否则会浮躁)
+并发相关全知识：https://cloud.tencent.com/developer/news/313447 java并发编程的艺术
+jvm技术规范：https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-6.html#jvms-6.5.monitorenter
+next work ,  sumerize every night!!new technology 
+可以归结出几大技术点：(能力边界，消耗成本)(逻辑边界)
+应用业务层次：---：
+
+工具层次：------：数据流线角度来收拢聚集
+#调用式编程：不要直接开始写代码---调用式，自顶向下编程；就是抽象通用方法编程，就是写思路，写算法。
+
+底层技术-------：(动机范围)(基础引用<用什么牌>,运用策略(<该牌怎么打>) (普通方案，最优方案)
+数据结构层次：
+	#字符hash：hashmap的hash函数(h ^ (h >>>16) )\fst\nginx一致性hash(圈)
+	
+	#索引结构的增删查：	
+	#hashmap数据结构的增删查：Node链表数组(hash-key-value-next), key的hashcode的hash()函数结果  & (n - 1)得到的数自然会是 < n-1的数(比如n是16,因为和高位0相与结果为0)(作为entry[]的索引)
+								>当链表节点数 >= 8则会把链表先转为双向链表(且反序)，再转为红黑树！！(每插入一个元素就进行一次红黑平衡算法平衡红黑树)(LL型平衡旋转(最长路径一直往左下)--右短分支加进来而本节点放在左边；RR型平衡旋转(最长路径一直往右下)--左短分支加进来而本节点放在右边)；；当最长路径存在左转右转时，先层层向上转为单向。最终一步都是使最长分支的顶点向下旋转----从而最长分支的长度减1。
+								>删除：左右子节点不为空--则使用左子树最大节点为新顶节点，并递归删除该节点。
+								>resize(): 当node entry个数 >= 长度 * 负载因子loadFactor   则先初始化一个2倍长的table，在逐个赋值；在新table的位置---如果只有一个元素-则该元素的hash & (newlength - 1)， 如果有多个链表型元素---则将元素的hash按高位是否有1而分解为高位list和低位list分别加到扩2倍的新node array的两个位置j, j + oldCap   ....因为线程不安全，所以多线程扩容的时候：：或许会导致产生大量的新2倍数组产生----从而导致内存和cpu都巨大消耗。hashtable线程安全----但是对entry数组整体加锁---从而性能不好。如果是树节点TreeNode，则先把树变为一个链表，如果树的大小超过了新的load_factor*newCap, 那么就需要再次化为树，如果小于，则转为Node链表；放的位置依然是0或者j+oldcap
+	#concurrentHashmap数据结构的增删查：Node链表数组，hash方法本质上一样，树也有next方法-所以统一，加节点时，如果数组i位置是null--则cas原子操作数组方法替换i位置为新的值，如果hash是-1会重新操作数组--transfer之类比较复杂，获取数组i位置的节点也是volatile方式缓存失效方式获取元素引用；最后在正常的有next的元素的put时---用这个新构造的Node进行synchronied同步----如果key存在则覆盖--key不存在next==null的位置加，如果是treeBin则相应的查找添加--甚至会在重构树时需要获取写锁--而使用到park(this)停车。//直接对Node加锁---而且用synchronized,且有用cas减少锁使用。扩容用transfer	
+								>put方法类似hashmap。只是加了并发控制synchronized
+	#红黑树：新加节点都是红色；不满足“根黑 红-黑 黑数同” 则需要处理-重新平衡：变色(对一个节点变色检查：该节点定是红色，1:父叔同红-变父叔为黑、祖父红 ，当前为祖，继续 ；2：父红叔不红(黑或空)&当前为右-令当前为父-新当前再左旋，3：父红叔不红(黑或空)&当前为左-变父黑祖红-令当前为祖-新当前右旋； 根节点结束)、左旋(当前节点向左下，而右子上位)、右旋(当前节点向右下，而左子上位)。。黑下可以为黑。父红祖不红，则父旋(父子-祖父不同向)或祖旋(父子-祖父同向)；父红叔红，则父叔变黑祖变红，当前为祖，继续。
+		>删除：无子节点则直接删除、有单一子节点则删除而用新子节点替换、有2子节点则删除而用右子树最左节点替换。https://www.jianshu.com/p/0eaea4cc5619  https://blog.csdn.net/eson_15/article/details/51144079 https://www.jianshu.com/p/e136ec79235c(最佳)
+			>是红色：且最多1个节点，直接用子树替换。
+			  >2个子节点：
+				>替代元素是红色：直接移除并替代
+				>替代元素是黑色：调整顺序：兄红父左旋(数差不变)、兄左儿红兄右旋、兄右儿红父左旋、兄黑兄双儿黑
+			>是黑色：(考虑黑数和高差改变)
+				>替代元素是红色：直接移除并替代元素为黑色
+				>替代元素是黑色：
+		>增加：原则：红之黑父，互换色而反红旋。即如果父叔叔子节点有单一红，则这样操作几次。如果父叔叔子节点都没有红，则直接变父叔为红而祖为黑；继续祖。
+			>
+	#treeMap数据结构的增删查：底层数据结构为Entry为节点的二叉树。
+	#BlockingArrayQueue(netty)数据结构的增删查:使用ReentrantLock进行同步、阻塞。扩容是也是create一个新的更长的数组。
+	#ArrayBlockingQueue数据结构的增删查：使用ReentrantLock进行同步、阻塞。
+	#CyclicBarrier类似CountDownLatch, 它功能为让并发的线程运行到相同位置。--先到的线程则阻塞。--直到num==0而开始都运行。
+	#Semaphore信号量，类似synchronied、lock---但是不同之处是，可以多个线程同时获取到锁--即一个信号量，达到限额后获取才会阻塞。
+	#Exchanger两个线程交换数据，使用Unsafe.park(false, time)方法进行先到线程等待后到线程，后线程Unsafe.unpark()来唤醒先到线程，Node节点里:item/match/parked/hash属性。其中item就是先到设置的，match是后到线程设置的，parked就是先到的停车线程。
+	
+	
+	
+线程方面：(多上下文方面)(数据+指令代码的临时环境内存环境)
+	#同步：
+	   >本地多线程同步(代码块)：同步代码块synchronized/Lock(可重入锁ReentrantLock/读写锁ReentrantReadWriteLock)/自旋锁(mcLock, clhLock)<利用了原子操作>/带Unsafe 利用了OS 的CAS原子操作来实现的同步 AtomicInteger, AtomicBoolean   (但实际上synchronized更简单---1.6以后它的jvm实现也是cas)
+		  >CLH锁：节点对象：有一个next对象 以及 一个属性引用原子获取更新getAndSet()类对象(Unsafe类获得)， 取锁方法：首先n个线程原子获取更新next属性为自己的node对象，同时获得上一个线程设置的对象，由于每个都会串行执行，所以每个获取的都不同，并把这个上一个node.next指向自己。自己在这个node上自旋---退出条件是这个node被属于的那个线程设置它的lock属性为false-----即表明上一个线程释放了锁而自己得到了锁。
+	     --使用锁性能问题的原因：线程上下文切换--用户态内核态切换(自旋则没有上下文切换)  ； 磁盘IO不同扇区引起盘片转动和读写磁头转动
+		 --多线程缓存不一致的原因：A线程读取主存中的一个值，不是立即给cpu，而是给高速缓存，然后进行运算；且这两步都没有锁住总线---从而其他cpu可以访问主存中的该值；。。注：线程读取数据，具体到os执行级别，都是先看cpu缓存里有无，再定是否读主存；(每次因计算而更新了cpu缓存中的值则会保存到主存)
+									>即某一个线程修改的变量仅仅更新到了对应内核的L1,L2高速缓存里而没有更新到主存，而此时其他内核之前读主存时读了含此变量的缓存行进来，从而它读的时候也只读了它对应的内核的L1/L2高速缓存，从而不一致。总之就是更新没有使得高速缓存失效。
+		   多线程缓存不一致的解法：缓存锁定(总线锁定上述)：MESI协议：一个cpu在写主存中的一个值时，会发送RFO指令信号给其他cpu让内部缓存里的同一个主存地址的值失效(迫使其他cpu进行重读)(而其他cpu也会监听缓存状态-如果是M则要等待它刷到主存为止)。(一个cpu里多内核，各个内核也有自己的高速缓存)
+																
+		 --os提供的原子性操作：读写一个字节、Compare And Swap (利用了上述--总线锁定/缓存锁定) (乐观锁方式读取比较写入;相等则写入返回true-否则返回false) ---这串指令操作被封装到了Unsafe类的多个方法中，如Unsafe.compareAndSwapInt(实例，属性，期望值，更新值);更新失败可以重新读重写compareAndSwapInt();(在Unsafe.getAndAddInt(实例，属性，递增值)就是这样的重试机制)
+	   >volatile: 只是保证在对变量更新后，立即从内核高速缓存回写到内存，而一般情况下没有volatile修饰的变量被修改不会立即被回写--而且很久一直都是从高速缓存读。称为变量有可见性。可见型变量，，无脏读变量。(非常重要，CopyOnwriteArrayList实现里就使用了--这个是先copy原数组并长度+1添加末尾元素后将数组指针赋值给原数组指针)
+				>避免指令重排--所以volatile变量的读写 会加内存屏蔽(LoadLoad, StoreStore LoadStore StoreLoad) 指令。(重排序，在一个线程中执行的顺序指令，但是可能不是顺序的，导致另一个线程看到的值变化不是顺序变化的)(cpu汇编级别指令会重排-同类指令在一块执行-提高效率-减少来回切换)
+	   >final: 也实现了可见性。毕竟不能被重新赋值---但可以第一次赋值---这个第一次赋值只能顺序执行中被赋值。
+	   >happens-before:是操作之间的关系，用来辅助描述各种规则中的各操作的先后顺序。比如volatile变量的写happens-before该变量的读(多线程中)
+	   >四种锁状态：以及升级关系：无锁->偏向锁(获取锁自己用，不存在释放锁,没有CAS也没有自旋，竞争时膨胀为轻量级锁)->轻量级锁(竞争失败时自旋或者CAS)->重量级锁(竞争失败时使用互斥量mutex阻塞当前线程-从而线程切换)     (锁对象：Mark word里会存获取本锁的线程信息、锁级别，线程cas方式获取和赋值)
+					>一定是因为四种锁状态下“加锁和解锁”的底层操作指令不同、代价不同，所以在一种锁状态等待极限内仍然没有获取到锁--则会升级锁。----意义-应用：在竞争强烈的场景下，直接先关闭偏向锁功能；第二：设置轻量级锁自旋次数：-XX:PreBlockSpin；第三：升级轻量级锁为重量级锁可以避免浪费cpu资源(尽管线程切换、阻塞需要os内核态操作所以需要用户态-内核态切换又耗时)。
+	   >sychronized: 1.8以后性能持平或者更优。且concurrentHashmap用synchronized而不用ReentrantLock	。。synchronized先偏向锁--->再轻量锁--->再重量级锁
+	   >AQS:同步组件实现的关键部分,是基于CLH锁的FIFO同步器，本身提供“(取锁--即cas方式加到队列尾部tail)排队-循环阻塞-状态取赋更(可以导致退出阻塞)(释锁-激活下一个元素)”基本功能，比如使用Sync， CountDownLatch(利用sync实现自己的同步语义)就用了Sync。比如ReentrantLock(利用sync实现自己的同步语义)(sync的AQS的ConditionObject里的await()方法---根本是用了LockSupport的park()方法--而它则用了本地方法UNSAFE.park(false, 0L);方法来阻塞当前线程---其他线程则用UNSAFE.unpark(threadObject)来释放阻塞的线程)类里就用到。(AtomicInteger是用Unsafe, LockSupport也用Unsafe, concurrentHashMap 用lockSupport)
+				>CLH锁中队列元素对应先后阻塞的线程，int整数代表同步状态(>0排队阻塞)(AQS自身不改变state的值)，AQS提供取、赋、CAS更新三个方法操作该状态。
+				>实际继承AQS：常用来实现tryaquire  tryrelease 两个方法，实现中利用set/get state方法(有时会使用get/set ExclusiveOwnerThread来判断是否重入之类)(更新成功则得锁，没有自然就返回---从而可以不用阻塞)，而使用AQS自己实现的acquire release方法。
+	   
+	   >分布式同步：
+	#线程模型：从任务特征上分类。
+		>Runnalbe模型：无输入值无返回值直接异步执行任务 ,
+		>Future模型：无输入值返回future并异步执行任务-父线程future.get()同步等待结果
+		>Fork-join模型：有输入值有返回值(任务特征)，任务本身根据入参或者直接计算返回值或者分解出2个子任务异步执行并取它们的结果；父线程task1.fork(), task2.fork()异步执行,父线程task1.join(), task2.join()同步等待结果。
+		>Actor模型：用信号signal异步发送woker请求request实例和response回调函数类实例给actor，无返回值。请求实例也会被异步执行---即如果在发送的时候做为循环发送n个req, 那么这个n个req会并行执行。(如果在回调里再发送，而外层只发送一个，则自然变成了顺序执行了。) 参考资料：http://www.agilewiki.org/projects/JActor2/1.0.0/JActor2RevisitedByExample.pdf
+
+	#网络模型：nio的多线程selector为例
+		>普通socket:阻塞模型，流数据模型。到则必须读，无则阻塞。写则直接写--不管端口状态。
+		>NIO:端口四大事件通知模式--(linux上是epoll)，每个端口对应的通道四大事件有通知-无阻塞(相当于一个方法有值返回无值等待阻塞)，通道可以读出可以写入--根据实践类型而定----而这个通道读与写是同步的。Selector-->SocketChannel-->ByteBuffer
+		>AIO:读与写是异步进行的Future线程模型
+	#存储模型：副本为例
+	
+	
+		
+#内存方面：
+	>内存管理：
+	  >jvm内存管理：
+		>各代划分和默认比例：
+			>NewRadio: 新生代=1 年老代=n   默认为2
+			>SurvivorRadio: Surivior0=1 Eden=m 默认是8  
+			
+		>回收器的标记回收过程与促进它的参数调整：
+			>垃圾回收器：Serial  Parellel CMS G1
+			 >回收方法1：stop the world 标记所有根节点(静态属性，常量)-可达对象-清理不可达-复制可达到survivor/old。。。Serial Parellel 
+			 >回收方法2：stop the world 标记所有根节点 --> 并行标记 可达对象(trace算法记录在bitmap) ---> STW 重新标记 动态用户线程产生的新可达对象 --> 并行清理不可达对象。CMS优先保证stw的时间短。而G1好处在内存空间管理更精细，空间碎片更少，影响的线程更少。
+			>回收器组合1：+UseConcMarkSweepGC +ParNewGC 来对年老代和新生代进行垃圾回收
+			>回收器组合2：+UseG1GC +MaxGCPauseMills=200
+			>G1回收器：物理分区：Region(1M-32M)(Xmx/2048个) 每个Region内存分配最小单位Card(512B)
+				       被引用集合: points-into; RSET 一个RSET记录了一个Region中那些被其他对象(可在其他Region)引用的对象构成的一个个引用关系。在垃圾回收时查看可达对象就查看RSET而不是全表扫描
+					   引用集合：points-out; Card Table。。CSET。
+					   回收策略：先收集垃圾对象最多的分区
+					   回收过程：可以认为同CMS的4阶段--但更多-如根分区扫描。仅仅是具体做法因为物理分区的不同而不同。
+		>各代使用查看、回收查看、实例查看、线程状态查看(进程的线程数、进程的线程资源占用)：
+			>关注：参考：《深入理解Java虚拟机》
+			 >内存泄露？(不使用而被根引用到/长周期对象引用到的对象占用的空间无法回收;短周期对象即时关闭和置为null)内存垃圾old代回收次数太多、均次耗时大？(STW)(jmap -histo:live pid | sort -n -r -k 3 | head -10)(jstat -gcutil pid) 泄露查看工具leakcanary
+			 >线程泄露？线程死锁？(ps -hH pid | wc -l) (jstack -l pid)系统线程数(cat /proc/pid/status)
+			  >各方法执行次数\执行时间排序：
+	  >零拷贝：使用DMA将磁盘数据放到内核态数据区后直接copy放到网络设备上，而不是先copy到用户态的数据区、切换到用户态、什么一般指令也没做就切换到内核态继续执行特权指令--将数据从用户态数据区cp到网络设备上。
+	  >伪共享：cpu1更新了X但是没有再读X, 导致X所在的缓存行失效---而又因没读导致cpu1所在L3中的X所在的缓存行是失效的，---如果该缓存行里有Y变量被其他线程所在cpu2操作，那么cpu2就只能从主内存中取---导致效率不高。---伪共享问题。，和缓存行有关---cpu中L1L2缓存没有失效--没有因为其他cpu的更新而失效。	
+		>问题产生：常常在多个long,int基础变量使用时，它们被放入了同一个缓存行。相反，如果每个变量单独放在一个缓存行，那么就互相不影响，因为只是一个缓存行的失效，不会影响其他缓存行失效--而重新去主存里拿。(disruptor这个内存消息队列就避免了伪共享--避免了重新去主存加载)
+		
+#网络方面：
+	#https协议：http协议 + ssl/tls协议： 最佳总结https://www.jianshu.com/p/14cd2c9d2cd2
+		>https请求过程：前奏：客户端把独立生成的对称加密密钥client key  加密传输给服务端，服务端解密后得到后，服务端客户端就可以用这个对称密钥来加密解密了。  加密：是从服务端获取的公钥，解密，是服务端自己的私钥。
+				客户端： 请求服务端                     公钥合法(证书有效),则独立生成一个client key即密钥，并用公钥来加密这个client key , 将结果发送给服务端																																																														客户端用client key解密得到内容即可。										
+				服务端：              返回公钥(证书) 																											使用私钥解密该结果，得到client key 。这个client key就是双方进行通信的对称加密密钥(保证通过网络也只有客户端和服务端知道) ::从而双方可以用这个client key进行加密通信了。即服务端就当作对称密钥来对称加密要发送回客户端的内容，将结果发送给客户端。
+
+		>http通信模型：请求-响应：一个请求：用 url + 报头 + 报文 表达，  一个响应：用 报头 + 报文   。 报头说明请求类型、报文类型、请求参数、参数长度、cookie信息
+		>http/2: 多流并用一个tcp连接。2015年后。
+		>证明B收到的信息肯定来自于A(保证信息没有被修改)：则只需要A用自己的私钥加密信息传给B，而B用A的公钥解密。可以解开得出合理信息则说明肯定来自于A（因为中间人不可能知道A的私钥，所以解开后无法再加密）
+			>但直接加密“信息”本身则耗时，一般是加密“信息”的hash值，得到的就叫做数字签名。同理，将“数字签名”解密之后，得到的就是hash值---和将收到的信息进行hash后的结果比较。则可以确定来自于A。(因为中间人无法生成正确的数字签名)(即保证信息没有被修改)。(但无法保证信息没有泄露)
+		>证明B收到的信息没有泄露(没有被中间人看到)：只需要A传输时用B的公钥对内容进行加密。(中间人没有私钥，所以无法解开)
+			>因此传输过程：1.用B的公钥加密(文件+数字证书)发送给B(则中间人不能解开-无B的私钥，也不能调包-无A的私钥)(但条件是AB双方事先知道对方的公钥)。。就可以保证信息未被修改未泄露。
+			>公钥获取正确的解决办法：因为公钥允许泄露，保证确实是B的即可；B的公钥作为信息，用另一个私钥X加密，传递给A；A用X对应的公钥解开---来获得B的公钥。。。而A要事先知道的X对应的公钥---就是CA中心的公钥。仍然两个问题：数字证书如何被服务端获取到；CA中心的公钥如何被客户端获取到(客户端存CA中心的根证书，则可以验证所有分中心下级中心颁发的证书)(根证书可靠：windows也预置了50多个根证书)(各个具体软件.exe属性可以查看数字证书：即该软件所在公司从CA中心申请的证书)。
+			--传自己私钥加密的内容：保证来源。(传第三方私钥加密的内容：也可以保证来源。比如传CA中心的私钥加密后的内容：数字证书)(自己私钥加密的内容：只叫数字签名)
+			--传对方公钥加密的内容：保证不泄露。
+			
+			
+	#tcp/ip三次连接而不是2次的原因：(提问式反问式 找设计的理由找设计的原因式理解，而不是认识式定义式理解；；设计的原因才能让人真正理解，，而不是只是知道是什么；更要知道为什么要这样设计为什么不这样设计---因为这才是真正最透彻深刻的理解；否则是肤浅的)(这么设计目的：一是为了实现功能、二是为了避免带来新问题新不确定、三是一种解决不可避免的恶劣情况导致的功能故障的方案(悲观考虑必须、意外情况必须--不能只考虑正常情况的处理----意外情况往往就能改变设计思路局部甚至整体---导致设计的结果直观上不太容易理解--毕竟离正常情况已经有点远了-不纯粹只是为了处理正常情况而设计--这个毕竟也是不强大的))
+		>服务端不能收到信息就确认建立新连接，而开始接收处理实际真正要传的数据。因为客户端可能会多次请求--没有回应就会重试。所以需要客户端确认才可以。即：客户端发起连接请求(标记为X: SYN=1 Seq=X)->服务端响应(标记为X+Y: SYN=1 ACK=X+1 Seq=Y)返回-->客户端确认(Y+Z: ACK=Y+1 Seq=Z)发送-->此时服务端才确认建立连接(ACK确认的是上一次的Seq)(说明：1.当服务端返回时--客户端就可以确认网络通了，而服务端收到客户端的确认时--就可以确认客户端也收到“我的确认”了；过程非常类似https请求--加密传递密钥)(客户端：经历“发-收”；服务端：经历“发-收”。双端都经历“发-收”(说明双端确认网络“可发可收”)连接建立)。(3次的目的：双端确认网络可以“可发可收”；服务端可以忽略建立后释放前的重试请求---免得浪费资源；客户端也可以忽略建立后释放前的反复确认--同样避免了浪费资源)
+		>
+	#tcp/ip四次释放连接而不是2次的原因：首先释放连接的原因：--本方已经接收数据完毕--不用再连接了；这个消息要让对方知道-所以要发送结束报文(FIN=1 ACK=Z Seq=X)给对方，当然也要得到对方的收到确认(ACK=X+1 Seq=Z)(否则认为对方没有收到而继续发-此为需要接收确认的重要性)；同理，对方接收数据完毕，而需要告知对方(否则对方可能认为连接中断而重试重发)(发送FIN=1 ACK=X Seq=Y) , 也要接受到对方的确认为止(对方发送ACK=Y Seq=X)(否则认为对方没收到而继续发送)。
+		>
+
+#网络设备单点问题：(单点问题，不可用)
+	>集群：
+	>主备：
+	>主从：(从节点宕机不可用；检测，下线)(主节点宕机：检测，重选)
+	  >主的选举：一个选举周期内:  对于选的非自己---收：增、同  ； 发：广、定   。。对于选的是自己---收：增、定 ； 发： 广、同。
+		>paxos算法：2pc两阶段提交。K; maxN  , accpectN acceptV ;  一：向超过半数发送K(不必全部), 超半数则区结果中最大N的V ,二：构造K-V发送，收到 超半数，成功选举。接受方改AcceptN=K, AcceptV=V
+	  >有效读：zk可以从follower读取，但kafka只能从leader读取。
+	  >有效写：同步数据时，从节点至少一半返回成功。
+	>分布式系统理论：
+		>一致性问题：
+			>CAP理论：
+			>BASE机制：
+		>保护：
+			>缓存、降级、限流
+	
+#文件方面：
+	#软连接：相当于快捷方式：并不复制内容，只是保持一个连接。ln -s 源文件名 软连接文件名   。。。只要源文件名是完整路径，就可以移动。
+	#硬连接：相当于cp -p 文件 + 同步更新，；连同属性都复制，然后源文件更改硬连接文件会同步被修改，硬连接文件被更改源文件也会被更改。ln 源文件名 硬连接文件名。
+		>源文件删除：快捷方式自然不可用。而硬连接文件可用。因为硬连接文件和源文件共用一个i节点号(i节点就是文件信息结构体)。linux删除文件只是删除i节点号与源文件这条映射、源文件(磁盘上的一个数据块)。而i节点号-硬连接文件依然存在。而展现上：目录下有：文件名-i节点信息
+		>tomcat下的catalina.out存在着同步文件。
+#中间件
+ >nginx:
+
+数据库方面：
+	>数据库一致性问题(渐进)和对应的隔离性级别解法
+	 事务隔离级别		数据库一致性问题
+				脏读	不可重复读	幻读
+	 读未提交    x                         (值为是否解决，x未解决， v为解决)
+	 读已提交    v         x
+	 可重复读    v         v    	x		(锁不了新加列)
+	  序列化     v		   v		v
+	  
+	>事务的ACID:
+		>A:事务要么成功、要么失败。没有中间态。
+		>C:事务修改使数据库从一个一致状态转变到另一个一致性状态，用户感知不到数据库的中间变化。
+		>
+	>mysql:
+	  >索引的存储数据结构与增删查：
+	  >数据item的存储结构和增删查：
+	  >单点问题的解决方案：主备切换、主从同步
+	  >集群cluster的读写过程、节点加入移除和故障的检测恢复：
+	  >高并发的使用策略：读写分离、分库分表、sql优化
+	>hbase:
+	>elasticsearch:
+
+缓存方面：(三大问题：key总是没有(穿透了)，突然没有-一个热key或者大量key(击穿了，雪崩了))
+	>缓存穿透：key数据库不存在，缓存也不存在。导致对数据库不断的查询--给数据库带来压力。(解法：也存到缓存，但是值为特殊的)
+	>缓存雪崩：缓存的同时缓存了大量的数据，失效时间也同，集中过期，(或者缓存服务器节点宕机、断网)，导致突然给数据库很大的访问压力--而且是周期性的。(解法：冷门访问缓存时间少，热门长；缓存时间加随机因子。)
+	>缓存击穿：热点数据太热，在失效瞬间给数据库很大压力。
+
+#微服务方面：
+	>分布式系统的保护：缓存、降级、限流
+		>降级：服务舍弃一些突发不可用功能确保整体可用，子服务不可用、超时，整体服务还是要能用，即时因而是有损的。(N次请求m次超时失败, 称为可用率m/N * 100%)
+		>限流：一个服务限制调用方对它的调用速率。
+	
+消息队列方面：kafka为例子(独特数据结构+算法方面)
+	>主题-队列组织结构：一个主题下多个分区，每个分区主从组织,每个分区的消息量。producer和主题的每个分区的leader保持socket通信，并且hash方式均匀发送到各个分区leader
+	>acks级别：收到、收到且刷入本地队列、刷到从节点、从节点写入成功
+	>多个consumer读取一个主题：如果在同一个group，则读取的消息唯一，所以此时comsumer也需要一个均衡算法
+	>数据的存储和获取：本地磁盘的顺序批量操作(先buffer再flush到磁盘)，较少磁盘IO和磁盘旋转磁头运动，  
+	>zero-copy机制:
+	>消费模型：pull模型，comsumer控制消费速率，手动确认是否重新消费。
+	>网络模型：nio的多线程selector
+	>存储模型：副本机制
+	>partion日志分段：每个消息都会append log, 每个段都有index和log两个文件；一个partition日志分段为了方便二分查找日志--先找到端再找到内容，从而方便随机读；而顺序读，利用os预加载page cache页缓存，所以快。
+	>leader所在broker故障而消息不丢失的原因机制是什么：HW高水位  
+	>消息发送成功三种语义保证：at least once , at most once , exactly once 。最后一种的实现：可以不丢失消息还保证消息顺序，一个producer一个broker,broker对消息进行对齐；消息格式为"序号+消息"，序号小认为重复序号大1以上认为消息有丢失
+	>事务：producer对消息队列一次操作的集合。  
+	  
+	  
+日志采集方面：flume为例子(selector->channel->sink->kafka/hdfs/agent)
+	>日志+处理模式：比单纯的日志有更多的处理：一是拦截器链(使得不一定存到channel/memorychannel/filechnnel/jdbchannel)，二是写到了channel里(channnel看作一个队列，但有很多接口方便sink调用)，三是有sink异步的独立的调用channel而获取里面的数据，进一步的处理可以为rpc发送到另一个agent；这个agent再将event数据调用source写入channel，而另一方面sink调用channel读取event写入jdbc或者文件等。
+	>数据单位：event是一个字节数组，有header头信息。
+	>多级流：nginx, tomcat, log4j, syslog日志混合在一起的日志流，可以在在下一级Source时分开发送到不同的channel里，再sink到不同的地点。
+	>负载均衡：一个channel可以配置多个sink,并且均衡的从channel里取得event(或者说channel均衡发送event到不同的sink---当然是取好--速率由接收方决定)
+    >source: spoolsource监控spool目录，有新日志文件就会读取数据(利用log4j配置为精确到分钟级别)，完毕后文件后缀变为.COMPLETED  而 Exec Source可以实时采集日志
+	>本地日志log4j2:
+		>distrupor: 高效低延时的消息组件-读写数组(队列)。高性能有界内存队列。(CAS和缓存行补齐方法性能提升)
+			>数据结构：数组(环形)，长度：2^n ， index只需要递增，下一个元素位置就是 index & (2^n - 1)按位与就可以了。
+			>读写一致性保证：CAS保证写的同步从而一致。即会先申请位置，然后CAS方式写入。(实际上：可以先读取index, 再计算出下一个位置，再CAS写入，失败重读index)
+			>缓存行补齐：避免伪共享问题。一个缓存行有64字节，一个缓存行就是cpu L1L2缓存失效的基本单位,而缓存失效是其他cpu发出的失效命令导致的---即改cpu要更新数据写到主存(同时加内存屏障)。
+			>avalibleBuffer: 写入后更新多个位置读avalible，读出后更新那些位置写avalible。从而下一次写之前读位置时就有位置可以读了。	
+			
+	
+大数据统计分析方面：Hive为例子
+	>
+大数据数据导出方面：sqoop为例子
+	>
+
+架构设计与技术选型：系统设计/方案设计评审	
+	>系统设计的几个主题：参考：https://blog.csdn.net/u013007900/article/details/79049961
+
+软件工程方面：
+	>系统建模：数据流图、架构图、时序图、组件图。。。。参考：https://www.jianshu.com/p/4c9f795da7ea
+	>
+	
+#开发方面：
+	>能提前评审发现隐藏的潜在的问题：也发现该技术的能力边界。 
+	
+	
+Spring方面：
+   >IOC和AOP的实现：
+	>IOC：bean交给spring来实例化，只需要配置该bean的属性，对于对象类型的属性-甚至可以不必配置--直接默认也交给spring注入，。(控制反转，依赖注入)
+    >AOP: 方法的代理 ，代理方法的内容就是切面编程(方法的前后两个切面)。
+	>spring做的事：
+		>1.浏览包，对每一个带注解的类/接口 对应生成一个继承/实现它的子类/实现类(字节码)(代理类、动态代理类)--这个类对父类方法全部重写-内容都是调用一个回调类的方法(如果动态代理是cglib，就是实现了MethodInterceptor的类的intercept()方法;javax.tools包则根据类字符串而动态字节码生成)(这个回调类方法里，spring的处理是先获取方法的所有注解，先执行在被代理方法invoke之前要执行的注解的实现类的before方法(以及显示匹配本方法的切面bean的before方法)，再invoke父类方法，再执行之后注解实现类要执行的after方法(和显式匹配到本方法的切面bean的after方法))，将此代理类反射实例化，放入容器(map)。(常规的@Controller @Service @POST @RequestParam; @Aespect)。。属性的注入体现了spring做的依赖注入IOC，方法的代理体现了spring做的切面编程AOP(编写一个切面)。
+		>2.执行bean初始化方法：init-method
+   >WF实现的IOC和AOP:
+  >事务的实现：依赖数据库的事务：打开连接-打开事务-执行操作CURD-提交事务(故障则回滚事务)-关闭连接。。可见执行操作CURD可以被切面编程，而前后的动作都是固定的，所以spring只需要直接写一个事务切面就可以了--用户则只需要使用这个事务切面的注解即可。       参考资料：https://www.jianshu.com/p/2449cd914e3c
+	>事务的隔离级别：5种，上述。事务之间互相影响的结果/程度/大小。
+	>事务的传播行为：决定新建一个事务，或者加入一个已经有的事务(使用同一个连接)(已有的事务是什么？---即保存在事务ThreadLocal里的当前线程的值)(此外，还有连接ConnectionHolder， 也是当前线程保存的连接)。
+		>产生此概念的原因：A方法上有事务，B方法上有事务，而A方法又调用了B方法。
+		>行为1：PROPAGATION_REQUIRED 保持一个事务。
+		>行为2：PROPAGATION_SUPPORTS 支持当前事务，没有就也不新建。
+		>行为3：PROPAGATION_MANDATORY 支持当前事务，但没有要抛出异常。
+		>行为4：PROPAGATION_REQUIRES_NEW 当前有事务，则挂起。建立另一个事务执行完再说。
+		>行为5：PROPAGATION_NOT_SUPPORTED 不使用事务，当前有也不使用--把它挂起。
+		>行为6：PROPAGATION_NEVER 不使用事务，但没有要抛出异常。
+		>行为7：PROPAGATION_NESTED 当前有事务，则嵌套一个事务；当前没有事务，则新建一个事务执行。
+	>事务的保存点：回滚到保存点。保存点之前的不用回滚，确认已经ok。
+	>mysql 命令控制事务：
+		>设置数据库、会话的事务隔离级别： set session transaction isolation level read committed; set global transaction isolation level repeatable read;
+		>设置不自动提交：set autocommit = 0;
+		>开启事务：start transaction; begin;
+		>回滚事务：rollback;
+		>提交事务：commit;
+		>在一个事务中设置多个保存点：savepoint tx1;   则xxx之后，可以 rollback to tx1;//回滚到保存点
+		>开启只读：在作用结束前本会话也读不到其他会话/事务插入的内容：SET TRANSACTION READ ONLY;  结束只读：commit;
