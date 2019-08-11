@@ -1874,8 +1874,8 @@ next work ,  sumerize every night!!new technology
 	  >Region: 分裂合并
 	   >Region大小大于设定值时，平分分裂为两个，HMaster负责分配新产生的HRegion的分配。分配到其他HRegionServer上的Region会在它下一次的major compaction时将HFile文件下载到本地。
 	>elasticsearch: 不用关系型数据库来实现全文检索。高扩展性、高可用性的实时数据分析。扩展至上百台，PB级数据。
-	  >分词：将输入的搜索词 分解为 多个 关键词/字
-	  >倒排索引：浏览数据而形成的 “关键字---文档id集合” 称为倒排索引，词典Term Directory --> 文档列表Postings List；但量太大而不会装载都jvm heap里， 所以对Term词典做了一个前缀索引Term Index, 用FST实现占用空间小--从而全量加载到内存heap； 从而先查内存中的前缀索引Term Index 再查磁盘上的Term Directory。es为每个column都使用索引--倒排索引(而不是一般关系型数据库的B树索引)。。参考http://www.360doc.com/content/16/0106/17/17572791_525951877.shtml
+	  >分词：将输入的搜索词 分解为 多个 关键词/字。。经过分词器Tokenizer得到Token词元。
+	  >倒排索引：浏览数据而形成的 “关键字---文档id集合” 称为倒排索引，词典Term Directory(词与词频) --> 文档列表Postings List；但量太大而不会装载都jvm heap里， 所以对Term词典做了一个前缀索引Term Index, 用FST实现占用空间小--从而全量加载到内存heap； 从而先查内存中的前缀索引Term Index 再查磁盘上的Term Directory。es为每个column都使用索引--倒排索引(而不是一般关系型数据库的B树索引)。。参考http://www.360doc.com/content/16/0106/17/17572791_525951877.shtml
 	   >词典前缀索引数据结构：FST树 参考http://www.shenyanchao.cn/blog/2018/12/04/lucene-fst/
 	    >FST树：有限状态转移机(输入相应的信息--状态进行相应的转移：转移的起止路径对应输入的信息集合)：开始节点：单词最大前缀匹配， 后不够再增加边，直到 结束节点。形成一个有向无环图。
 	     >作为key-value数据结构：压缩率有3倍-20倍，省内存---相比于hashMap/treemap
@@ -1890,7 +1890,7 @@ next work ,  sumerize every night!!new technology
 	  >全文检索：搜索词 分词 后去查 倒排索引 得到的 文档id集合 再去 查相应的文档 并返回，就是一个全文检索的过程。
 	  >Lucene: 单机模式, java开发；索引、检索功能。ES的存储引擎，ES在之上增加了分布式接口而已--依赖Luncene；即建立一个分布式框架，而节点底层依赖Luncene进行实质操作；查询时并行查节点，结果合并；索引时，各节点独立索引自己节点上的数据。索引树：FST树---每个单词对应着的值就是docid集合。
 	    >es喂给/传输给lucene的：已经是非常规范化的数据；一个Lucene实例也不用关心其他Lucene实例。
-		>Lucene倒排索引生成过程：先在内存生成Inverted Index , 再定期以段文件segment file形式刷到磁盘上的。所以一个段segment就是一个完整的倒排索引。而segment memory就是倒排索引词典的前缀索引。
+		>Lucene倒排索引生成过程：先在内存生成Inverted Index , 再定期以段文件segment file形式刷到磁盘上的，而且不再修改，更新会写到新的文件。所以一个段segment就是一个完整的倒排索引。而segment memory就是倒排索引词典的前缀索引。
 		>开箱即用：不用配置。
 		>jvm参数配置：jvm堆大小不超过os内存一半--以便os缓存磁盘数据。
 	  >Solr: 数据格式更强：不止json,html,excel也可以。但实时性差。
@@ -1901,9 +1901,17 @@ next work ,  sumerize every night!!new technology
 				      gateway: es索引快照存储方式：一般是本地磁盘，也可以是hdfs,云。存储发生的时间：es先将索引存在内存，达到一定大小就调用gateway持久化到本地/hdfs/云。
 	  >对用户提供：Transport交互方式:默认是tcp,但也提供了http: RESTFUL API ：curl 和java接口
 	  >索引过程：全量/增量
-	  >搜索过程：
-	  >添加数据：
-	  >删除数据：
+	   >增量：/修改：修改也会把文档视作新文档而添加到新的segment里，分钟级别可以被重新索引(因为刷磁盘的fsync操作)。
+	  >搜索过程：将Query转换为Lucene Query , 在所有的segment中计算
+	    >具体过程：词法分析找出关键词；语法分析形成语法树 --> 关键词语言处理器处理规范化---> 从倒排索引中找出关键词的文档列表来交集/差集，---> 对文档排序(根据词对文档的重要性---词权重/词频数/词在的文档数，得到文档的词频向量，而查询语句也是一个词频向量，从而计算两个向量余弦值--作为相关性的打分，分值大的就排在前面: VSM向量空间模型算法)
+		>极好参考：https://blog.csdn.net/guoyuguang0/article/details/76769184/
+	  >添加数据：新的segment会先缓存到内核中，然后才flush到磁盘。来提高性能。而本身在文档修改,写入es节点时，会首先append写到translog里持久化，方便内存中的segment崩溃后从最近的commit point的数据恢复。
+		>segment合并：同hbase HFile的合并，segment也会合并为新的更大的segment，同时整理了segment里的被标记为删除的数据。
+		>segment内容：Inverted Index、Stored Fields 、Document Values
+		>具体过程：数据生成索引存入内存Buffer, 同时写入translog, 内存中的数据每隔一秒以segment格式存入系统缓存，系统缓存中的segment定期刷入磁盘/同时清除translog中的记录。
+		 >数据生成索引：分词得到词元-->语言处理组件将词规范化还原-->词传给索引组建 创建字典、排序、合并相同的词、形成文档倒排 链表
+	  >删除数据：segment中的数据删除--仅仅是一个标记；下次会被索引到--但是返回给用户时过滤了。每一个提交点有一个.del文件--记录哪个segment的哪个docid被删除了。
+	             文档删除---也仅仅是标记为删除.
 	  >分片重新分配：当es节点宕机后，上面的分片会被重新分配到其他节点。
 	  >p2p系统：广播和多播
 	  >ES节点自动发现：Discovery.zen 相当于每台节点排序广播得到的网络中的serverid， 最大的作为leader，如果一个节点获得了超过半数票--则只会有一个--从而它就是新的leader
