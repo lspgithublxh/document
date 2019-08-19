@@ -22,11 +22,13 @@ next work ,  sumerize every night!!new technology
 								>删除：左右子节点不为空--则使用左子树最大节点为新顶节点，并递归删除该节点。
 								>resize(): 当node entry个数 >= 长度 * 负载因子loadFactor   则先初始化一个2倍长的table，在逐个赋值；在新table的位置---如果只有一个元素-则该元素的hash & (newlength - 1)， 如果有多个链表型元素---则将元素的hash & oldtablesize  而分解为1高位list和0低位list分别加到扩2倍的新node array的两个位置j, j + oldCap   ....因为线程不安全，所以多线程扩容的时候：：或许会导致产生大量的新2倍数组产生----从而导致内存和cpu都巨大消耗。hashtable线程安全----但是对entry数组整体加锁---从而性能不好。如果是树节点TreeNode，同链表一样会根据hash & oldtableSize == 0而分解为 高1 低0共2个TreeNode单向链表，如果单向链表的大小超过了新的load_factor*newCap, 那么就需要再次化为树，如果小于，则转为Node单向链表；放的位置依然是j或者j+oldcap
 	#concurrentHashmap数据结构的增删查：Node链表数组，hash方法 h ^ h>>> 16 & (n - 1)来确保得到的数自然会是 < n-1的数(比如n是16,因为和高位0相与结果为0)，树也有next方法-所以统一，加节点时，如果数组i位置是null--则cas原子操作数组方法替换i位置为新的值，如果hash是-1会重新操作数组--transfer之类比较复杂，获取数组i位置的节点也是volatile方式缓存失效方式获取元素引用；最后在正常的有next的元素的put时---用这个新构造的Node进行synchronied同步----如果key存在则覆盖--key不存在next==null的位置加，如果是treeBin则相应的查找添加--甚至会在重构树时需要获取写锁--而使用到park(this)停车。//直接对Node加锁---而且用synchronized,且有用cas减少锁使用。扩容用transfer	
-								>put元素：读取i位置元素要用cas可见读方式读取数组的index位置元素，元素为null时，也要cas方式存一个新Node元素，防止并发问题。i位置不是null而是f普通节点Node, 那么用f来sychronized同步，同key的val根据ifabsent被覆盖，不同key则直接简单的next赋值为一个新的val值的Node节点即可。是TreeNode节点，就加新节点到树里，
+								>put元素：读取i位置元素要用cas可见读方式读取数组的index位置元素(hash & (n - 1))，元素为null时，也要cas方式存一个新Node元素，防止并发问题。i位置不是null而是f普通节点Node, 那么用f来sychronized同步，同key的val根据ifabsent被覆盖，不同key则直接简单的next赋值为一个新的val值的Node节点即可。是TreeNode节点，就加新节点到树里，								
+									>treeifyBin():Node链表转变为TreeNode红黑树：当链表size大于构造树的大小后，synchronized(元素) 同步地 先将Node链表转变为TreeNode链表，然后用首元素构造TreeBin而转变为TreeBin红黑树, 再可见性地更新到index位置。
 								>resize: 实际并没有这种方法，实际上是transfer()在做实际的数据转移工作，在复制的时候读元素也是cas,而开始复制的时候也sychronized同步数组的节点f。
+									>transfer(): 是对ForwardingNode类型节点进行元素分解分类为2类，存放在这个节点的nextTable里---2倍老table。分类标准：如果是链表类型，看元素的hash & n 之后 == 0 归为低位链表，为1归为高位链表，两个链表构造好之后就volatile可见性地方式更新到newTable的i位置和i+n位置， 而也会new一个ForwardingNode注入newTable后而同样可见性地更新到老table的i位置---老table每个i都是同一个ForwardingNode实例(TreeNode/Node都是)---也是同一个nextTable：因为遍历老table之前就已经有newTable和ForwardingNode实例了。如果是树节点TreeBin，那么也按照hash & n == 0 或1而归类出低位链表--反序， 和高位链表-反序， 如果任一个链表TreeNode的大小不超过构造树的最小值，则退化为Node链表，如果超过，如果另一位是Null那么就把原来的根节点原子更新到相应位，另一位更新为Null;如果另一位不是null,那么低位和高位链表首元素为参数分别构造出两个TreeBin红黑树分别更新到i位置和i+n位置，ForwardingNode也同样的更新；更新方式也都是volatile可见性地更新。
 								>get: 也是cas方式得table的i元素，剩下的则直接查，没有同步；
 								>put方法类似hashmap。只是加了并发控制synchronized
-	#hashtable的增删查：key得出index的方法：h & 0x7fffffff % length 即很简单的去除最高位再取模运算。。Entry[]数组类型(hash-key-value-next)，单项链表；所以冲突的时候依然是增加元素。。而且只在next增加元素，没有treeNode。不存在转变为treenodo的过程。
+	#hashtable的增删查：get/put/remove方法都是synchronized实例同步的。key得出index的方法：h & 0x7fffffff % length 即很简单的去除最高位再取模运算。。Entry[]数组类型(hash-key-value-next)，单项链表；所以冲突的时候依然是增加元素。。而且只在next增加元素，没有treeNode。不存在转变为treenodo的过程。
 	#红黑树：新加节点都是红色；不满足“根黑 红-黑 黑数同” 则需要处理-重新平衡：变色(对一个节点变色检查：该节点定是红色，1:父叔同红-变父叔为黑、祖父红 ，当前为祖，继续 ；2：父红叔不红(黑或空)&当前为右-令当前为父-新当前再左旋，3：父红叔不红(黑或空)&当前为左-变父黑祖红-令当前为祖-新当前右旋； 根节点结束)、左旋(当前节点向左下，而右子上位)、右旋(当前节点向右下，而左子上位)。。黑下可以为黑。父红祖不红，则父旋(父子-祖父不同向)或祖旋(父子-祖父同向)；父红叔红，则父叔变黑祖变红，当前为祖，继续。
 		>删除：无子节点则直接删除、有单一子节点则删除而用新子节点替换、有2子节点则删除而用右子树最左节点替换。https://www.jianshu.com/p/0eaea4cc5619  https://blog.csdn.net/eson_15/article/details/51144079 https://www.jianshu.com/p/e136ec79235c(最佳)
 			>是红色：且最多1个节点，直接用子树替换。
@@ -38,7 +40,7 @@ next work ,  sumerize every night!!new technology
 				>替代元素是黑色：
 		>增加：原则：红之黑父，互换色而反红旋。即如果父叔叔子节点有单一红，则这样操作几次。如果父叔叔子节点都没有红，则直接变父叔为红而祖为黑；继续祖。
 			>
-	#treeMap数据结构的增删查：底层数据结构为Entry为节点的二叉树。
+	#treeMap数据结构的增删查：底层数据结构为Entry为节点的红黑树。线程不安全，没有可见性和没有同步。
 	#BlockingArrayQueue(netty)数据结构的增删查:使用ReentrantLock进行同步、阻塞。扩容是也是create一个新的更长的数组。
 	#ArrayBlockingQueue数据结构的增删查：使用ReentrantLock进行同步、阻塞。
 	#CyclicBarrier类似CountDownLatch, 它功能为让并发的线程运行到相同位置。--先到的线程则阻塞。--直到num==0而开始都运行。
@@ -104,6 +106,7 @@ next work ,  sumerize every night!!new technology
 			 >内核实现的事件通知机制：
 			   >锁、信号量、条件变量：
 			   >无差别轮询有限制(1024 文件描述符的个数 select)、无差别轮询无限制(事件发生轮询poll)、内核IO事件异步唤醒的相关返回(只返回有事件的流epoll)(系统注册回调函数，回调函数将唤醒的描述符/就绪fd拷贝到readyList里---用户获取事件就只看readyList里的--获取方式水平触发/边缘触发，有mmp内存映射少拷贝)：本质上都是同步IO。。 参考https://www.jianshu.com/p/397449cadc9a
+				 --epoll是内核以事件回调方式实现的为用户提供的获取就绪文件描述符集合readyList的一种机制。
 			 >内存空间(寻址空间/虚拟空间)的划分：内核空间和用户空间。内核具有特殊指令和内存空间的访问权限。操作系统的核心部分程序为内核。
 			   >进程切换：内核保存一个进程上下文/到等待队列(挂起进程)，取出一个进程上下文继续执行/恢复执行。
 			   >进程阻塞：进程自己执行了Block阻塞原语 而将自己的状态设置为阻塞状态而放弃cpu而被内核放到等待队列。
@@ -148,17 +151,20 @@ next work ,  sumerize every night!!new technology
 			>NewRadio: 新生代=1 年老代=n   默认为2
 			>SurvivorRadio: Surivior0=1 Eden=m 默认是8  
 			
-		>回收器的标记回收过程与促进它的参数调整：
+		>回收器的标记回收过程与促进它的参数调整：基本都三个阶段：“标记-复制-清除”
 			>垃圾回收器：Serial  Parellel CMS G1
 			 >回收方法1：stop the world 标记所有根节点(静态属性，常量)-可达对象-清理不可达-复制可达到survivor/old。。。Serial Parellel 
-			 >回收方法2：stop the world 标记所有根节点 --> 并行标记 可达对象(trace算法记录在bitmap) ---> STW 重新标记 动态用户线程产生的新可达对象 --> 并行清理不可达对象。CMS优先保证stw的时间短。而G1好处在内存空间管理更精细，空间碎片更少，影响的线程更少。
+			 >回收方法2：stop the world 标记所有根节点 --> 并行标记 可达对象(trace算法记录在bitmap) ---> STW 重新标记 动态用户线程产生的新可达对象 --> 并行清理不可达对象(对可达对象不复制)。CMS优先保证stw的时间短。而G1好处在内存空间管理更精细，空间碎片更少，影响的线程更少。
 			>回收器组合1：+UseConcMarkSweepGC +ParNewGC 来对年老代和新生代进行垃圾回收
 			>回收器组合2：+UseG1GC +MaxGCPauseMills=200
-			>G1回收器：物理分区：Region(1M-32M)(Xmx/2048个) 每个Region内存分配最小单位Card(512B)
+			>G1回收器：物理分区：Region(1M-32M)(Xmx/2048个) 每个Region内存分配最小单位Card(512B)   参考https://www.cnblogs.com/oldtrafford/p/6883796.html
 				       被引用集合: points-into; RSET 一个RSET记录了一个Region中那些被其他对象(可在其他Region)引用的对象构成的一个个引用关系。在垃圾回收时查看可达对象就查看RSET而不是全表扫描
 					   引用集合：points-out; Card Table。。CSET。
 					   回收策略：先收集垃圾对象最多的分区
 					   回收过程：可以认为同CMS的4阶段--但更多-如根分区扫描。仅仅是具体做法因为物理分区的不同而不同。
+					 --优势：精细管理，随时间发展内存碎片更少利用率更高；区块为单位并行回收提高效率；内存压缩。https://www.cnblogs.com/oldtrafford/p/6883796.html
+				>Young代的回收过程：STW方式，并发多线程地，年轻代存活的对象(多个年轻代Region包括S0区)拷贝到S1区 和O区。重新计算E区和S区的大小。
+				>Old代的回收过程：STW根标记存活区-->并发扫描S区对O区的引用集合和被引用集合-->并发标记全堆可达对象()-->STW重新标记(会清除全部对象都失效的Region， STAB算法)--->STW拷贝/清理(先复制活跃度低的N区和O区的可达对象到没使用的区域，再清理被复制的区域)。(暂停时间决定要回收的region数量)。复制之后有内存压缩，释放内存。
 		>各代使用查看、回收查看、实例查看、线程状态查看(进程的线程数、进程的线程资源占用)：
 			>关注：参考：《深入理解Java虚拟机》
 			 >内存泄露？(不使用而被根引用到/长周期对象引用到的对象占用的空间无法回收;短周期对象即时关闭和置为null)内存垃圾old代回收次数太多、均次耗时大？(STW)(jmap -histo:live pid | sort -n -r -k 3 | head -10)(jstat -gcutil pid) 泄露查看工具leakcanary
