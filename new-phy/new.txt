@@ -3,11 +3,29 @@
 并发相关全知识：https://cloud.tencent.com/developer/news/313447 java并发编程的艺术
 jvm技术规范：https://docs.oracle.com/javase/specs/jvms/se7/html/jvms-6.html#jvms-6.5.monitorenter
 next work ,  sumerize every night!!new technology 
+源码可以上github上去看。
+			第零阶段：spring源码深度解析 + 
+#阅读书籍：第一阶段：高可用mysql + redis设计与实现 + 深入理解Java虚拟机
+		   第二阶段：kafka + hbase + elasticsearch
+#介绍一种技术是一种技能：是组织能力的体现，是描述能力的体现，是清晰洞察掌控能力的体现。描述技巧丰富度的体现。//而不是混乱的描述，东拉西扯的描述，只言片语说不清楚的描述。//不只是给面试官，而且给同事，给客户。
+	>介绍一下线程池？
+	>介绍一下NIO连接池？
+	>介绍一下数据库连接池？
+	>介绍一下spring?
+		>自顶向下、索引树形展开搜索式的讲解：比如讲解spring: 则产生spring的原因--开发痛点陈述？、痛点的原因&影响&希望达到的治疗效果指标目标、根据达到目标设计必然的方案可行的方案(spring)、新问题和能力边界。
+															>直接从容器中去取-而避免手动创建层层属性都要依赖注入的bean。spring根据依赖注入的逻辑自动注入自动装配
+															>有注解的类如何创建-
 可以归结出几大技术点：(能力边界，消耗成本)(逻辑边界)
 应用业务层次：---：
 
 工具层次：------：数据流线角度来收拢聚集
 #调用式编程：不要直接开始写代码---调用式，自顶向下编程；就是抽象通用方法编程，就是写思路，写算法。
+#一切框架设计，工具设计，都要从最简单简洁高效的实现开始(而不是一来就是各种条条框框、固定思路)(开发思路设计，从核心简洁设计开始)(分析是否最优设计，没有冗余)。
+--谨慎的认为自己已经掌握了，却说不清楚，仍然一片混乱！！比如spring
+--没有彻底弄通就会只言片语、似懂非懂、朦朦胧胧、含糊不清。
+#web后端开发相关技术：
+ >web容器启动时，会扫描实现了ServletContainerInitializer的类，执行其中onStartUp()方法，方法里面执行注册filter<pattern路径匹配, 类.class>, listener<类.class>, servlet</path路径，类.class>到入参对象servlet容器里。。该方法另一个入参是一个Set<Class> 是类上的@HandlesType注解中的各个类
+ >SpringServletContainerInitializer实现了ServletContainerInitializer类，
 
 底层技术-------：(动机范围)(基础引用<用什么牌>,运用策略(<该牌怎么打>) (普通方案，最优方案)
 数据结构层次：
@@ -197,7 +215,23 @@ next work ,  sumerize every night!!new technology
 		>
 	#tcp/ip四次释放连接而不是2次的原因：首先释放连接的原因：--本方已经接收数据完毕--不用再连接了；这个消息要让对方知道-所以要发送结束报文(FIN=1 ACK=Z Seq=X)给对方，当然也要得到对方的收到确认(ACK=X+1 Seq=Z)(否则认为对方没有收到而继续发-此为需要接收确认的重要性)；同理，对方接收数据完毕，而需要告知对方(否则对方可能认为连接中断而重试重发)(发送FIN=1 ACK=X Seq=Y) , 也要接受到对方的确认为止(对方发送ACK=Y Seq=X)(否则认为对方没收到而继续发送)。
 		>
-
+	#socket通信的底层实现：先创建文件描述符FileDescriptor再创建Socket，创建SocketInputStream，SocketInputStream.socketRead0(FileDescriptor fd, byte[] b, int offset, int len, int timeout)这个native本地方法。根据文件描述符读取若干个字节到byte[]里面，有超时设置。
+		>BSD Socket: 不同的系统的socket都是对这个规范的实现。
+		  >区分两个Socket连接：五元组。2组端口-ip 和协议。
+		  >本地端口绑定：如果是192.168.0.1:21那么同一个端口还可以绑定其他本地ip比如10.0.0.1:21 但是如果一个socket绑定了0.0.0.0:21那么这个端口就不能再绑定其他ip，会报错；即被独占了。
+		>文件描述符的创建：文件描述符相关的还有它的使用次数--这个也会统计进来。	
+		  >标准输入输出异常流也有文件描述符：handle=0/1/2
+		>Nagle缓冲算法：发送方的缓存和接收方的缓存。
+		>type-of-service类型：
+		>SO_KEEPALIVE: 一个socket在不活跃2h后，会发送一个检测报文给对方，根据返回的ACK正常/RST重启复位/无响应 来判断连接是否正常而需要继续维持。正常则重置计数器，2h后再发送。复位则关闭自己的连接。无响应则75后重发9次；长时间后才关闭。不推荐使用。因为只能判断连接是否存活，不能判断上面的服务是否可用，因此用户要加自己的心跳检测。
+		>SO_SNDBUF: 发送缓冲区大小
+		>SO_RCVBUF: 接收缓存区大小
+		>SO_LINGER延时关闭：close()执行但是send buffer没有发送完毕还可以继续发送，直到达到SO_LINGER的时间，然后发送一个TCP RST报文段终止连接、复位连接。
+		>SO_REUSEADDR: 第一种：同一个服务器的不同实例允许在同一个端口上启动 ，只要每个实例绑定不同本地ip地址---多网卡即可。第二种：一个SOCKET处于TIME_WAIT状态，另一个SOCKET可以绑定它的IP端口而启动，这个最常用--仅仅为了避免服务器重启时端口未释放而无法绑定的问题。(udp连接甚至允许多个套接字绑定相同ip-port)。参考https://www.cnblogs.com/qiaoconglovelife/p/5416715.html
+		>tcpdump:抓包工具，比如查看tcp rst报文段。终止连接报文段。
+		>四次挥手中server-client状态变化图：主动结束端最后又一个TIME_WAIT时间等待---以便如果被动结束端未收到最后一次ACK而重新发起不再接收报文能够被接收，最后才是CLOSE。否则没有TIME_WAIT就会直接返回RST报文了。
+			>服务端一个SOCKET在TIME_WAIT状态时：可以启动另一个SOCKT复用这个SOCKET的端口和ip, 只要配置了SO_REUSEADDR选项。
+	#java安全体系：SecurityManager， AccessController.doPrivileged()独立跑一个方法
 	#DNS过程：从host到本地DNS服务器到代理DNS服务器到询问13台根服务器
 	#ip地址：IP地址是标识网络上每一台主机的id---点分十进制-4字节构成。由网络号+主机号构成。
 		>地址类别：按网络号字节数1-3 和 1字节网络号的多播地址, 或者按网络号高到低首0位 而划分4类：A类：1B netnumber + 3Bhost number  网络号：0NNNNNNN 首位确定为0。同理B类：10NNNNNN C类：110NNNNN D类1110MMMM  组播地址  。C类最大取223也就是做大的非组播的首位地址。D类地址的最大值是239也没有到最大值。E类地址是240-255
@@ -300,8 +334,13 @@ next work ,  sumerize every night!!new technology
 			>单容器数据结构：从树的形成过程中可以看出，同层最左容器才可能有左子节点，其他元素都是只有右子节点---即子节点中元素最小值>=自己的值
 			>增加一个元素：后，叶子容器个数<L不动，>=L 自底向上分裂，即叶子容器分裂为两个，父容器增加一个节点-值为分裂的右半容器的最小值；然后判断父容器是否要分裂。如此下去，直到根节点。
 			>删除一个元素：后，叶子容器个数>=L/2不动，否则 看右容器元素有多少---如果>L/2则借一个补充；<=L/2则合并右容器，并把右容器的父节点的值改为合并容器的最小节点值，同时删除左容器。然后看父容器节点个数是否足够--进行相应借或者合并直到根节点。
-			
+	  >innodb引擎： 默认施加聚集索引的顺序：主键-->无则UNIQUE列-->生成“包含行ID在内的合成列”  。主键索引和数据存在同一个文件里。
+		>主键为聚集索引: 叶子节点的引用指向一个页面，这个页面包括了一行所有的数据。(而不像非聚集索引只指向 单列数据)
 	  >数据item的存储结构和增删查：
+	    >事务下的修改(innodb)：事务开始-->原数据放到undo.log-->修改数据在内存-->修改后的记录放到redo.log--->事务提交，返回给用户成功。条件满足，触发checkpoint, 将内存中的数据page合并写道磁盘()
+	  >mysql执行DML语句的过程：插入更新删除。代码层次。
+		>mysql_execute_command(): 根据语句类型调用专门的方法来处理---> 如果执行中有错，执行回滚事务方法trans_rollback_stmt(), 否则执行提交事务方法trans_commit_stmt()
+		>
 	  >单点问题的解决方案：主备切换、主从同步
 		>主备同步：
 		 >binLog: 日志格式mixed: 如果不会引起不一致，则用statement格式语句写到binlog, 如果会引起不一致，则用row格式(直接变化的记录)。delete:记录删除的每一行。update:记录前后的数据。insert记录本身。所以row格式方便恢复数据。
