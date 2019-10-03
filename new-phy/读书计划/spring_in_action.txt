@@ -1,0 +1,225 @@
+--------spring的处理思想都对应有 相应的“某种举动 及其导致 的问题”
+>需求背景-痛点陈述：现实开发中遇到了什么痛点导致XXX的开发？  
+>那么痛点的原因、产生的条件：分析是什么环境、什么动作 什么效果什么目的 等精准形容词的事实描述 导致了痛点的必然发生，难以避免？。条件-痛点。原因-结果。
+>则可以消除痛点的最简单的精准事实陈述是什么：修改“条件-痛点”陈述的哪一部分就可以导致没有痛点产生。 要做的根本事情是什么：
+>那么新陈述表明的解决动作是什么：
+>新情况的新痛点是什么：新举动、新环境会产生的新痛点描述出来， 继续上述4条操作。
+
+
+#现实开发中遇到了什么痛点导致spring的开发？  (起初以下3点，也是核心，来简化企业级java开发)
+>1.举动-痛点：属性直接赋值、本类方法封闭赋值：导致属性的实例值无法由外部改变。需要修改代码、重新编译。类与类之间耦合太紧密。甚至不需要依赖类，而是接口而已。
+    >解法/处理思想：所有属性都是由外部注入。内部不做对属性赋值的操作。使得实例化一个类变成一个拼装组合的过程。且：属性是接口类、顶级父类。类之间变得“松耦合”(因为依赖的是接口了)。实例也方便重用。。同理微服务的产生的原因之一也是“服务的松耦合”
+	  >对于有大量的层层依赖关系的类的实例化/对于层层依赖：类之间形成多叉树的关系。在最底层必然是常量属性的类，实例化不再依赖注入而等待依赖类的实例化；从而这些类的实例化后，注入到直接依赖的类的实例里而完成对此类的实例的封装；同理继续向上注入，直到最顶级的不被依赖的类实例被注入完成。而且“实例化”和“注入”完全可以由第三方类来完成实现。
+	>新痛点：装配方案(xml/java类)
+	 >装配方案描述：就是要描述一个bean如何构造，一个bean依赖其他bean的引用关系的表达。
+		>用xml描述，bean本身构造参数，bean的某个属性引用某个bean id来描述引用关系(属性名\bean id名对应出来即可)。缺点在于：描述能力受限于spring提供的语法，特别的构造方法就会很麻烦。应用路径：即.../classes/下。
+		>用java类描述：某个方法返回一个实例，这个实例就是一个bean了，而内部就可以随心所欲的写；引用其他类的实例，则入参上加入，或者调用其他返回bean的方法即可---实际上spring会对一个注解了@bean的方法拦截处理-先从容器中获取-没有才执行invoke调用。缺点在于修改时需要重新编译。类型安全，推荐。
+			>返回值当作bean的方法要求有@Bean注解。
+			>多个@Configuration的配置类可以通过@Import和@ImportSource将多个bean用一个根配置类联系起来。
+			>从外部property文件获取属性值：@PropertySource. 后从env中取。或者用占位符，@Value，此时需要有bean : PropertySourcePlaceHolderConfiguer
+			>运行时以运算表达式从其他bean中获取属性值：spring 表达式语言。
+		>用组件扫描-自动装配描述：在一个配置类上注解@ComponentScan(packages)来表明要扫描指定包下的带有@Component等注解的类 来实例化装配注册到容器里。适合非第三方类的自己项目中使用。
+	 >bean环境设置和激活环境: 从而使得不同环境下用不同的bean实例化；A环境下则B环境的bean不会被实例化。系统环境下当作环境参数设置，web项目中当作全局变量设置，测试环境@ActiveProfile。spring.profiles.default=     spring.profiles.active=     开发环境@Profile("dev")
+	 >条件化bean: 创建或者不创建@Bean用专门的Condition接口实现类来判断，将这个实现类放到注解@Conditional(实现类.clas)中而把注解放到该Bean方法上即可。检查方法的参数-条件上下文ConditionContext包括很多环境信息。
+	 >某个Bean采用接口注入时的针对注入某个类的实例---自定义一个注解-并且标记一个系统注解@Qualifier：限定符。组合注解---一个注解上注解了其他的注解则spring会递归获取所有的注解的注解。  继承注解@Inherited被注解的类的子类也会有这个注解。
+	 >bean作用域：默认-单例模式，原型-每次调用都会返回新的实例， session/request跟请求有关--一一对应；需要使用该bean的代理，该bean的代理会转发请求到session/request实际对应的那个bean上去。
+>2,举动-痛点：为了监测方法和保障方法，而在方法里添加的日志打印、统计发送、安全校验 这些系统服务，与方法本身代表的功能没有直接关系的非业务逻辑代码，要做的事太多且无关本身，显得冗余，混乱。业务逻辑和系统逻辑耦合过于紧密。继承可以解决一种关注点编程，但是每个需要关注点的类都需要继承--冗余太多、编写也复杂、继承本身就耦合了业务类；；而委托又导致调用变得不直接--不是直接调用业务类-而是委托类--且调用变得复杂。即不需要依赖系统类，不需要显式调用，而仅仅注解说明而已。
+	>解法/处理思想：方法应该专注于业务代码逻辑，系统服务代码应该在方法体之外，同时会随着方法的调用而执行。那么一种办法就是把各个系统服务注解到方法上，而类的实例用该类的代理类的实例替换。而代理类的实例重写了父类的代码，指向了一个统一的Intercept类的intercept()方法，此方法根据父类方法上的注解而执行before要做的事，然后invoke()父类方法，然后做注解决定的after要做的事。
+		>切面与应用的关系：想象切面为调用链中的过滤器拦截器，而应用就是controller。切面是应用的背景图，三大切面：日志切面、事务切面、安全切面(缓存属于)。	一个切面的切点就是需要该切面工作的所有方法，一个切面的前通知和后通知就是切点执行前执行的切面的方法和切点执行后执行的切面的方法。
+			>AOP切面编程的目标：把切面的通知织入到应用的正常流程的(满足切面的切点的描述特征的)若干个连接点处(方法的调用处与属性的调用处都可以)。切面：描述了何时(通知类型)何处(切点)做什么(通知)。	引入：给现有类增加方法和属性---来记录状态等。
+			>AOP切面编程的目标的实现：编码时加注解，编译时(AspectJ)/加载时(AspectJ 5)/运行时(spring aop)把切面应用到连接点并创建动态代理(织入)，运行时调用的是动态代理。BeanFactory中是bean, 而 ApplicationContext从BeanFactory中加载bean时已经是代理。
+			  >切点的方法匹配语法：字符匹配execution, 方法参数匹配、方法注解匹配、方法所在类类型匹配、方法所在类的类注解匹配。
+			    >在java的一个注解了@Aspect的类中，给每个通知方法都写匹配语法时麻烦的，可以专门写个方法注解上@PointCut(匹配语法)， 通知方法上的注解参数值为”切点匹配方法名“即可。
+				>带@AspectJ的类的生效：需要在javaConfig类上增加@EnableAspectJAutoProxy, 则才会将带@AspectJ的类视作切面。会有切面池，调用方法时从池中匹配出切面来执行通知。
+				 >环绕通知-特殊的通知：会在通知中回调被通知的方法。-也从而可以多次调用--做类似重试的效果。
+				>通知中获取方法的入参：切点的描述中，args(入参名)参数可以指定通知的入参名， 从而通知中可以知道某次方法调用时的入参是什么。
+				>为被通知类引入接口：@DeclareParents
+				>在编译/加载时为每一个类注入一个静态方法：AspectJ做的事情。在spring的配置中时看不到的，在类中也是看不到痕迹的。
+				---对于已经创建的代理，如果想应用自己的注解及其功能，需要二次代理， 那么就在一次代理创建完毕之后，从容器中获取所有的bean而进行二次代理，然后再设置回去，从而每次调用先走二次代理，再走一次代理，再走原方法。二次代理-->一次代理-->父类的方法。
+			>将一个第三方的class类标注为切面类：XML配置方式即可。
+			>创建bean时使用bean的类的静态方法/工厂方法：则可以在XML中<bean class="A" factory-method="方法名" /> 来实现。
+>3.举动-痛点：模板式代码经常出现的场景，比如数据库连接，查出结果后，封装数据，然后关闭数据库，这三大部分的第一第三部分是模板形的，且第二依赖第一中多个变量，第三依赖第一第二中多个变量的，因此不方便注解方式放到一个统一的请求容器里--会产生更多的冗余，且不好做统一的before/after依赖传递和处理。模板和业务逻辑依赖太重。
+	>解法/处理思想：模板代码不应该显式出现，但是模板调用是需要的，又因为模板对于实际业务代码 是环绕关系的，所以业务代码要封装到一个回调方法里，回调方法在一个匿名内部类里，内部类实例注入到模板调用里。或者用我自己的方式，即反射的机制-不需要匿名内部类实例。
+
+	
+#spring的核心思想
+>1.举动-痛点： 实例的直接获取、实例的重用，决定要把实例放到一个统一的容器里；另外，发布事件给事件监听者也需要一个独立的第三方来做。
+	>解法/处理思想：beanFactory太单一。ApplicationContext应用上下文更完善。
+		>bean生命周期：相比普通的new后自动回收释放更多；bean类可能要感知容器里各个环境对象---当作属性，这些容器性质的属性的注入---只要bean类实现相应的xxAware接口即可在bean实例化并设置设置属性之后依次注入，然后bean才可以被使用。。//个人猜测：因为实例创建的方法是多样的--这里就需要提供要给扩展点，装载到上下文容器过程就是一个多阶段周期，第二创建是一个事件，还要有事件发布中心来发给注册的监听者。事件监听。
+			>bean
+
+#spring应用在web开发中
+>1.举动-痛点：web开发的本质内容就是：处理url请求并且返回结果。其中两件事，一是url请求映射到对应的处理器上，二是执行处理器将处理结果返回。而前提就是要接收到web容器封装的url请求----通过web容器启动时扫描到的项目的(全部可以处理的)url请求(的共同的)(根)入口类/过滤器类/监听类。从web.xml中扫描或者从类路径中查找实现了javax.servlet.ServletContainerInitializer的类--即SpringServletContainerInitailizer类，而这个类又会查找实现了WebApplicationInitailizer的类---即AbastractAnnotationConfigDispatcherServletInitailzer的类，来做servlet上下文具体的配置工作，来建立应用的servlet上下文和spring上下文。
+    >解法/处理思想：那么不必在Servlet容器初始化里 编写一个个 url 和 处理器的映射。处理器由spring统一提供。而处理器包括控制器和视图解析器两大组件，分别提供数据模型和格式化数据模型为HTML等。从而开发者只需要编写带url注解的控制器 + 视图模型即可。然后启用spring mvc组件，来识别出控制器上的各个url注解---来配置控制器映射器，并在每次请求时将请求参数封装而通过调用的方式传给相应的控制器的方法。
+	 >DispatcherServlet的创建：由AbstractAnnotationConfigDispatcherServletInitailzer创建，同时会根据它的getServletConfigClassses()方法返回的配置类中定义的bean来定义DispatcherServlet创建的应用上下文中的bean。
+		>webmvc注解：方法上带有@RequestMapping注解的类就是控制器类；这个注解说明了url请求的特征，对应的方法自然就是处理方法，方法返回值是string类型默认就是视图名称。
+		>webmvc测试：MockMvc类可以注入controller bean而创建web容器并且发送请求获取结果。
+	 >ContextLoaderListener的创建：同上类，并且根据它的getRootConfigClasses()方法返回的配置类中的bean来配置ContextLoaderListener创建的应用上下文中的bean。
+     >启用spring mvc组件的做一些工作：配置类上@EnableWebMvc, 配置类继承WebMvcConfiguarAdapter---从而可以覆盖 配置默认的servlet处理器的方法，默认的servlet处理器比如对静态资源的处理器--也在servlet容器里。配置视图解析器这个@bean。
+	 >增加一个根配置类：扫描范围更大。
+	  >常用注解：
+	     >请求参数、路径参数：@RequestParam, @PathVariable
+		   >请求参数的类型：即注入参数的类型，可以是字符串、整形，也可以是文件类型CommonsMultipartFile 即是封装了上传的文件数据的文件对象--bean上应当注入这个类型的文件解析器CommonsMutipartResolver。。也可以是HttpServletRequest请求参数，可以被注入，当然也就可以是HttpServletResponse 或者Model这些类型的注入，来实现直接返回或者先存储视图数据。
+		 >表单POST提交参数获取：直接对象参数，属性名和参数名对应。
+		   >对于Multipart报体类型的post请求：即各个字段放在一个part里，这个字段的值的类型可以是二进制类型---比如图片/文件。传递到后端，spring需要一个MutilpartResolver来解析这种请求。一般是StandardServletMutilpartResolver来解析。相应的大小等配置在servlet的mutilpartConfig属性里配置。
+				>方法的入参上可以的接收配置：@RequestPart byte[] file 来接收原始的数据。或者@RequestPart Mutilpart file 这个需要配置MutilPartResolver。 或者@RequestPart Part file这种方式则不需要配置MutilPartResolver。
+				
+		 >处理方法处理之后返回进行重定向/而不是一个试图名称：“redirect:/abc” 转发"forward:/abc"
+		   >重定向中数据传递：方法入参可以加一个RedictAttributes model， 从而在这个model里放入数据模型，那么在重定向到的目标方法里就可以从Model model里取出数据模型。
+		 >视图对象容器：Model 放在方法参数里，则自然会被注入。
+		 >校验输入实体形参数：比如POST提交的实体参数。方法的 实体参数 上加@Valid 表达校验 实体参数，Error error注入参数表达对实体校验之后的结果 供用户回调使用；实体类里-属性加具体的约束要求。
+		 >控制器抛出异常映射为专门的http状态码：动态抛出一个自定义异常，注解@ResponseStatus即可--配置相应的码值和提示含义。否则会统一抛出500内部服务器错误。
+		  >异常处理器：一个带有@ExceptionHandler注解的控制器方法，控制器里的其他方法都能够用该Handler来捕获异常。
+		  >控制器通知：@ControllerAdvice 一个控制器上有，则所有控制器都能捕获对应的异常用对应的Handler来处理。
+	  >视图解析器：InteralResourceViewResolver为例，解析jsp
+			>视图资源的定位配置：路径前缀、后缀。
+			>视图类配置：jsp中如果使用了JSTL标签，那么就要修改默认的视图类class InteralResourceView为JstlView。//各个标签库的使用，略。
+	  >拒绝标签-数据模型+html5即可：jsp文件内容混乱丑陋，且和Servlet规范耦合，导致只能在web应用中用来格式化模板，不能当作通用的模板---如用在邮件页面中。Thymeleaf为例。
+			>视图解析器-->模板引擎(渲染)-->模板解析器(加载、解析)：ThymeleafViewResolver-->SpringTemplateEngine-->ServletContextTemplateResolver 
+			
+	 >往web容器中注册其他组件：如自定义的Servlet, ContextLoadListener, filter
+		>方法：实现WebApplicationInitailizer接口。而接口的方法中的入参ServletContext就是web容器，因此可以在方法里往这个容器里注册servlet等。
+		   >web.xml中配置注册：不仅listener和servlet的类型，而且各自的上下文中的bean初始化配置文件也指明。比如在root-context.xml和servlet-context.xml中。
+		   >web.xml中配置listener和servlet的上下文类和上下文配置类：一些参数配置。
+			
+	 >保护web应用：安全代码和应用代码分离，形成独立的切面。以spring security为例。切面基于AspectJ
+	    >url级别的认证和权限校验: 通过Servlet filter来实现.过滤器的注册,既可以在web.xml中配置, 也可以通过DelegatingFilterProxy这个特殊的filter--这个实际会委托给/回调spring上下文中配置的filter bean 来执行.
+		  >委托fitler DelegatingFilterProxy的注册:在web.xml中可以.也可以通过继承 AbstractSecurityWebapplicationInitializer类来实现.仅仅空继承即可. .这样这个filter会拦截请求而委托给bean id 为springSecurityFilterChain的bean.这个bean也是一个filter,它会链接若干个其他filter.
+		  >spring security的配置: 配置类继承 WebSecurityConfiguerAdapter  增加配置注解@EnableWebSecurity/@EnableWebMvcSecurity
+		  >用户的验证: 在配置类的重载方法中可以:1.增加用户列表: 账号注册\过期\锁定\禁用, 权限\凭证\密码.2.注入用户列表所在的数据源DataSource--则会自动去查users, authorities, 和 groups, group_members, group_authorities 来进行权限的验证.---用户存在?密码对?权限有?, 当然可以自定义查询SQL而配置注入, 还可以配置password加密并于数据库查出的password相比较的一个passwordEncoder类.
+						3.采用ldap方式.配置用户的组织ou\组的组织ou, 密码比对激活.密码Encoder类...
+						4.自定义用户获取方式: 实现UserDetailsService 中的根据username而获取用户UserDetails的方法即可,在配置类的重载方法中注入自定义的实现实例即可.
+			>认证过和url的映射:在配置类的configure(HttpSecurity )重载方法里实现...使得未认证就要先经过内部的filter认证通过后才行...认证约束描述的通用方式可以是access()方法中的字符串SPEL来表达.
+				>特殊认证: 请求url为https; csrf认证---会在表单中自动添加一个隐藏的属性域保存着token, 会随着表单的提交而一并提交到后端---后端用这个token和本地的token比对--看是否来自同一个域.
+		>保护视图：
+			>条件展示：权限条件、Spel表达式条件
+			>信息展示：用户信息
+			>--thymeleaf的方式时：需要在模板引擎里注册方言SpringSecurityDialect, 从而可以在html页面使用相应的安全方言	
+	>解法/处理思想2：从DispatcherServlet开始转发，不到Controller, 而是到一个flow流程，即不是SpringMVC方式，而是Spring Work Flow 方式。
+	
+#spring应用在后端开发中(jdbc数据库访问相关)：辅助持久化
+1.举动-痛点：直接开发jdbc应用(用jdbc相关接口)，使得操作方法和业务方法耦合比较多，而且连接管理是个问题；即便将数据库访问做成切面，做成数据访问模板，业务方法独立出来----既可以用委托的方式-方法引用来调用业务方法，也可以在方法上增加切面注解，以动态代理的方式执行；依然在数据库连接管理上存在缺陷----除非做一个连接池出来--当然已经有了比如Drid 并且以工厂模式提供---但是都耦合；纯粹接口注入而用接口编程最佳。
+	>解法/思路：既然数据库连接做成切面，那么可以用spring来运行这个切面、配置这个切面。
+		>持久化含义：从内存中的java bean对象到存到磁盘数据库中一行记录的过程为持久化。数据库不同，存储形式不同。持久化到数据库(关系型，非关系型)。
+		>数据访问层：本身与持久化机制无关，是独立语义定义的。主要使用数据访问模板，。
+		>持久化层中的ORM: 对象关系映射。
+		  >sessionFactory配置：LocalSessionFactoryBean/AnnotationSessionFacotryBean
+			>引用数据源：
+			>表-对象映射文件/注解映射bean：@Entity注解的bean
+			>SQL方言配置：
+		>构建持久层-三级访问调用：仓库(Repository) --> sessionFactory会话工厂| 模板(HibernateTemplate/JdbcTemplate) --> 数据源(连接池中获取/JNDI方式管理数据源).配置JNDI，javabean方式是配置JNDIFactoryBean。同时要配置具有连接池功能的数据源--比如dbcp的BasicDataSource, 比如Drid数据源；同时连接池bean上可以注解@Profile区分不同的使用环境。
+			>Repository类：注解@Repository, 属性即sessionFactory， 方法的入参直接对象。
+		>JPA方式实现Repository: 对象管理器(代理)----相当于会话。
+			>@Transactional 事务注解。第三方注解的识别：需要增加注解驱动，或者PersistenceAnnotationBeanPostProcesser 这个bean。
+			
+		>避免相同的Repository反复写：只编写Repository接口就可以了。使用Spring Data来创建它的代理----里面自然注入了session之类。。
+			>Spring Data的相关功能的引入：java配置类增加@EnableJpaRepositories(basePackage="abc.ab")而相关接口则继承JpaRepository即可。
+				>声明式自定义语言：@Query(“sql查询语句”)注解到方法上。
+				>
+		>持久化到非关系型数据库MongoDB: Spring Data MongoDB 
+		 >开启使用：@EnableMongoRepositories 自动生成JPA RePositories， 提供 MongoFactoryBean 数据源客户端和MongoTemplate模板 两个bean
+			>对象-文档映射： @Document @Id @Field
+			>Repository动态生成：接口A，继承MongoRepository就可以。
+				>添加自定义方法：同时可以增加@Query相应mongo的查询语法-json字符串形式。
+				>混合方式：定义接口-实现，然后将这个新接口加到 A 的继承接口列表里
+			>数据库访问模板：MongoTemplate
+		>持久化到非关系型数据库Neo4j: 
+		 >开启使用： @EanbleNeo4jRepositories 自动生成Repository, 提供数据源GraphDatabaseService
+			>对象-图元素映射：@NodeEntity @GraphId  @RelatedTo  @RelationShipEntity @StartNode @EndoNode
+			>Repository动态生成：接口A, 继承GraphRepository
+				>添加自定义方法： @Query 图查询语法
+				>混合方式： 新接口、实现，加入A的继承接口列表。
+			>数据库访问模板：Neo4jTemplate
+		>持久化到非关系型数据库Redis: 可看作是实现了持久化hashmap。	 redis好处是值类型：set, list可以充分利用集合的运算---比如集合求交，list弹出左边右边的元素。
+		 >开启使用： 提供数据源RedisConnectionFactory 和RedisTemplate两个 bean
+			>存储时key-val序列化方式：两个都可以设置。
+			
+2.举动-痛点：无状态应用，每次访问数据库，重复和压力和耗时。
+	>解法/思路：数据先缓存起来。对一个东西抽象：如对Spring缓存抽象，形成一系列的概率体系。是业务建模的重点动作。
+		>开启使用：配置类上@EnableCaching 同时提供CacheManager 这个缓存管理器bean，  方法上增加@Cachable 或者@CacheEvict
+			>缓存管理器：EhCacheManager, RedisCacheManager---内部调用RedisTemplate来实现get/set, CompositeCacheManager---迭代多个缓存管理器来获取值和存储值。
+			>方法上的缓存注解：@Cachable 查找方法上。 @CachePut 保存方法上---只在方法调用之后保存到缓存：其中unless是存的条件， condition是查且存的条件。@CacheEvict 删除方法上。
+			
+3.举动-痛点：方法级别对用户权限的要求，往往需求实现配置类。
+	>解法/思路： 基于用户权限在方法级别使用权限注解限制对方法的访问-----
+		>开启使用： 配置类继承GlobalMethodSecurityConfiguration, 注解加上@EnableGlobalMethodSecurity.   方法上使用@Secured("权限") @RolesAllowed("权限")   。。。配置类里可以重载createExpressionHandler()方法来增加许可计算器---以便表达式中使用hasPermision()方法
+			>方法上SPel表达式限制调用：@PreAuthorize()使用入参构造表达式来判断是否调用本方法，不能调用则抛出异常。@PostAuthorize()使用返回结果构造表达式来判断是否本方法不抛出安全异常，表达式值为false则要抛出安全异常。
+			>方法上调用前和调用后过滤：@PostFilter使用结果列表的每个元素构造表达式来过滤结果中为false的元素----比如查询列表方法。 @PreFilter过滤入参列表的元素，比如删除方法。
+			
+4.举动-痛点：远程调用的通信逻辑多，服务端发布服务的事务也多。简化这些非业务的操作，封装抽象出通用的 服务模型，工具模型。即为 spring对远程调用的支持。
+	>解法/思路1： 服务端：提供接口、实现类、服务名，服务发布端口即可。rmi方式。
+		>开启使用： 提供RmiServiceExporter bean。 在这个bean里注册服务接口-实例-服务名-端口，来将一个服务 传递给它，它内部用一个适配器封装这个实例，绑定到RMI注册表，注册服务器在端口侦听调用请求，根据服务名直接转发给相应的服务适配器处理。
+					客户端提供RmiProxyFactoryBean 这个bean。 这个bean里注入rmi服务协议，服务的接口。那么工厂bean就会返回一个RMI Proxy它会调用远程RMI注册中心获取到服务是否注册并且注册信息返回，从而在实际调用代理类方法时，开始独立的新通信通道去调用服务。
+		>远程调用是否经过外网：内部调用不关心防火墙，但是经过外网则有这个问题。
+		>服务端和客户端是否：都要是java应用。
+		>传输数据的序列化协议：是否是java序列化机制。
+	>解法/思路2：http通信+二进制消息格式：Hessian
+		>开启使用： 提供HessianServiceExporter bean , 这是类似controller角色的bean, 在servlet转发过来后通过mapping映射找到对应的服务bean，执行这个回调对象的方法。提供一个HandlerMapping 的bean.
+		>客户端：提供一个HessianProxyFactoryBean
+	>解法/思路3：http通信 + java对象序列化机制： Http Invoker
+		>开启使用：服务端提供HttpInvokerServiceExporter 这个 bean.也是springmvc机制, 接受来自servlet转发过来的调用。
+		>客户端：HttpInvokerProxyFactoryBean
+	>解法/思路4： soa思想：应用可以并且应该被设计成 依赖一组公共的核心服务。相当于应用就是服务的接口的逻辑调用组合。而不是每个应用都重新实现一遍相同的多个服务的功能。
+		>JAX-WS编程模型：
+		>开启使用：制作一个服务：类上的声明@WebService 和方法上的声明：@WebMethod, 类继承SpringBeanAutowiredSupport类--或者注解@Component，配置类提供SimpleJaxWsServiceExporter 这个bean----它将搜索注解了@WebService的类当作服务实例。
+		>客户端： JaxWsPortProxyFactoryBean
+		>服务的WSDL描述：
+		
+5.举动-痛点： springmvc对rest风格的http请求的支持：从请求本身的restful描述到返回的restful描述的资源----而不是一个页面--即不是用HTML来格式化数据模型而是json、xml.即用消息转换器而不是用视图转化器。或者委托型视图解析器：ContentNeogotiatingViewResolver------委托的策略可以默认--也可以通过管理器：ContentNeogotiationManager来获取。依请求的数据类型而使用相应的数据解析器。
+	>解法/思路： restful风格的控制器。不使用上述的委托型试图解析器，而是用消息转换器。控制器产生数据--->消息转换器处理后 格式化数据之后直接返回。消息转换器也包括将请求参数封装到对象里，map里，
+		>启用：当未加@ResponseBody时，方法返回的实体参数会存到模型中，然后到视图中去渲染；但是加了，则会跳过视图渲染，传给消息转换器处理--格式化后写入返回流。如MappingJacson2HttpMessageConverter转换器
+			  同理，请求传来的数据格式是json，那么调用合适的消息转换器来格式化数据到请求方法的入参实体对象里，可以用@RequestBody
+				>子痛点：为避免重复多个方法使用@Response，直接在类上使用@RestController注解即可。
+				>子痛点：为了响应状态，方法返回ResponseEntity--内容包括实体和http状态码。或者用@ResponseBody + @ResponseStatus.  对于异常处理@ExceptionHandler可以解决问题。ResponseEntity好处是可以填充报头。
+				>子痛点：编写http请求端包含了很多模板式代码，业务相关的代码则少，所以提取出模板代码做一个模板类的模板方法，回调业务对象的方法。spring实现的就是RestTemplate
+	
+6.举动-痛点： 主动利用异步通信的高效，主动转化为异步通信形态模型(有数据依赖的两个动作都有可能转换为两个异步多线程通信服务)，异步通信问题。异步模型：并行运行的两个服务，独立运行的两个服务，一个服务对另一个服务有数据依赖---而不是流程依赖/动作依赖/同步时序依赖。有数据依赖的两个动作，可以转换为并行运行的条件：方法是一个无返回类型--即方法的调用纯粹为了执行并不需要获取结果-----而方法里分为两块代码，前一块产生数据A， 后一块利用数据A做一些操作，且操作数据A1,A2...互相之间没有先后顺序要求，即可以并行，那么就可以将前一块代码和后一块代码分别独立运行且分别多线程地执行，前一块代码处理结果放到一个队列里，后一块代码阻塞式的获取队列里的元素。即异步通信不是一定要等消息中心发--即不一定是发布订阅模式，而可能是发布-/监听/轮询/阻塞式轮询 模式。
+	>解法/思路：消息代理,消息代理的对外接口规范JMS。邮件发送接收、任务发送执行，都是异步多线程通信。点对点模型(发送到队列，耗竭型消费/争抢型消费)，发布订阅模型(发送到topic，对等型消费/等同型消费)。
+		>开启使用：提供了模板JMSTemplate, bean  和 连接池/工厂：如ActiveMQConnectionFactory 和目的地:ActiveMQQueue或者ActiveMQTopic 。另外，消息转换器也可以提供。
+		>子痛点-异步接收消息：消息驱动bean, 类似于队列里有消息了回调这个bean的方法。
+		  >实现1：提供一个消息监听器：实现了MessageListener的类，并且注解了@MessageDriven
+		  >实现2：提供消息监听器容器、消息监听器，并且在xml中配置。然后写一个类，有一个方法，xml中消息回调方法即为它。
+		  
+		>子痛点：利用jms来做rpc调用。
+			>实现1： JmsInvokerServiceExplorter --> AInterface  提供这个explorter 这样的bean。 而这个explorter又可以当作一个消息监听器，配置到jms消息监听器里，而监听的，正是从JmsInvokerProxyFactoryBean的远程调用。
+			
+	>解法/思路2： 通用的更细的消息协议：AMQP 实现的消息队列：如RabbitMQ 。
+	 >AMQP消息通信模型： sender -> Exchange -> 队列 -> client/receiver   。其中Exchange 有多种类型，和队列之间有bindings绑定关系。
+		>开启使用： 服务端ServicImpl --> RabbitTemplate --> connectionFactory(连接配置到RabbitMQ)， 发送方法的参数：消息-exchange 名称--routing keys
+					接收端：类似，但接受方法里有多“queue”名称。
+						>接收端异步消费：使用Handler --> 监听器-->监听器容器(都是来自rabbit的名称空间，配置)
+	
+7.举动-痛点：web页面和服务端的全双工通信问题，即服务端主动发送消息给web页面的问题。
+	>解法/思路： 浏览器开启一个监听端socket, 服务端开启一个发送socket。这个socket就是websocket。
+		>开始使用：继承AbstractWebSocketHandler, 或者扩展TextWebSocketHandler 和 BinaryWebSocketHandler。编写配置类-实现WebSocketConfigurer, 并且增加@EnableWebSocket注解---目的是注册前述的handler  ..以及备用方案SocketJS , withSocketJS()方法。//资源处理器或许会用到，可以配置在spring中，对于静态资源请求有帮助：即资源处理器配置为---”请求url-本地资源位置“的映射。
+					websocket弱点是对于防火墙或许无法穿透。SocketJS是用http/https来通信。
+	>解法/思路2： 高级的处理协议STOMP
+		>开启使用： 配置类继承AbstractWebSocketMessageBrokerConfigurer, 使用@EnableWebSocketMessageBroker
+			>消息发送接收过程：消息带有/topic或者/queue前缀的消息直接发送给代理，代理发送给订阅了这些目的地的客户端， 而消息带有/app则路由发送到带有@MessageMapping的控制器方法中, 返回值再发送到代理上，...
+						@SubscribeMapping回调处理。
+			>服务端回送消息给客户端方式：服务端发送消息到本地的代理，本地的代理会发送消息给客户端--包括浏览器上的。@SendTo注解在发送方法上是重新选择接收方--订阅了这个主题的客户端。
+					>任意地方主动发送一条信息：使用SimpleMessagingTemplate来发送消息到特定的主题
+					>发送给指定用户：@SendToUser
+					
+8.举动-痛点：邮件功能抽象，并用spring来管理模板。
+	>解法/思路： 封装 连接工厂，提供发送邮件的模板。
+		>开启使用：提供JavaMailSenderImpl(发送端实现) --> JndiObjectFactoryBean(代理一个MailSession会话) 两个bean 
+		>构建邮件内容：富文本/html模板： VelocityEngineFactoryBean, 从而引擎+模板+数据模型  而把整个图像情形都渲染出来。同理使用thymeleaf也简单，创建ThymeleafContext 实例， 再调用方法输入：html+ 上下文数据模型 即可渲染ok.----资源位置使用ClassLoaderTemplateResolver实现。
+		
+9.举动-痛点：管理和扩展功能，应用在运行中管理、监视、配置bean。
+	>开启使用： MBean服务器 --> MBean导出器MBeanExporter --> 普通的bean 比如一个controller ， 同时可以设置管理属性/管理bean的哪些方法,  以便从JMX管理工具远程的查看正在运行中的应用中的bean的属性并调用bean的方法。
+				注解方式使用：@ManagerResource @ManagedAttribute @ManagerOperation来表明哪个类要暴露，哪个属性要暴露，哪个方法要暴露。没有tomcat需要启动一个server : MBeanServerFactoryBean
+		>远程接口管理MBean:  首先服务端提供一个在1099监听的注册表RmiServiceExporter或者RmiRegistryFacotryBean --> 一个远程bean: ConnectorServerFactoryBean 相当于一个服务器， 客户端提供MBeanServerConnectionFactoryBean来连接远端的Rmi, <---JmxClient 两个bean ；利用这个connection, 可以进行远程设置/获取属性，远程调用方法。
+			>通知机制：远程应用主动发送消息到监听者。MBean服务器的主动通知功能，通知给MBean监听器。服务端：实现NotificationPublisherAware, 增加@ManagedNotification
+						客户端：实现NotificationListener接口 <-- MBeanExporter
+						
+10.举动-痛点：Spring开发本身的简化。spring boot, 就像微积分公式更新极限求导一样简便。
+	>解法/思路： 提供一组互相兼容的某方面业务的依赖，则一组又一组，使得依赖比较简单。如spring-boot-starter-web, spring-boot-starter-jdbc 
+				 自动配置：(至少3大类springmvc分发器, thymeleaf视图解析器, jdbctemplate)提供装配好一系列常见配置bean到容器中的功能。用户只需要引入相关的jar即可。比如classpath类路径下引入Thythemleaf包，就会自动配置出spring mvc中解析视图需要的相应bean。比如引入springmvc, 则会装配视图解析器、资源处理器、消息转换器。比如 spring-boot-starter-jdbc 就会在容器中装配好JdbcTemplate实例
+				 命令行运行脚本：
+				 Actuator:
+		>启动类：编写启动类A，main里SpringApplication.run(A.class, args), A类上需要@ComponentScan 和 @EnableAutoConfiguration两个注解。
+		>构建: jar/war, 直接mvn package 即可，生成的jar/war 可以直接java -jar xxx.jar/xxx.war运行 
+		>应用内部监视和再配置：Actuator: 查看配置、查看容器中的beans、查看线程、查看环境量、查看trace
+			>启用：添加spring-boot-starter-actuator
+		
