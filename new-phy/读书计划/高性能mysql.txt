@@ -173,25 +173,45 @@
 			>where上的通用：在函数比较之前，先用可以用到索引的比较条件来过滤，这样可以大大缩小筛选范围。索引条件辅助筛选！！！
 			
 举动-痛点8： 高级特性的利用
-
-
-			
-x.举动-痛点： SQL优化
 	>解法/处理思想：
-		>避免大事务产生过多的undo: 如导出数据到新的表：先create table new_table like old_table ,然后..., 所以需要手动开始事务、小任务做完、提交事务。不能默认一条语句来全部功能完成 而等待自动提交。
-		>分区表：创建分区表时带上：partition by range columns(col1)， 各个分区独立索引。插入数据，数据就会根据分区列而存到不同的分区中，查询时优化器则会选择过滤哪些分区----只要直接使用分区列来进行过滤。
-		>合并表：将被淘汰，略。
-		>视图：不能创建触发器。查询视图的实现算法：合并算法---将查询语句和视图创建中的查询语句合并--然后去底层表查询数据返回。临时表算法----先执行视图查询语句查出数据放到临时表中，后将查询语句转为等价的查询临时表的语句；通过explain type字段可以看出采用的临时表delivered---临时表算法视图不能被更新。。
-				>create algorithm=temptable view as select * from table1 一般有group by ,union  就不能更新视图。
-				>用途：不影响查询结果而更改视图的表结构；给表列赋权。因为没有索引-----所以也可以用来当作连表的第一个表。
-		>存储过程：能在应用程序中就不放到服务器端。
-		>触发器：可能导致死锁和锁等待----从而导致原来的sql执行失败。一个事务里，所以一起成功或者失败。
-		>事件：即定时任务。create event abc on schedule every 1 week do begin xxx end;
-		>取锁和释放锁：之前可以增加：declare continue handler for sqlexception begin end;
-			>取锁：get_lock(),,,,, 释放锁release_lock()
-		>游标：
-		>绑定变量：
-		
+			>避免大事务产生过多的undo: 如导出数据到新的表：先create table new_table like old_table ,然后..., 所以需要手动开始事务、小任务做完、提交事务。不能默认一条语句来全部功能完成 而等待自动提交。
+			>分区表：创建分区表时带上：partition by range columns(col1)， 各个分区独立索引。插入数据，数据就会根据分区列而存到不同的分区中，查询时优化器则会选择过滤哪些分区----只要直接使用分区列来进行过滤。
+			>合并表：将被淘汰，略。
+			>视图：不能创建触发器。查询视图的实现算法：合并算法---将查询语句和视图创建中的查询语句合并--然后去底层表查询数据返回。临时表算法----先执行视图查询语句查出数据放到临时表中，后将查询语句转为等价的查询临时表的语句；通过explain type字段可以看出采用的临时表delivered---临时表算法视图不能被更新。。
+					>create algorithm=temptable view as select * from table1 一般有group by ,union  就不能更新视图。
+					>用途：不影响查询结果而更改视图的表结构；给表列赋权。因为没有索引-----所以也可以用来当作连表的第一个表。
+			>存储过程：能在应用程序中就不放到服务器端。
+			>触发器：可能导致死锁和锁等待----从而导致原来的sql执行失败。一个事务里，所以一起成功或者失败。
+			>事件：即定时任务。create event abc on schedule every 1 week do begin xxx end;
+			>取锁和释放锁：之前可以增加：declare continue handler for sqlexception begin end;
+				>取锁：get_lock(),,,,, 释放锁release_lock()
+			>游标：declare  name cursor for select ..... ; open name ..... fetch name into var;用loop end loop或者repeat until done end repeat;可以实现循环。
+			>绑定变量：使得sql语句解析一次，而缓存执行计划，后面客户端直接传递参数和句柄即可---且是二进制形式。
+				>SQL接口绑定变量：prepare name from @带?的sql字符串， set @var=val; execute name from @var;deallocate prepare name;相当于一种动态sql的功能。
+			>用户自定义函数：UDF常常由C语言编写。一般当作计算工具用
+			>插件：
+			>字符集：character_set_connection, character_set_client, character_set_result 等多种字符集设置变量；同时，字符集设置级别：库-表-列。
+			>全文索引： 索引列、关键词、关键词所在的文档id、关键词和各个文档的相关度--出现次数、关键词对应所在的文档总个数和出现总次数。
+				>查看：show index from tablename; 返回列中有：index type: fulltext就是全文索引
+				>增加：alter table name add fulltext key(colname);//
+				>查询相似度：select match(colname1, colname2) against('text content') from tablename where match(col) against('text content');返回的就是匹配的相似度,匹配的文本内容中的单词数多则相似度高-文本相似也高些。最好不要加在order by 上进行排序。
+				>布尔搜索：select title, right(title, 20) from tablename where match(title) against('+text1 +text2') in boolean mode
+				>短语搜索：against('"短语"') 这样可以精确匹配，返回结果。
+				>缺点：相关度的度量只有词频，不能出现位置。
+			>XA事务：在多个服务器之间同步数据的方法。
+			>查询缓存：直接缓存查询的结果，且有失效机制。如果有实时数据不确定数据则不会缓存。
+			
+举动-痛点9：优化服务器配置
+	>解法/处理思想：
+		>服务器资源：内存大小、cpu核数
+		>设计目标：工作负载、数据量、应用需求/类型
+		>配置文件位置：/etc/mysql/my.cnf
+		>查看：show global variables;
+			
+x.举动-痛点： SQL优化高级特性
+	
+
+
 		
 参考资料：
 1.mysql手册
