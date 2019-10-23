@@ -1,0 +1,12 @@
+1.问题：
+	>下载：安装好。路径上没有空格。
+	>用管理员方式运行：mysqld --initialize-insecure --user=mysql
+			mysqld -install
+			net start MySQL
+			mysql -u root -p
+			select host, user, authentication_string from mysql.user;
+			 update mysql.user set authentication_string=password("lsp") where user="root";
+			flush privileges;
+			quit;
+			mysql -uroot -p lsp
+	

@@ -3,6 +3,7 @@
 		>文件查找：find -type d -name "dirname"  当前目录中找目录
 			   find / -type d -name "dirname" 系统中找目录
 			   find / -type f -name "filename" 系统中找文件
+			   find / -type f -name "*prosser*" 2>&1 | grep -v  "Permission"  重定向并且不显示有Permission的即没有权限的告警输出。
 		>文件内容搜索：find . -name "*.conf" | xargs grep -in "10.8.8.119"    当前文件夹：.  其他文件夹/  文件类型".conf" 文件内容"10.8.8.119"
 				find . | xargs grep -in "appfang.58.com" 当前目录下的所有文件中搜索 包含有"appfang.58.com"的内容---体现出文件和在文件中的位置。
 				find /opt/web/hbg_api_miniapp/conf/ -type f -name "*server*" | xargs grep "GlobalNamingResources" 指定目录搜索指定内容 -in可以不要。但xargs必须要。

@@ -2,3 +2,12 @@
  	>无名文件夹：直接输入名为：.name.
  	>无名文件：cmd中输入：echo > .name.或者直接对一个文件重命名为输入：.name.
 	>快速创建文件夹：ctrl+shift+N
+	>
+
+
+
+
+
+
+参考资料：
+1.https://blog.csdn.net/Vinci_ljl/article/details/100761831（右键cmd窗口）

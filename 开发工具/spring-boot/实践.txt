@@ -1,0 +1,2 @@
+1.问题：
+	>最简单配置：pom.xml里配置依赖即可。工程里的各个组件如controller.service.repository直接使用spring, springmvc的注解。
