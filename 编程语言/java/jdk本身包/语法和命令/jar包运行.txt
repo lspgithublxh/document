@@ -22,3 +22,5 @@
 	 java -Djava.ext.dirs=./lib -Dlog4j.configuration=file:./config/log4j.properties  -jar TokenServer-1.0.1-SNAPSHOT.jar 对于用slf + log4j的方式，除了log4j相应jar加入路径，同时指明路径也是必要的。
 		
 	>maven 工程的pom配置plugin来自动打包依赖到lib里， 和 配置Main-fest..那么此时需要package然后将包放到一个目录下，在这个目录下，将生成的lib文件夹内容考进来，直接java -jar xxx.jar 即可----相应参数也可以设置
+	>打jar包，可执行jar, java -jar 来运行的这种。可以新建一个项目，然后加入一些类，pom.xml配置，或者运行一下main程序，然后用eclipse打包为可执行文件。--否则原项目上，。
+
