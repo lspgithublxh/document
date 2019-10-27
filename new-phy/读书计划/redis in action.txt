@@ -1,0 +1,121 @@
+--------redis的处理思想都对应有 相应的“某种举动 及其导致 的问题”
+>需求背景-痛点陈述：现实开发中遇到了什么痛点导致XXX的开发？  
+>那么痛点的原因、产生的条件：分析是什么环境、什么动作 什么效果什么目的 等精准形容词的事实描述 导致了痛点的必然发生，难以避免？。条件-痛点。原因-结果。
+>则可以消除痛点的最简单的精准事实陈述是什么：修改“条件-痛点”陈述的哪一部分就可以导致没有痛点产生。 要做的根本事情是什么：
+>那么新陈述表明的解决动作是什么：
+>新情况的新痛点是什么：新举动、新环境会产生的新痛点描述出来， 继续上述4条操作。
+
+1.举动-痛点：高性能的写入系统(1000次/s)在关系型数据库中难以做到，直接的key-list存储也尚无。//可用在广告定向引擎上。	twtter分析引擎上。
+	>解法/处理思想：性能-内存数据库，复制特性-扩展读性能，客户端分片-扩展写性能，独一无二的数据模型-各种数据类型.。
+		>关键特性：复制、持久化、客户端分片。扩展为一个	数百GB数据，每秒处理上百万次请求的系统。
+		>扩展功能：发布订阅，存储过程/脚本。
+		>常见应用：搜索引擎。主存储，二级存储。
+		>与memcache: 同：存储键值映射、性能高。异：redis以两种方式写入硬盘，键值对数据结构更多，单进程子进程----memcache多线程；命令仅仅增删改查等。memcache可以append字符串---当作list使用，删除使用黑名单。
+		>5种数据类型：字符串、列表、集合、散列表、有序集合。有专属的命令，批量操作和不完全的事务支持。MongoDB硬盘存储。
+			>对于聚合数据，redis里可以是整数或者浮点数，但是memcache就只能是整数。
+			>String: 值可以是字符串，有字符串操作。值可以是整数/浮点数，可以进行自增自减操作。
+				>命令：get key, del key , set key , incr key 整数自增。setex key time-long； decr key, incrby key amount , decrby key amount, incrbyfloat key amount 双精浮点数增加
+					append key value, 等字符串常见操作。getbit key offset 当作二进制位串进行二进制位的设置和获取,bitcount  , bitop类似二进制位串操作。
+			>List: 每个节点是字符串，可以两端压入弹出元素，可以查找删除元素，可以读取单个或者多个元素。
+				>命令：lpush key obj, lpop key , rpush key obj, rpop key, lindex key i, lrange key  i j  ;ltrim key i j 修剪key为指定长度会改变数据。
+						blpop key timeout 阻塞式弹出，brpop key timeout 阻塞式弹出 ；rpoplpush key1 key2 右边弹出左边压入 ； brpoplpush key1 key2 timeout 阻塞式右边弹出左边压入
+			>Set: 随机取元素，集合运算-并集交集差集，添加获取移除单个元素。
+				>命令：sadd key obj, srem key obj, sismember key obj, smembers key , sinter ,sunion, sdiff 集合运算。
+						scard key 集合元素个数 srandmember key  count 随机返回n个元素 。 spop key 随机移除一个元素 。smove key1 key2 item 存在则转移。
+						sdiff key1 key2 差集， sdiffstore dest-key key1 key2 差集存储到新的集合
+			>Hash: 值就是 键值对无序集合，添加获取删除单个键值对。
+				>命令：hset key sub-key val, 	hgetall key , hdel key sub-key , hincrby key sub-key val , hmset key ...批量设置,hmget key sub-key sub-key2 批量获取 
+					  hlen key 获取键包含的键值对的数量 hkeys key , hvals key 获取所有的键或者所有的值。 hincrby key sub-key 子健自增
+			>Zset: 值是 字符串-分值 之间的有序映射，元素顺序按照分值排序。按分值范围可以获取到元素。
+				>命令：zadd key score member, zrange key i j withscores 查看索引范围内的所有成员--并且按照分值排序，zrangebyscore key scorestart scoreend withscores 按分值范围返回所有成员并且按照分值排序。zrem key member移除成员。zincrby key sub-key val 自增
+						zrevrange key start end 反序取出分值最大的成员
+						zinterstore dest-key key-count key1 key2 aggregate sum/min/max  求出zset中存在于set中的member并且按照原顺序输出到一个新的zset
+						zremrangebyrank key start end 批量移除某个排序范围外的数据。
+						zcard key 统计有序集合的元素个数。
+						zcount key min max 返回分值在min-max之间的所有元素个数
+						zrank key member 返回member的排名
+						zrevrank key member 返回member的排名--按照分值从大到小
+						zscore key member 返回member的分值
+						zrange key i j withscores 返回排名在i j 之间的成员,同时还带上分值
+						zrevrange key ij withscores 同上，只是排序按照分值从大到小
+						zunionstore... 10000个元素需要7-8ms
+						
+		>其他命令：
+			>设置过期时间：expire key time-long 设置多少秒后过期。只能在键的级别，不能到集合的子键级别。
+						   expireat keyname timestamp 设置过期时间到某个时间戳为止。
+						   persist keyname 移除键的过期时间
+						   ttl keyname 查看还有多久过期。
+						   pttl pexpire pexpireat 都表示时在毫秒时间戳的层次处理。
+			>删除key: delete key 
+			>watch:
+			>multi: 开始事务
+			>exec: 提交事务。
+			>discard: 
+			>发布和订阅：其实redis做的并不够专业，所以一般很少使用。消息积压问题，可能会影响到正常的其他业务，导致崩溃或者被os杀死。第二是数据传输的可靠性，可能导致订阅方在短线的时候消息丢失。
+				>subscribe channel1 订阅
+				>psubscribe pattern 订阅给定匹配模式的所有频道//是一种好的分类方式。
+				>unsubscribe channel2 取消订阅
+				>punsubscribe pattern 取笑订阅给定匹配模式的所有频道。
+				>publish channel message 发布消息
+			>sort: 对列表排序，对集合排序。
+			
+		>持久化方式：用小而紧凑的格式将内存中的数据写入磁盘----方式1：在指定时间段内有指定数量的写操作执行/ 或者使用两条命令中的一条来转储到磁盘。方式2：将修改数据库的命令都顺序追加写到一个文件里。
+		>主从复制的目的：读性能和故障转移。：先全量复制，后实时发送写命令。
+		>内存目的：避免update时候随机读磁盘然后又随机写。insert虽然无此问题--一般直接append.
+		>网站请求中数据一致性和数据加密的保证做法：数据加密---客户端加密或者客户端请求时后端返回了加密结果---来保证没有伪造数据传过来。明文的一致性：返回客户端明文+对这个明文加密后的token，那么客户端再次将这个明文返回来的时候也必然不能对这个明文修改---因为token和明文是一致的，一个修改都要修改。 
+			>使用expire还是写脚本定期删除：取决于处理要删除的数据的精细程度和删除数据的重要程度。
+			>使用redis实现购物车：当然用来存储用户会话cookie信息是最好的。
+			>多层级的map: 可以在键名上通过lvl1:lvl2:lvl3:...方式来实现。
+		
+		>数据的一致性变化：事务问题：一般是协同修改、多处联动修改、守恒式修改才会导致数据不一致性的变化。即数据库变为了一个各处数据不一致的状态。
+			>中间过程的不一致：运算简单相同。
+			>完全的产生脏数据：
+			>开始使用：multi ...  一系列命令 exec 。redis会将命令加入到一个队列里，然后顺序执行---从而没有多处修改导致的数据一致的问题。也可以用来批量执行命令---减少网络传输时间。
+			
+2.举动-痛点2：数据安全和应对系统故障的办法
+	>解法/处理思想：数据持久化到硬盘，复制特性--数据副本复制到附加的机器上(提升系统的性能和可靠性)，事务特性和流水线特性
+		>数据持久化方法：
+			>快照：某个时刻的所有数据都写入磁盘。
+				>配置选项如：多久执行一次快照、 是否对快照文件压缩、。。。
+				>启动方法：客户端使用bgsave命令触发主动开始创建快照；redis就会调用fork创建一个子进程，子进程是父进程的一个副本，开始共享一个内存区域，直到有一方执行了写入操作。
+							客户端用save命令触发bgsave执行比如： save 60 10000 在最近一次快照后开始算起，满足60s内执行了一万次写入条件时就会导致触发bgsave命令执行。
+							客户端shutdown关闭服务器时，term命令时，都会触发执行一个save命令。
+							另一台redis发送sync同步命令时，执行bgsave命令。
+				>性能： 每增加1GB内存，光是创建子进程就会导致系统增加大约会增加10-20ms停顿时间---不能执行任何客户端命令。而生成快照期间还会停顿。
+			>AOF: 类似WAL。顺序写、追加写文件，将写命令写入只追加文件
+				>配置选项如：多久同步到磁盘，AOF是否要压缩。appendfsync=always/everysec/no 中间那个相当于批量的写入命令。
+				>启动方法：写入的内容先放到缓冲区，然后操作系统才决定将缓冲区数据写入磁盘，可以flush()方法触发os执行刷入操作，或者发送sync请求操作系统同步到磁盘。
+				>谨慎重写配置：重写AOF到了删除旧AOF文件时可能导致操作系统hang挂起数秒。bgrewriteof 目的是减少文件大小(实现方法时去重？)
+		>复制：需求来源--redis单线程---所以即使一个命令执行10ms, 每秒也只能执行100个命令。
+			>主服务器：配置了dir和dbfilename等选项
+			>从服务器：配置slaveof host port 那么就会连接配置的这个主服务器。也可以动态发送slaveof host port 来让该从服务器从新的主服务器开始复制，。slaveof no one停止复制。
+			>从连接主的过程：从清空本地数据，发送sync/psync命令--->主开始执行bgsave命令，新的写入命令开始写入缓冲区，生成快照文件后发送给从服务器--->发送完毕后，再将缓冲区的所有命令发送给从服务器，接下来每收到一个写入命令都发送给从服务器。
+				>这就要求：主服务器只使用50%内存，留下空间给bgsave生成快照和创建写命令写入的缓冲区。
+			>不支持主主复制：无法区分命令来源。
+			>多从连一主：如果在快照刚生成时另一个同步请求进来，则会受到相同的快照和缓冲区命令，如果刚刚发送完缓冲区命令有新同步请求，则会重新生成快照。
+			>主从链：合理。从服务器还有从服务器。但从在同步主的时候在解析快照时，从会让从断开连接，从新开始同步。
+			>检查主发送到了从：发送数据之后补充发送一个唯一的虚构值。
+				>info命令中返回的 master_link_status=up字段可以判断从服务器是否完成同步，事先发送冗余值然后等待判断冗余值是否已经可被访问到。aof_pending_bio_fsync==0判断数据更新已经同步到了磁盘。
+			>从复制和AOF中恢复数据：
+				>redis-check-aof:  顺序检查aof文件中是否有损坏的命令。有会删除之后的所有命令。
+				>redis-check-dump: 快照的检验--就用sha1或者sha256就可以。
+		>故障转移：自动故障转移---sentinel 
+			>A主B从：A挂了，那么在B上save生成快照，后scp发送给C服务器，后ssh登录C服务器，启动redis-server start , 然后退出到B服务器，执行slaveof chost cport
+					另一种办法是升级B为主。
+		>redis事务：
+			>watch命令对键监控：如果一个事务在exec之前有另一个事务变动了监视的键，那么前一个事务exec执行时会抛出一个错误。并没有加锁，只是有变动会在exec执行错误而返回报错而选择重试，因此是乐观锁。
+			>unwatch: 在watch之后，multi之前取消监控。
+			>discard: 在multi之后，exec之前可以取消入队的所有命令。---相当于一种取消。
+			>展示商品逻辑：卖家将自己仓库里的商品转移到市场上。市场--一个zset, 卖家的仓库---一个集合或者zset/hset 。转移动作是要分解为转出和增加两个动作的，所以要放到一个事务里。
+			>购买商品逻辑：一手交钱，一手交货。钱从买家转移到卖家，货从卖家转移到买家。钱的转移是两个动作，货的转移也是两个动作，这四个动作都要在一个事务里完成。
+							同时需要监视或者检查市场实时是否还有这个商品，买家实时是否还有足够的钱。监视到变化则重新购买，如果重试次数太多或者超时了，则退出--放弃此次购买。
+		>非事务型流水线：往往通过批处理命令实现。毕竟multi/exec也会有代价消耗性能。第二种，就是使用pipeline流水线，队列，而不包裹multi/exec来批量发送命令---性能会比一个命令一个命令的传递快4-5倍。
+		>局域网通信速度：高速网络一次来回0.015ms, 所以限制了1s内最多执行1000次调用。
+		>redis性能优化：方法1-上述的非事务型流水线。
+			>redis各种命令都能跑多快：redis-benchmark -c 1 -q  基本每秒30000+次。实际考虑到回复解析处理，则只有一半。
+			
+			
+>举动-痛点3：redis作为系统的支持可以做什么
+	>解法/处理思想：
+		>用来记录日志：1.将日志记录到文件里，一段时间后创建新的文件---不断的轮换。2.专门的日志服务syslog, linux上是在514 tcp/udp端口监听日志消息，并且路由到磁盘上的各个日志文件，并负责日志文件的轮换和删除。
+			>redis的做法：就是将日志分别存到不同的list里。还会对每个小时内产生的消息及其频次的zset进行归档---rename为另一个键.last
