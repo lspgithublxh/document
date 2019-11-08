@@ -61,9 +61,90 @@
 				>IBM的研究表明：大量对象都是死的快的，所以新生代分为大块Eden + 小块2Survivor, HotSPot比例为：8：1：1， 每次回收将Eden+1Survivor的对象中幸存的---即认为是很少的复制到1Survivor里，然后Eden+1Survivor就清除空间。当然如果Survivor不够，会分配到老年代。
 			>标记-整理：老年代采用。先标记可达，后统一移动到一端，将端边界以外的空间清理。因为存活率高，没有额外空间进行分配担保。
 		>垃圾收集器：
-			>
-			
-			
+			>Serial收集器：单线程工作方式。先STW方式复制算法 收集年轻代；再以STW方式标记-整理算法收集老年代。用途：虚拟机运行在client模式下。
+			>ParNew收集器：多线程方式。过程和算法同上，仅仅在年轻代采用了多线程。而对于老年代，仍然是单线程。用途：Server模式下。新生代收集器。-XX:+UseConcurrentMarkSweepGC和-XX:+UseParNewGC时开启新生代采用的收集器。
+			>Parallel Scavenge收集器：多线程方式。也是复制算法。目标：可控的吞吐量--即cpu利用率(垃圾回收使用cpu时间短则吞吐量高)。
+				>停顿时间：指的是单次回收时的暂停时间。实际上频率可能在变，导致单次停顿时间短了但是总共的停止时间多了---即吞吐量低了。
+				>自适应调节策略：给虚拟机一个参数目标：-XX:MaxGCPauseMills(单次停顿时间) -XX:GCTimeRadio(吞吐量), -Xmx最大堆。虚拟机自己动态调整新生代大小、Eden和Survivor的比例，新生代对象晋升到老年代的年龄。
+			>Serial Old收集器：单线程，老年代。标记-整理算法。Client模式下。Parallel Scavenge配合使用。CMS的后备方案---CMS模式失败的时候。
+			>Parallel Old收集器：多线程，老年代。标记-整理算法。在注重吞吐量+cpu多核利用的目标下，即吞吐量优先，那么常常组合Parallel Scavenge 配合使用。
+			>CMS收集器：标记-清除算法。目标在缩短暂停时间(使用并发)(而不是注重吞吐量--即不是为了cpu利用率低)(并发时间不算在停顿时间内)。过程：三次标记一次清除。
+				>初始标记：GC Roots直接关联到的对象。STW
+				>并发标记：和用户线程同时运行。GC Tracing，引用链上的所有对象。
+				>重新标记：并发标记期间用户新产生的垃圾。因为并发标记时间显著最长。STW
+				>并发清除：和用户线程同时运行。标记清除。
+			 ----缺点：并发启动的回收线程数=(cpu数 + 3)/4导致cpu<4个时用户吞吐量、执行速度还是有较大的降低。
+						浮动垃圾。导致68%老年代利用就会触发垃圾回收，导致回收次数多。但可以配置调高。85%例如。
+						标记-清除。产生内存碎片。可以各种配置来减少。会在Full GC后整理，或者压缩。
+			>G1收集器：标记-整理算法。长时间运行的系统更适合。低停顿的垃圾回收--指定最大暂停时间--底层原因：不再是全区域的在整个年轻代或者老年代进行垃圾回收，而是新生代老年代都划分为2M为最小单位的区域region,并记录region里面垃圾的多少，按照多少排序优先收集垃圾多的。。
+				>
+		>常见垃圾收集器组合：总结：新生代3种：Serial --> ParNew --> Parallel Scavenge , 年老代3种：Serail Old --> Parallel Old --> CMS   最终的划分小区域垃圾优先并行回收的两代回收：G1
+			>Serial + Serial Old: client模式下。 +UseSerailGC打开启用
+			>ParNew + Serial Old: +UseParNewGC打开启用
+			>ParNew + CMS + Serial Old: Serail Old是CMS的后备方案。在Concurrent Mode Failure之后启用。+UseConcMarkSweepGC启用。
+				>CMS优化选项：CMSInitailingOccupancyFraction---老年代占用多少之后开始垃圾回收68%, UseCMSCompactAtFullCollections垃圾回收后是否要进行一次内存碎片整理，CMSFullGCsBeforeCompaction设置若干次垃圾收集后再进行一次内存碎片整理。
+			>Parallel Scavenge + Serial Old: 虚拟机在Server模式下默认方案。+UseParallelGC后启用。
+				>Parallel Scavenge 优化选项：GCTimeRadio---GC时间占用总时间的比率，默认99 ; MaxGCPauseMills--设置单次GC最大暂停时间。
+			>Parallel Scavenge + Parallel Old:  。通过+UseParallelOldGC启用。ParallelGCThreads并行垃圾回收的线程数。
+		>对象的内存分配：堆上分配(JIT之后在栈上分配。动态编译三个时机：编译时--cglib通过asm复制操作字节码产生(字节码增强)(对生成好的.class生成它的子类)(aspectJ通过JCC自己的语法编译工具：直接修改class文件，在调用的地方进行增强--前后增加Observer的方法)，类加载时期，运行时期(JDK动态代理其实也是，类似于动态编译--只是更简单的实现：))
+			>堆区分配：Eden区--不足则发起一次MinorGC，TLAB上， 老年代。
+			  >打印内存回收日志：在发生垃圾收集行为时进行。-XX:+PrintGCDetails
+			  >分配担保机制：Eden中要转移的对象总量太大无法转移放到Survivor中时直接提前转移到老年代的机制(不会只转一部分或转一点到Survivor)。
+				>大对象直接进入老年代：避免频繁MinorGC, 设置-XX:PretenureSizeThreshold参数。
+			  >频繁MinorGC原因：有大对象要分配，导致eden空间剩余较多但不够就开始MinorGC来容纳这个大对象。
+			  >暂停时长多的原因：Parallel Scavenge / G1 最大暂停时间设置的太小，是会导致这种现象的。频繁MinorGC导致。
+			  >对象进入老年代：每个对象都有一个年龄计数器，先Minor到Survivor,增长1，然后每次Minor在S0,S1之间转移，每次增长1，直到默认15或者指定的-XX:MaxTenuringThreshold参数。
+				>算法2：中位数法：占用空间一半的某个年龄的对象及其以上年龄的对象直接转移到老年代。
+			    >空间分配担保：如果晋升到老年代的大小大于老年代剩余空间大小，大于，则直接进行一次FullGC, 小于则先查看是否允许担保失败----允许则只进行一次MinorGC, 否则也是FullGC
+					(就是老年代担保有空间可以分配剩下的对象-XX:-HandlePromotionFailure=true)
+		>虚拟机命令工具：jps, jstat, jinfo,jmap, jstack, jhat。。。jps -l
+			>jmap: 内存转储快照的生成，堆内对象的查看。-heap查看垃圾回收器、参数配置等。 -histo:对象统计 。 -dump堆转储快照。
+			>jstack: 显示虚拟机线程快照。查看各个线程的状态：wait ,wait for 等待中--执行中--/外部请求等待中，等待什么资源----阻塞中bloking。。查看线程长时间停顿的原因。堆栈信息，在哪个方法哪条代码上等待，是否占用了哪个对象的锁。
+			  >死锁：
+			  >死循环：
+			  >请求外部资源：
+			>jhat: 堆转储浏览器，分析heapdump文件，并启动一个http服务器可以可视化访问查看。一般不采用。而是导出来，在Eclipse Memory Analyzer 里进行分析。
+			>jstat: 统计分析工具。类加载、垃圾收集、
+			  >jstat -gc pid interval times 查看各代占用和垃圾回收情况，-gcutil -gccause 。。jit编译过的方法等。
+			>jinfo: 虚拟机各项参数值：jinfo -flag 参数名 pid 
+			----查看所有线程的堆栈信息：用Thread类提供的方法。火焰图。
+		>虚拟机监控工具：visual vm 动态监控cpu/内存占用，堆内存对象占用，虚拟机栈中各线程的运行状态和调用链，Mbean的管理--远程查看值和调用方法。
+			>独特的是可以安装插件：比如Visual GC 动态查看堆区各代占用比例，垃圾收集情况。
+									比如Btrace ：场景：某方法报错，但是没打印入参和返回值。可以Btrace来查看。HotSwap技术---代码热替换技术---虚拟机运行不停止的情况下，替换已经加载的类的代码。定位连接泄漏、内存泄漏、解决多线程竞争问题等。
+		>故障排查：
+			>网站长时间没有响应：GC停顿--->Parallel Old这种吞吐量优先的收集器--->Full GC耗时14s--->文档序列化为大对象直接加到了老年代。：避免批量产生生存时间长的大对象。
+				>不仅-Xms=-Xmx，而且-XX:PermSize=-XX:MaxPermSize。。对eclipse: 可以禁用代码验证-Xverify:none和禁止显式GC：System.gc()-XX:+DisableExplicitGC
+			>逆向ajax技术：Comet, server side push .。。系统占用两种情形：java直接本地方法调用发起的系统调用，第二种是直接向系统申请共享内存/直接内存Unsafe.allocateMemory()--内核态和用户态都可以访问--避免态的来回切换和数据的来回复制NIO和零拷贝都基于这个原理。	但是Direct Memory的回收时间只能是某次Full GC之后垃圾收集器顺便进行回收废弃对象占用的空间。			
+				>Comet: 基于http长连接的推技术。前端comet4j.js	后端comet4j-tomcat7.jar
+			>JVM外会占用的空间：
+				>Direct Memory: 通过-XX:MaxDirectMemorySize来调整大小。抛出的OOM：就会是Direct buffer memory
+				>线程：系统的线程已满。unable to create new native thread//。。java虚拟机创建的线程，对应轻量级进程，对应linux的内核线程。
+				>socket缓冲区：系统每个socket读写分别占用30KB左右的内存
+				>JNI调用的本地库：也不在JVM中。
+			>网站响应比较慢：CPU占用时间太多(查看Dtrace看是哪个系统调用占用)-->fork系统调用太多---->java调用Runtime运行命令/shell脚本---->jvm会克隆一个和当前虚拟机一样环境变量的进程，再在该进程里执行命令,然后退出进程--->是个消耗cpu和内存的事情。
+				>linux和windows上线程的区别：windows上的线程由操作系统负责线程的调度。linux上的线程由创建线程的进程进行调度。windows上的线程在内核中也有。linux中在内核中只有进程，从而用户空间中的概念“线程”是用轻量级进程来表示的----共享一个代码上下文，内核中--进程是调度的最小单位。
+				>web服务的同步调用和异步调用：同步调用就是通常的。异步调用就是回调，例如AIO, netty的回调。异步调用的服务方就压力大，建议改为消息发送方式：客户端接收；即交给第三方。
+		>eclipse插件开发：比如eclipse启动时间统计。继承IStartUp类，并编写plugin.xml并打jar包放到plugins下即可。
+			>启动时禁止字节码验证：-Xverify:none
+		>JIT即时编译器：内嵌在JVM字节码执行引擎中。将字节码映射为本机机器码，由一个解释器完成。性能则不足，为此将部分频繁调用的方法先优化后直接编译为本机机器码，那么直接走系统调用，不用再次解释了，性能得到提高。由C1,C2两种编译器，后者优化程度更高。可以优化回退为解释执行，分层优化。而javac是静态编译。
+			>优化地方：重复计算、方法内联(调用方法替换为方法的代码)、逃逸分析-栈上分配-标量替换(数据流分析机制，将对象放到线程栈里而不是堆里，且存对象的属性而不是对象本身，避免对象头和对齐填充空间的浪费)、逃逸分析-同步消除(锁没有逃逸仅仅线程私有，则JIT将同步锁去掉)
+			>优化代价和结果：代价是运行时编译时间。结果是：热点方法不断出现而被编译，代码整体编译程度越来越高，性能越来越好。-server模式。
+		>用户线程的安全点检测、挂起、恢复：在一次GC前。
+		
+举动-痛点3：虚拟机执行子系统
+	>解法/处理思想：平台无关性、语言无关性。java语言规范、java虚拟机规范。
+		>Class文件：8位字节位单位的二进制流。数据项>8位，高位在前的多个字节来存储。
+		 >存储结构：无符号数、表。(另外有：容量计数器，前置在若干个连续的同类数据项之前，称这类数据的集合)
+			>无符号数：4种。u1,u2,u3,u4 描述数字、索引引用、字符串。
+			>表：复合数据结构。多个无符号数、其他表为数据项。以_info结尾为表的名称，所以有很多种。常量池是cp_info 
+		 >头4个字节：魔数。标记是否能被虚拟机接受。0xCAFEBABE
+		 >接着4个字节：文件次版本号(2字节,小数后面65535最大)+主版本号(2字节，45开始，1.7就是51)。45.65535为第一版的最大次版。JDK向下兼容。
+		 >接着常量池入口：表类型。容量计数器(1字节,从1开始) + 常量 (字面量+符号引用)
+			>字面量：字符串、final常量值
+			>符号引用：编译产生的：类和接口的全限定名、字段的名称和描述符、方法的名称和描述符
+		
+		
+		
 参考资料：
 1.逻辑设计：《java虚拟机规范》
-		
+2.https://www.cnblogs.com/jueyoq/p/7900232.html(即时编译)
