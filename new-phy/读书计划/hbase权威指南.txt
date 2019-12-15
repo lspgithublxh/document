@@ -187,16 +187,88 @@
 	>协处理器：CoProcessor将计算移动到数据的存放端。数据的处理流程直接放到服务端。像存储过程、触发器，像mapreduce 
 	  >observer: 与触发器类似。回调函数在一定的事件发生后执行。
 	   >RegionObserver: 处理数据修改事件。
+	    >region生命周期的pending open-->pending close阶段起作用：是一种过程干涉的被主框架钩子勾住的回调函数。可以在各种region事件做之前被调用---比如拆分、回写、合并、关闭(被转移到其他regionserver)。
+		>客户端各种API调用之前之后也可以加钩子函数。
+		>可以访问WAL日志getWAL() HLog
+		>ObserverContext: 通知协处理器框架回调函数执行完毕时需要做什么。比如在某一步时停止继续执行---不再执行剩下的协处理器--bypass()。
 	   >MasterObserver:管理DDL操作。集群级别事件。
+	    >提供各种DDL钩子函数：内部可以利用环境对象而对服务器做一些如文件创建的工作，但是钩子函数没有返回结果---毕竟这是一个类似触发器一样的功能：在事件发生时做一些事情。
+		>提供region分配、移动、负载均衡操作前后的钩子函数：
+		>提供master关闭前后的钩子函数: 
 	   >WALObserver: 控制WAL的钩子函数。	
-	  >endpoint: 类别存储过程。服务端计算工作。
+	  >endpoint: 类别存储过程。服务端计算工作。实现CoprocessorProtocol接口
 	   >通过添加一些远程过程调用来动态扩展RPC协议。
+	   >程序编写：继承BaseEndpointCoprocessor类，获取环境对象，并从环境对象里获取Region对象，然后对Region对象可以进行遍历，获取所有的行、单元格。
+	   >程序分发和回调：HTable.coprocessorExec(.class, , , ,new Batch.Call(){}) 返回的就是每个Region上执行统计类程序后的统计结果。
       >用户可以上传region级别的程序操作：
 	  >用户可以监听隐式的事件：
 	  >用户扩展rpc调用：
 	  >使用场景：使用钩子关联行修改操作来维护一个辅助索引
 	  >通过优先级和序号控制协处理器的加载顺序：
-	  
+	   >静态加载：hbase-site.xml中配置：hbase.coprocessor.region/mater/val.classes 三项配置会被对应的CoproccessorHost加载---比如MasterCoprocessorHost加载...master.classes里配置的Class
+	   >标描述符来加载：HTtableDescriptor.setValue() 配置：jar路径(hdfs路径)/完整限定类名/优先级(SYSTEM/USER)
+	  >特征：不能对一行数据加锁：
+	  >生命周期：UNINSTALLLED --> INSTALLED--->STARTING--->ACTIVING--->STOPPING--->STOPPED。执行顺序，客户端请求--->服务端：系统级协处理器(在一个环境Enviroment里)、用户级协处理器(在一个环境Enviroment里)，两个环境都在一个HRegion的CoproccessorHost里。---->返回给用户。
+	  >组件元素：Coprocessor, CoprocessorEnviroment, CoprocessorHost 
+	  >HTablePool: 需要自己管理HTable.	
+	  >HConnection: 客户端连接共享HConnection, 尤其是到zk的实例。获取-ROOT-和.META.	
+	  >多个HTable: 可以共享同一个Configuration	
+	>管理功能DDL,DML：使用了Hadoop RPC框架，框架要求远程方法中的参数都实现Writable接口以实现序列化反序列化。
+	 >表描述符：HTableDescriptor会作为存储路径的一部分来使用。	
+	  >列簇描述符：HColumnDescriptor可见字符。列名不必。甚至空列名也可以。
+	   >最大版本数：每个值保留的最大版本数量。
+	   >压缩：压缩算法可以选择NONE, GZ,LZO,SNAPPY
+	   >存储块大小：HFile文件中的划分的若干个小存储块。默认64KB类似RDBMS中的存储单元页。所以一个HFile里大约有1000个存储块。在get/scan时会被加载到内存中。
+	   >缓存块：内存缓存中。
+	   >生存期TTL: 版本数据保存时间。
+	   >在内存中：设置为true则承诺数据块加载到缓存区并保留较长时间。
+	   >布隆过滤器：增加了存储和内存负担。减少特定访问模式下的查询时间。
+	   >复制范围：跨集群同步的功能。
+	  >region分裂时的大小：默认为256MB。。但不是就这么多，毕竟不会跨一行存储，一行数据如果10MB那么是可能会超过的。
+	   >一个region多个列簇：一个region的一个列簇下的内容对应可能有多个压缩文件/未压缩文件。
+	  >只读设置：
+	  >memstore也就是HFile大小：默认64MB.所以默认情况下一个region最大4个HFile存储文件。
+	  >WAL保存到磁盘的方式：延迟刷写
+	 >HBaseAdmin: 修改表结构、列簇结构等功能。	
+	  >通过表描述符建表：表描述符对象可以加列簇描述符对象。同时可以设置region起止边界和region个数，进行预分区，可以打印各个region分区起止位置来查看。	
+	  >禁用表后可以删除表：禁用会等待内存中的数据刷写到磁盘，所以耗时。禁用后可以重用。	
+	  >修改表结构：必须先删除表结构。然后重建表。
+	  >集群管理：如让已经在region服务器上线的特定region下线。
+	   >拆分合并region都可以。
+	   >将一个region从一个regionServer移动到另一个regionServer也可以。
+	   >关闭master, regionserver, 集群都可以。
+	   >集群状态信息：活着的和不可用的regionserver数量。regionserver上的存储文件的数量和总存储量、已用写缓存的大小。RegionLoad甚至可以统计当前region统计周期内的TPS, WPS,RPS读请求量和写请求量等。
+	>其他客户端：
+	  >REST 网关服务：如./hbase-deamon.sh start rest。。REST服务无状态。从而以http方式访问htable比如：http://servername:8080/表名/行键/列簇:列    返回值经过base64binary编码。 curl方式可以指定 -H 'Accept: application/json'	
+		>Protocol Buffer: 编码效率较高，最合适的网络传输协议，提供了较高的带宽利用率。可以用curl -H "Accept: application/x-protobuf" ... 来实现调用返回protocol buffer协议的二进制数据。
+		>Raw Binary: 同样设置报头'Accept: application/octet-stream' 只有单元格内的值返回。
+		>REST风格的JAVA API也可以用。
+	  >Thrift: 安装好,编译模式文件，并生成用户指定语言的RPC代码。
+	   >启动thrift server:  bin/thrift start 无状态的。
+	  >Avro: 安装好，根据选择的编程语言 编译 模式预定义文件。	
+	>批量处理：
+      >使用Clojure编写mapreduce程序来获取hbase表。	
+	  >Hive: 提供了基于hadoop的数据仓库。Facebook开发。
+	   >安装hive: 配置$HIVE_HOME/conf/hive-env.sh中添加HADOOP_HOME=xxx HBASE_HOME=xxx
+	   >启动并创建一张本地表：/bin/hive   create table name(col type)   。。。可以实现复制hive表中的数据到hbase表中。
+	  >Pig: 提供了一个分析海量数据的平台：命令式编程风格，迭代式执行。更适合并行处理。
+	   >可以读取不同的数据源：HDFS, HBase都可以。
+	   >创建安装：是一种Pig shell  。可以将一个日志文件加载到HBase中。
+	  >Cascading： 新的计算模式API : 数据被表示为元组，形成了一个元组流，
+	   >汇总数据到HBase: 
+	>Shell: 基于Jruby , 后者基于Ruby实现的java虚拟机。5类命令，并代表了它们之间的语义关系。	
+	 >引用名、引用值：单引号和双引号。
+	 >逗号分隔参数：
+	 >命令：
+      >普通命令：status/version
+      >DDL： 表级操作。创建、禁用、启用、存在性验证。	  
+	  >DML: 删除单元格、返回一个单元格get,put, scan 
+      >工具：assign分配一个region到另一台regionserver	  
+	>基于web的UI:
+	
+		
+		
+		
 		
 		
 		
