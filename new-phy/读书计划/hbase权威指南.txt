@@ -5,6 +5,8 @@
 >则可以消除痛点的最简单的精准事实陈述是什么：修改“条件-痛点”陈述的哪一部分就可以导致没有痛点产生。 要做的根本事情是什么：
 >那么新陈述表明的解决动作是什么：
 >新情况的新痛点是什么：新举动、新环境会产生的新痛点描述出来， 继续上述4条操作。
+>学习要有战略和格局：过于零散、孤立、末支、叶子的知识点就没必要化太多时间，懂得放弃。聚焦在根节点、枢纽节点、产生分支的节点、主干知识点、枢纽知识点、关联到很多知识点的知识点上。
+ >对于主干知识点：要有全新的认识视角和进行精细的描述，大量的提问和好奇和进行必要的实验以获取支撑观点/导出观点的数据。
 
 >举动-痛点:  存储及处理PB,EB量级的半结构化/非结构化的数据。且低成本和高效。
 	>解法/处理思想: 与hadoop高度集成的hbase, hadoop将hbase的可伸缩性变得简单.
@@ -238,7 +240,7 @@
 	   >将一个region从一个regionServer移动到另一个regionServer也可以。
 	   >关闭master, regionserver, 集群都可以。
 	   >集群状态信息：活着的和不可用的regionserver数量。regionserver上的存储文件的数量和总存储量、已用写缓存的大小。RegionLoad甚至可以统计当前region统计周期内的TPS, WPS,RPS读请求量和写请求量等。
-	>其他客户端：
+	>其他客户端：REST,Thrift可以作为网关服务器。
 	  >REST 网关服务：如./hbase-deamon.sh start rest。。REST服务无状态。从而以http方式访问htable比如：http://servername:8080/表名/行键/列簇:列    返回值经过base64binary编码。 curl方式可以指定 -H 'Accept: application/json'	
 		>Protocol Buffer: 编码效率较高，最合适的网络传输协议，提供了较高的带宽利用率。可以用curl -H "Accept: application/x-protobuf" ... 来实现调用返回protocol buffer协议的二进制数据。
 		>Raw Binary: 同样设置报头'Accept: application/octet-stream' 只有单元格内的值返回。
@@ -265,15 +267,212 @@
 	  >DML: 删除单元格、返回一个单元格get,put, scan 
       >工具：assign分配一个region到另一台regionserver	  
 	>基于web的UI:
+     >masterUI: 集群状态、服务的表、...zk链接，regionserver链接、本地日志链接。打开中、关闭中、拆分中的region。。。手动合并、拆分.。	
+ 		
+>举动-痛点：与mapreduce的集成 
+  >解法/处理思想：
+    >mapreduce: 被设计为可扩展的方式解决TB级别数据处理问题。性能随机器数增加而线性提升的系统。
+	  >分治原则：数据拆分到分布式文件系统的不同机器上，数据块
+	 >功能类：
+	  >拆分数据：InputFormat:TableInputFormat(对表划分出合适的块)：TableRecordReader(迭代获取每个数据)	
+	   >TableInputFormat按照region来划分边界：拆分块的数目和设置的起止键之间的region数目相等。每个块对应一个TableRecordReader----读取并遍历一个region的所有行；
+	  >将原始数据转化为更有用的类型：Mapper:TableMapper(key-->ImmutableBytesWritable, value-->Result):IdentityTableMapper(键值对传递到下一个阶段)
+	  >将Mapper的输出shuffle/sort传递给Reducer: 一个键和它所有可能的值排序后 传递给Reducer处理：
+	  >将数据持久化到不同的位置：OutputFormat:TableOutputFormat:TableRecordWriter(将数据写到特定的HBase表中)
+	 >支撑类：
+	  >Hadoop块备份策略：
+	>任务的编写：Mapper类继承TableMapper<Text, IntWritable>, Reducer类继承Reducer<Text, IntWritable, Text, IntWritable>
+	 >构建Job实例， TableMapReduceUtil.initTableMapperJob()参数中包括Scan查询限制、Mapper类，Reducer类等。
+	 >读写任务：Configuration配置的是目标列簇/列(HTable使用)，Scan是查询过滤条件，Mapper里map()入参是每一行，结果是一个Put;。没有reducer需要设置.setNumReducerTasks(0)
+    >任务的执行：hadoop -jar target/hbase-xxx.jar 主类\ -t 表名 -c data:json -o analyzel
+		
+>举动-痛点：架构 .数据的组织结构，增删改查过程。持久化机制。
+  >解法/处理思想：
+    >B+树好处：IO次数少、范围查找快。特征：叶子节点有序连接，中间节点有序，叶子节点至少半满。少则借，满则二分。
+	 >页表：块，即叶子节点。包括的信息：上一页指针，下一页指针，key-rowid, key2-rowid, key3-rowid..。。页表是一个数组，头两个元素分别指向上一个数组和下一个数组。
+	 >OPIMIZE TABLE: 按顺序把表重写，使得相邻的叶子节点也是磁盘上相邻的。从而范围查询变为了磁盘的多段连接读取。
+	 >适合于读多写少：
+	  >任意位置写会导致快速产生大量的碎片化的页：更新和删除以磁盘寻道的速率完成。
+    >LSM树： 先把数据有序放到日志文件。日志文件的更改先放在内存，内存满了，则磁盘上创建一个新日志文件，并刷入这些有序后的更新。
+	 >数据归并：后台线程执行。将小文件聚合为大文件----因为小文件都是有序的，所以是归并算法，较快。最终只有几个数据存储文件，使得磁盘查找更快。	
+	 >磁盘上的树结构文件：	
+	 >查询：自然先查内存，再查磁盘文件。
+	 >删除：是一种带标记的更新。查询时跳过，重写页/文件时丢弃。	
+	 >数据记录带时间：所以在设定的TTL之后，后台合并进程会在重写数据块时丢弃过期的数据记录。
+	 >磁盘利用方式：存储的随机查找能力---访问磁盘的次数logN
+					存储的连续传输能力---LSM利用了，比随机更新B树快1000倍，也比批量更新B+树更快100倍。因为使用了排序和合并方法。
+	  >能较好的扩展以处理大量的数据：使用日志文件和内存存储来将随机写转变为顺序写。(批量合并文件操作)//读和写独立，两种操作之间没有冲突。
+	   >强调的是成本透明：5个存储文件，一个访问最多需要5次磁盘寻道。
+	>存储：(分布式算法考虑：一定想象一个集群，一个客户端写入成功，其他客户端开始读。paxos算法保证集群中的一致性节点越来越多，而R+W>N来保证读取的数据是最新的且各个客户端从那时开始就是一样的)
+     >客户端联系ZK来知道该查哪个region server: 查找行键;并且客户端会缓存这次查询。从zk中获取带有-ROOT-的region服务器名，通过这个查询到含有.META.表中对应的region服务器名, 。
+	 >HRegionServer负责打开region, 并创建对应的HRegion实例: 同时，在HRegion打开之后，会为每个表的HColumnFamily创建一个Store实例，一个Store实例多个StoreFile\一个memstore, 一个HRegionServer只有一个HLog
+      >数据流动顺序：客户端put--->WAL--->memstore-->HFile。每次memstore满了而创建新的memstore,旧的memstore写入磁盘形成一个HFile，同时会保存最后的写入序号---从而系统实时的知道持久化的文件的数据的起止位置--哪些数据被持久化了。regionserver关闭前会检查memstore，有数据则强心刷到磁盘。这种强刷后的region自然不需要在转移到其他regionserver时重做WAL..。。预刷写、二次刷写。	
+    >文件：hdfs中的/hbase		
+	 >/hbase/.logs/下每个regionserver有一个子目录，子目录下是一个HLog文件的多个回滚日志。默认一个小时滚动一次。append机制追加写入文件。
+      /hbase/.oldlogs/存储的是region上的已经被持久化的修改对应的日志文件，自然的，已经不需要这个log了，所以被转移到这里。并在默认的10min后被master删除。	 
+		.splitlog, .corrupt文件。存储日志拆分过程中产生的中间拆分文件和损坏的日志。
+	 >表级文件：每张表都有自己的文件，.tableinfo存schema信息。每个列簇有单独的目录--目录名称包含部分列簇名的MD5值。	
+		/根目录/表名/regionname/columnfamily/filename
+		./tmp是保存的一次合并的重写文件，临时文件。
+	 >WAL的拆分和回放：WAL回放时，没有提交的修改都会被写入region下一个单独的文件。当region被打开时，这些单独的文件中的内容就会被回放。	
+	 >region的拆分：几秒内。先在splits目录临时存放两个region信息，后转移到表目录。	
+		./tmp目录代表进行过压缩。
+		./recovered.edits目录代表WAL进行过回放。
+	  >拆分时间：存储文件总量到达阈值，列簇层面配置的阈值。拆分完成之后，会告知master,master可能会选择将新region移动到其他regionserver
+	  >region在.META.表中有表项。
+     >一个HRegion只有一个memstore: 只是随着写入的增加，会产生越来越多的HFile/StoreFile。
+      >查找时定位到Region的过程：三层。从zk中找到root region位置信息的节点；再从-ROOT-表中查找对应 meta region的位置，再从.META.表中查找用户表对应的region的位置。 
+       >.META.表：存储了各个用户表的各个Region对应的位置(regionserver等)。
+	   >-ROOT-表：存储了.META.表的位置。在一个region上，该region在一个regionserver上。
+	   >zk: 存储了-ROOT-表的位置。/hbase/root-region-server 
+	  >region的状态：发送打开状态--->打开中--->打开完成； 发送关闭状态--->关闭汇总--->关闭完成; 服务器开始切分region--->切分完成。
+	 >每个列簇都是用多个存储文件进行存储:(每个列簇都有一个memstore?) 存储文件里的就是有序的KeyValue实例。甚至每列的KeyValue都存在不同的HFile存储文件中？---从一个Region只有一个memstore来看，说明一个region所包括的存储范围就是memstore的存储范围。
+	 >存储文件的合并：HFile文件数目达到阈值，会触发合并，合并直到产生一个文件它的大小大于配置的最大存储文件大小，从而开启拆分	
+	  >压缩合并：memstore写到磁盘后触发minor合并默认最多10个文件到一个大文件。major	合并为周期的，默认24h, 把所有的文件压缩为一个单独文件---过程中会检查删除标记的记录并丢弃。
+	 >HFile格式：多个文件块+末尾索引(记录文件块/meta块的偏移量)。块大小由HColumnDescriptor配置--默认64KB：实际更大。块小写得多，查更快--但也需要存储更多索引。StoreFile是对HFile的轻量级封装。
+	  >每个文件块里多个有序存储的“操作-KeyValue”: 每个KeyValue: 是一个字节数组，紧凑地存储row, columnfamily, column, timestamp, type 维度精确到的value，允许零拷贝方式访问数据。可以将信息对应转换为Java类KeyValue。相似的维度键是有序存储的，如果存储采用压缩算法，那么重复的维度信息会被大大减少。
+	  >QueryMatcher和ColumnTracker:
+	  >Store实例可以载入HFile中的单个文件块/数据块(偏移量索引到之后)：然后扫描读取其中包括的目标数据，也是scan做的事情。
+	  >定位到HFile的过程：使用keyvalue里的时间戳和布隆过滤器来跳过绝对不包含所需KeyValue的文件。从剩下的HFile和memstore中扫描匹配的键。
+	   >扫描过程：RegionScanner类实现。为每个Store实例创建一个StoreScanner,每个Store实例代表一个列簇。StoreScanner对存储文件和memstore有过滤查找功能。从存储文件中按照时间降序读取KeyValue,直到读到不需要的行键。
+	  >即便是一行一列对应的3个版本的KeyValue：都可能分布在不同的存储文件中：自然的，一行数据，不同的列簇，都在不同的HRegion上。
+	 >WAL: 	存储了对数据的所有更改。很明显，事务提交成功后(比如成功写入磁盘/memstore/HFile)，会在WAL中插入一条保存点之类的信息。使得如果服务器崩溃后，就会将上一条保存点到到末尾的所有更改命令都执行一遍：即回放一遍。自然的是，如果WAL写入失败，那么整体也被认为是失败的。
+	  >一个regionserver上的所有region共享一个WAL: 自然的保存点的刷入只需要增加region编号即可。
+	  >回放过程：因为WAL保存在HDFS上，所以一个regionserver崩溃了，其他regionserver可以读取到这个regionserver的WAL，从而恢复其中某个HRegion上没有提交的数据更改；自然的，HFile也是可以被访问到的。	
+	  >HLog类实例：注入到了HRegion的构造器中，从而共享。	
+	  >使用的是Hadoop的SequenceFile为实现类：键值对形式。值是客户端的修改请求。键是HLogKey
+      >HLogKey: 存储了一个region的HFile中meta块里的最大索引号---序列号，也存储了region名和表名。存放了KeyValue的归属。也存储了修改写入日志的时间，集群ID.
+	  >有复制因子：LogSyncer类来sync()同步写入日志，涉及一个一对N的服务器管道写，N就是复制因子。高代价操作。
+	 >WALEdit类：通过日志级别管理原子性。对一行的n个列的n个更新KeyValue都封装在一个WALEdit类实例里，那么会在一次操作中写入一个WALEdit类实例的所有KeyValue。
+	  >LogSyncer类也可以作为一个独立的线程中运行。定期1s调用sync()将缓存的修改写入HDFS.
+	  >LogRoller类作为日志滚动功能处理：60min旧日志文件被关闭，然后使用新的日志文件。由于记录一个当前写入序号----HFile写入的末尾的键的序号，所以小于这个序号的日志文件都可以移除到oldlog里了。
+		滚动的其他条件包括日志块大小：达到配置的95%
+	 >回放：
+      >日志拆分：将WAL中的日志按照region划分，单独放到对应的region的日志目录recovered.edits中。	 
+	  >日志回放：region打开时，从recovered.edits文件目录下读取数据更改记录，加到memstore中，然后执行一次强制的磁盘刷写写入一个HFile中。然后删除recovered.edits
+	 >zk重要目录：
+       >/hbase/root-region-server: root region所在的regionserver
+	   >/hbase/rs目录下所有节点znode都是临时节点；是所有regionserver的根节点。
+	   >/hbase/shutdown集群状态信息。
+	   >/hbase/splitlog 
+	   >/hbase/replication包含副本信息。
+	   >/hbase/table 禁用的表所在的地方。
+	   >/hbase/unassigned 包含未打开的region的znode, 
+	 >zk队列：当从集群rpc不可用时，主集群上WAL回滚信息发送到这个zk队列。
+	 >复制：在集群之间传递数据：可以作为灾难恢复的方法，提供hbase层次的高可用性。	目前是实验性的功能？
+	   >架构模式：主推送(给从集群)。类似mysql的主从复制，只使用二进制日志来跟踪修改。这里使用WAL----自然的，主集群可以将数据复制到任意数目的从集群。复制异步进行，主集群上的数据复制到从集群上有延迟，但是数据是最终一致的：落后一定的时间。
+	   >复制格式：所有的WALEdits都会被发送，保证原子性。因为一个WALEdits保存的是对一行的各个单元格的Put/Delete多个操作。  
+				  HLog也会复制，且要求HLog在HDFS上。
+	   >复制对象：WAL文件。发送到从集群随机一个regionserver上。收到之后，按表分到不同的缓冲区，然后使用HBase客户端将缓冲区的数据并行写入表中。
+					批量读，随机发，发完一次更新WAL读取的位置到znode上。
+	   >zk上发生的事情：每个zk节点都有一个会话，如果丢失,则它的队列被锁定，那么regionserver会竞争创建锁，成功的regionserver将锁定的队列转移到自己的对等znode下。
+	 
+举动-痛点： 高级用法 
+   >解法/处理思想：行键设计
+     >数据的逻辑布局和物理布局：物理布局：同一个行键范围的2个列簇数据，一定存放在不同的存储文件中。对一个列簇来说，如果数据量太多，比如单元格版本多，那么也可能会分在不同的存储文件中，但是是连续存储的--且按照时间戳倒序的。
+	   >事实上，整个KeyValue的键都是从左到右降序排列存储的。键可以被称为限定符。
+	   >高表：行多列少。Hbase按行分片, 即如果有一列簇有几百万列，那么依然存在一个HFile中，且不会拆分---即便超过了HFile的最大限制(单元格内容太多导致)，
+	   >宽表：可以使用行级原子性。
+	   >行键设计：尽可能将查询的维度信息保存在行键中。因为筛选效率最高。
+	    >部分键的扫描机制：左对齐索引。使用scan方式：起始键--->起始键+1。即按照字符的字典序增长方式刚好卡住目标范围。
+	    >行键中加日期：排序使用。
+		>行键中加序号：分页使用。
+	    >避免热点region的写：salting加盐方式：即对于那些时间戳为rowkey的写，会导致某时刻只有某个region热点写，所以要对时间戳hashcode并取reiong count的余数，来加到rowkey前面。来分散存储。读取的时候也可以分散读取加快读取进度。
+	   >列簇下的列可以作为辅助索引：单独进行排序。因为HFile中的KeyValue中的Key维度里就包括了列簇、列、版本。 
+	    >列值可以设置为嵌套的结构：
+		>facebook收件箱检索系统：rowkey:userid, col:关键词, version:消息id , val: 关键字在消息中的位置.。多少个列就多少个关键字，多少个版本则该关键字就对应多少个消息。
+	    >列索引：
+		>内存中建立索引：
+		>辅助索引：比如存储搜索条件--一些前缀之类的映射。
+	   >实现索引方案：
+	    >基于协处理器：
+		>基于contrib.BuildTableIndex类：扫描整个表，而建立Lucene索引。存在hdfs上，然后下载到Lucene服务器上，可以合并这些索引。用Lunece查找获得行键，再到HBase上搜索完整的数据。
+	    >直接在HBase中建立倒排索引表：词为rowkey, 列为docid。
+      >事务：事务型HBase上region上保持了一个事务列表：开启事务-操作-提交事务	    
+	  >布隆过滤器： 适合于少数文件更新的场景。开销：一行需要额外一个字节。选择：行级过滤器，行加列级过滤器。
+	   >使用原因：HFile中的文件块索引只是索引了块的开始键。要判断一个键是否在一个块里只能加载这个块。而一个块里有几百个KeyValue， 一个文件里有1w多个文件块。所以要尽可能增强判断一定不在的文件和文件块的能力。
+	   >minor合并：只是合并最近的几个小文件为不超过的设定大小的文件
+	   >块索引：能确定文件中是否包含某个行键。而使用布隆过滤器则可以直接判断文件中是否有某个行键。每个块都要被依次加载。
+	  >版本控制：服务器时间不同，而导致单元格的版本数据顺序可能因为region的迁移而产生先插入而在后面的效果。
+	   >major合并之前，如果保留版本为 3个，插入6条数据，然后删除2条数据，那么再次查询，会把更老的版本也查出来---即未保留的版本。因为major合并才会清除这种数据，而查询的时候不过滤这种数据只过滤删除标记的数据。
+	   >删除数据：会带上一个当前时间戳，导致再次插入老时间的数据时插入不进去，通过对表的刷写和major合并之后可以删除这个删除标记，再插入老数据就可以了。
+	   >自定义版本控制；
+
+举动-痛点： 集群监控
+   >解法/处理思想：一系列工具
+     >从Hadoop里继承了一些API: hadoop是面向批处理的系统，hbase往往被用来处理在线随机访问请求。
+	 >常用工具：原生Ganglia, 导出数据后处理的Nagios
+	 >监控框架：MetricsContext:监控数据点的生成、绘图和监控。
+	  >将监控指标推送到Ganglia: GangliaContext
+	  >将监控指标写入磁盘：FileContext, TimeStampingFileContext
+	  >指标的值：有的直接读，有的却需要计算----有的还需要复位。
+	 >region服务器监控指标：
+	  >块缓存追踪命中率：+缓存失效数目
+	 >Ganglia: 准备数据，被拉取。
+	 >多层次监控指标收集：合并下游监控指标数据，
+	 >Nagios: 获取与集群状态相关的定性数据的支持工具。
+	  >定期拉取当前的监控指标：并和阈值比较，超过则开启规避动作：包括发送电子邮件、打电话、短信、
+	  >用JMXToolkit将Nagios和HBase集成到一起。即由JMXTookit提供监控指标的值。
 	
-		
-		
-		
-		
-		
-		
-		
-		
-		
-参考资料：面试，应该主动自己聊，主动聊Hbase, redis, mysql,es, kafka架构、原理等。
+举动-痛点： 性能优化
+  >解法/处理思想： 
+    >regionserver中region的内存占用情况：老年代：20%块缓存，40%的memstore
+	 >日志配置：有规律：详情+时间戳-XX:+PrintGCDetails -XX:+PrintGCTimeStamps -Xloggc:/log.log  
+	 >年轻代：不建议配置太大，因为暂停时间大。毕竟+UseParallNewGC...其他参数 -Xmx -Xms -Xmn -Xss
+	 >年老代：要注意CMS有备份回收算法。当老年代在CMS后空间还是不够，会采用后备方案：ParallOld算法/SerialOld算法，复制算法方式暂停而整理。
+	>MSLAB缓冲区：只允许从堆中分配固定大小的对象。这样不会产生提升错误。因为都是固定大小的块，利用率比较高，空洞很小。回收也是整块的。本质就是使用固定大小的一个个缓冲区来存储KeyValue， 默认这个块缓冲区大小为2MB。。虽然避免了后备方案的启用，但是每次分配可能稍微慢了一点。
+    >压缩： cpu耗时更短于读取磁盘。Snappy采用-快且cpu消耗小，仅仅压缩比不大1/5。	
+	 >列簇上配置是否采用压缩，采用什么压缩算法。
+	>预拆分Region: 
+	>负载均衡：master上的一个周期运行的任务，判断各个regionserver上的region负载情况，看是否需要重新均衡。
+	>静态合并：HBase集群没有工作时,hdfs集群工作，也可以通过脚本实现region的合并。
+	>最佳客户端实践：
+	 >禁止自动刷写：而是等客户端缓冲区满了之后才发送到regionserver
+	 >使用扫描缓存：但效果有限。不能太大，否则传输开销和内存开销都太大。
+	 >限定扫描范围：列的范围尤其需要哪些就只返回哪些。
+	 >关闭ResultScanner: get之后结束前需要释放关闭close()
+	 >块缓存：频繁访问的行。
+	 >行键获取方式：只是获取行键，那么使用特殊的过滤器，操作符为MUST_PASS_ALL
+	 >关闭Put的WAL: 是一种冒险的方式，数据直接放到memstore里，但效果不明显。可以批量导入更好。
+	 >配置优化：
+	  >regionserver-zk超时时间：缩短一些。
+	  >增加regionserver响应处理线程数：对于get数据量较小时更建议。
+	  >对存储文件启用压缩：Snappy压缩算法。
+	  >更大的region: >256mB如1G, 来更稳定。只是合并时停顿时间更长。
+	  >增加块缓存比例：从20%提高一些。如果因为有很多的文件块从HFile中换出时更是。
+	  >调整memstore内存比例：从40%调整小些--对于主要是读数据时是如此。
+	  >增加阻塞时存储文件的数目：
+    >负载测试/评估：PE  随机或者顺序的读写测试。YCSB专门对写操作评估
+	
+>举动-痛点：集群管理
+   >解法/处理思想：
+      >添加备份master:	可以在backup-masters文件来指定备份服务器。在master和regionserver启动之后才启动。通过zk协调主备。2-3个备份节点足够。
+      >添加regionserver: 会启动一个regionserver rpc监听端口和webUI监听端口。启动方式：在master上执行start-hbase.sh. 在自己的节点上也可以启动，启动之后注册到zk, 并添加到集群，然后被分配region, 然后开始接收请求。
+	  >导入导出mapreduce作业：导出表到一个指定的hdfs路径上，还可以增加行键正则匹配。也可以增量导出。//直接复制/hbase下的文件值得商榷。
+	   >将一张表从主集群复制到从集群：
+	   >批量导入：bulkimport
+	  >hbase.replication:true是开启主集群复制数据到从集群的机制。
+	  >故障处理：hbck工具./bin/hbase hbck 可以查看所有幸存的死亡的region数目，-ROOT- .META.表， 用户表的部署。
+	  >系统日志文件不同于WAL: 因为只是记录一些系统信息之类的。
+	   >INFO级别的输出有可能也是可以参考的：在出现问题时。aborting信息。
+	  >安装检查：文件句柄数：cat /proc/jvm-pid/limits  32000个可以。
+	   >DataNode处理线程数：16000也可以。
+	   >列簇使用压缩：且引入压缩库。
+	  >交换分区使用率检查：可能导致regionserver与zk失去连接
+	   >vmstat
+	   >交换出或入的情况：free -m  调整内核值/proc/sys/vm/swappiness为5、10
+	   >监控慢磁盘：
+	  >memstore阻塞更新的条件：更新高峰期，太大size。
+	  >HRegion阻塞写请求：存储文件太多，需要进行合并。
+	  >HBase的负载均衡：均衡的是region数量在各个regionserver上的值。比如多于平均值的20%就会默认进行重新均衡。
+	  >CDH
+	
+	
+	
+	
+	
+	
+	
+	
+参考资料：面试，应该主动自己聊，主动聊Hbase, redis, mysql,es, kafka架构、原理等。5+经验，不讲58项目。内容呈现与语言框架/语句格式的关系。不会就先抽象扼要总结型概括描述，然后说几天能完成，甚至开发一个出来。
 https://max.book118.com/html/2017/1029/138158849.shtm(本书地址)
