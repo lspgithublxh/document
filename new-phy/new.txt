@@ -356,7 +356,7 @@ next work ,  sumerize every night!!new technology  广义相对论/量子力学 + AlphaGo
 				>zk可以公平竞争：创建顺序临时节点
 				>zk可以非公平竞争：每次竞争创建一个节点：其他客户端轮询检查这个节点znode
 				>zk可以更加公平的竞争方式：选举。
-				
+				>冲突问题：就是协调的问题
 				
 				
 				
