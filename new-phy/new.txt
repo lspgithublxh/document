@@ -756,6 +756,7 @@ Spring方面：
 					
 					
   --回答离职原因：不要回答什么没有活儿、涨工资问题。直接个人发展，没有技术挑战。。甚至可以说工作重复、乏味。
+				 以前的公司都不是最终的归宿。(缺少技术挑战，不甘平凡)
   
   --谦虚谨慎，狐狸尾巴不能露出来，危机意识，绝对把握，不断前进。
   
@@ -770,3 +771,4 @@ Spring方面：
 1.https://max.book118.com/html/2018/0827/7146011140001144.shtm(fastleader算法)
 2.https://blog.csdn.net/qq_16525279/article/details/82424422(隔离性的较好描述)
 3.https://www.jianshu.com/p/18fe36708dfe(可重复读和读已提交的最好描述)
+4.http://coding-geek.com/how-databases-work/
