@@ -155,5 +155,6 @@
   >整合Dubbo:Dubbo是典型的四方参与的微服务架构：consumer-registry-provider-monitor .客户端负载均衡和服务调用降级。 consumer-provider都是spring-boot项目，registry是一个zk集群。monitor也是zk。consumer的服务接口@Refrence ,而provider的服务接口@Service, 启动zk,启动provider,启动consumer。因为也是接口依赖，所以需要服务端的接口jar。
   >Docker: 负责高效的进行应用的分发、管理和部署。
    >使用场景：一方面服务器资源闲置，另一方面缺没有服务器可用。一台机器上直接部署多个服务，会端口冲突/cpu\mem互相争抢占用互相影响，(因为没有资源分割)。扩容/缩容 效率低：机器下线到应用部署、测试，周期较长。  
-   
-   
+		       多环境代码不一致：如果没有指定一定要让通过测试的版本来上线---而通过测试只能让专门的人来处理。
+   >使用特征：单个容器运行单个应用：即面向服务的架构。
+   >架构：C/S架构。守护进程和客户端进程。守护进程完成实际的工作。实际的工作包括：1.文件系统隔离(每个容器都有自己的root文件系统)。完成这些工作所依赖的条件/工具：linux内核特性Namespaces命名空间和Control groups 控制组。
