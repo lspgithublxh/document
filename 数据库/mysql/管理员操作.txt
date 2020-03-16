@@ -8,3 +8,6 @@
 				SET profiling=1;
 				SHOW PROFILES;
 				SHOW PROFILE  ALL FOR QUERY 2
+
+	>É±Ïß³Ì£ºSHOW PROCESSLIST;
+		KILL 90534;

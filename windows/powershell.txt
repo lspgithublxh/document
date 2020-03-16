@@ -1,0 +1,1 @@
+1.上传文件：scp D:\data\scripts\upload.ps1 root@39.97.243.56:/data

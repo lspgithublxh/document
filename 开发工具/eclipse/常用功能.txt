@@ -2,4 +2,7 @@
 	>.classpath:对于含有.的文件夹作为包名，在最外层是可以的。此时需要重新配置.classpath:<classpathentry including="/com.bj58.fang.united.usercenter.dependency/*.java" kind="src" path="src/main/java"/>
 		>来保证可以被识别。
 	>ctrl+左键不能追踪的原因：需要重新生成.project了。是这个文件的问题。
-	>安装了反编译工具，文件.class without source的打开方式改变为特定的方式。
+	>安装了反编译工具，文件.class without source的打开方式改变为特定的方式default配置。https://jingyan.baidu.com/article/19192ad86475bfa53f570752.html
+	 
+	
+	>

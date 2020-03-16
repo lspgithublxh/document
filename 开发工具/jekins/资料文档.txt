@@ -1,0 +1,6 @@
+>安装：
+ >首先清空c盘下的文件夹，后配置关键文件：hudson.model.UpdateCenter.xml中url为：https://mirrors.tuna.tsinghua.edu.cn/jenkins/updates/update-center.json
+ >密码从输出知道。
+ >然后配置updates/default.json里的url
+ >然后将plugins文件夹加入。
+ >手动下载准确的文件--其他镜像的文件可能是不准的不正确的：http://updates.jenkins-ci.org/download/plugins/maven-plugin/ 

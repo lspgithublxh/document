@@ -1,0 +1,1 @@
+UPDATE product_order SET end_time=TIMESTAMP(end_time, '300 00:00:00') WHERE order_status=5 AND end_time < TIMESTAMP('2021-01-20 08:00:00') AND end_time > TIMESTAMP('2020-01-01 08:00:00')

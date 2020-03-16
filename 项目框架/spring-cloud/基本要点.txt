@@ -1,0 +1,31 @@
+定位：Spring-boot实现的服务治理工具包
+ >最基本的Spring-boot项目：1.就是maven项目jar模式上：pom.xml中增加本项目的<parent>架构id为spring-boot-starter-parent标签和在<dependencies>中增加spring-boot-starter-web的架构id依赖； 2.src/main/resources下增加application.properties，3.将App.java上增加注解@SpringBootApplication, main函数里增加SpringApplication.run(App.class, args);代码即可。
+ >最基本的Spring-cloud项目-注册中心项目：1.pom加入依赖管理：架构id为spring-cloud-dependencies， 2.注册中心本身的依赖spring-cloud-starter-netflix-eureka-server架构id, 3.启动类上注解@EnableEurekaServer 4.eureka的配置application.properties
+ >最基本的Spring-cloud项目-服务方项目：1.pom加入依赖管理：架构id为spring-cloud-dependencies 2.服务方本身作为注册中心的客户端而调用所需要的依赖：spring-cloud-starter-netflix-eureka-client架构id 3.启动类上注解@EnableEurekaClient  4.eureka的配置application.properties
+ >最基本的Spring-cloud项目-消费者项目：1.就是不同的spring-boot项目。2.controller里注入RestTemplate来调用服务。//如果是ribbon客户端负载均衡,则需要新增：3.启动类上注解@EnableEurekaClient  4.eureka的配置application.properties
+开始：
+ >一个基本的生成者-消费者模式的微服务架构搭建：
+  >服务注册中心spring-boot服务：
+  
+ 
+场景处理：
+ >注册中心突然挂了：则服务方会感知到。重启注册中心，服务方会重新注册。
+ >注册中心负载均衡：
+ >客户端负载均衡：consumer本身也依赖eureka-client，然后依赖ribbon;来直接从注册中心获取服务的ip-port集合，然后进行访问。但调用接口的参数需要在URL上不方便，所以需要feign----底层依赖ribbon算法而已--进行的是完整的http请求：：Feign则提供通过开发者自定义的接口来调用服务---开发者自定义的接口需要注解@FeignClient并在方法上相应的注解@RequestMapping。
+ >多环境配置：首先application-xxx.properties编写，然后启动时 专门指定环境变量为生产环境：java -jar a.jar --spring.profiles.active=xxx
+ >服务不可用造成的线程阻塞：大量请求涌入，会导致资源占用消耗殆尽。服务故障的雪崩效应。(访问不通还不断去访问)//所以必须要在几次调用不通时通知后面的调用都暂时不能调用。---因此调用需要经过一个中间管理者：一个同服务所有的调用都会访问的地方--这里标记了服务的调用状态/服务状态：不可用则直接返回不必再等待或者发出rpc请求，所以熔断器也在consumer上/。
+  >熔断器Hystrix的使用，引入依赖spring-boot-starter-netflix-hystrix, 启动类上@EnableHystrix可用，然后需要熔断的方法上加@HystrixCommand注解(快速失败执行其他指定的方法)即可：默认20/5s阈值。
+  >feign自带熔断器：在接口的@Feign参数里fallback=xx.class就是回滚的那个实现了同一个接口的方法。
+ >智能路由：路由转发和过滤器。
+  >代理节点：url请求-->将部分映射到微服务名，剩余部分为微服务的uri,然后发起对这个微服务的请求，将结果原样返回，这就是zuul节点的功能(本身不提供任何controller形式的url-maping功能)。
+  >过滤器：url验证，可以做。
+ >配置管理：配置服务器从git获取配置文件，配置客户端从配置服务器获取文件中的配置：开发者直接@Value就可以引用到配置文件里的内容。
+  >并且同时：配置服务器也可以注册为一个微服务。
+ >广播配置文件的更改：消息总线。kafka的接入
+ >服务链路追踪：spring sleuth...zipkin。。先安装zipkin server 然后调用方/客户端仅仅只需要依赖spring-cloud-starter-zipkin 然后配置zipkin server地址，然后bean化Sampler类----trace。
+  >Span,Tracez在调用不同阶段不一样。zipkin server
+ 
+ 
+书籍推荐：
+《深入理解kafka:核心设计和实现原理》
+ 

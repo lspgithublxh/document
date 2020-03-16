@@ -9,4 +9,12 @@
 		>回退：git log
 			git reset --hard  提交编码  如git reset --hard 0484928e3f8aa9a7fb744c387c3911f080eb8a90
 
-			
+		>远程分支fix_bug: 先pull让本地有远程分支的名称-红色。然后：
+ 		   >git checkout -b fix_order pro/stage
+		>捡起其他分支上的某些提交到本分支上：git cherry-pick <C2_id>  即在本分支上直接cherry-pick其他分支的commit-id不用写分支名。git cherry-pick --continue持续提升。
+		>丢弃分支上的某些提交：git rebase -i commit_c_id编辑drop或者#。
+		 >git log查看提交。
+		 >git rebase --abort 撤销
+ 		 >持续执行 git rebase --continue 来升高commit。
+		------第二种方法：先git log 查看提交，后git rebase -i 打开某个提交之后，然后编辑把部分提交注释，然后保存退出add-commit有必要rebase --continue, 然后把原来的那个分支删除掉，把这个去掉该提交的分支提交上去。
+		>没有push而撤销提交：可以reset
