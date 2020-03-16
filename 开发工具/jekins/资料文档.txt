@@ -4,3 +4,4 @@
  >然后配置updates/default.json里的url
  >然后将plugins文件夹加入。
  >手动下载准确的文件--其他镜像的文件可能是不准的不正确的：http://updates.jenkins-ci.org/download/plugins/maven-plugin/ 
+ -----成功安装的方法：不用公司的网络，而用自己的手机来安装插件。
