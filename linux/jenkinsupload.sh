@@ -1,10 +1,12 @@
 #!/bin/bash
 echo 'hello'
 dd=$1
-
+name="${dd}-"
 function killproject(){
-  kpid=$(netstat -lnp | grep 7010|awk '{print $7}'|cut -d/ -f1 )
-  if [ $kpid > 0 ];then
+  #kpid=$(netstat -lnp | grep $2|awk '{print $7}'|cut -d/ -f1 )
+  kpid=$(ps -ef|grep $name | awk 'NR==1'|awk '{print $2}')
+  kname=$(ps -ef|grep $name | awk 'NR==1'|awk '{print $8}')
+  if [[ $kpid > 0 && $kname == "java" ]];then
 	  echo "项目已经启动, pid = $kpid"
 	  kill -9 $kpid
 	  echo "项目已经关闭"
