@@ -6,3 +6,5 @@
  >手动下载准确的文件--其他镜像的文件可能是不准的不正确的：http://updates.jenkins-ci.org/download/plugins/maven-plugin/ 
  -----成功安装的方法：不用公司的网络，而用自己的手机来安装插件。
  >配置上传文件到阿里云：注意sources files是workspace/project/开始的目录下的文件：比如填写：target/*.jar就是上传打包的文件。
+ ---阿里云上传：winscp/putty/pscp上传文件。
+  >pscp上传：pscp D:\\BaiduNetdiskDownload\\jdk-8u221-linux-x64.tar.gz root@39.101.197.111:/usr/local/jenkins-jar/jar/

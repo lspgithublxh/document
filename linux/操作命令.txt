@@ -43,7 +43,9 @@
 		>内存查看：free -g 显示是G为单位。
 
 
-		
+	>网络端口操作：根据端口号提取剪裁出pid： netstat -lnp | grep 7010|awk '{print $7}'|cut -d/ -f1 
+	 >重定向：0标准输入1标准输出2标准错误
+	 >只能kill关闭进程：nohup ... & 启动	
 	>网络操作：
 		>curl -l -H "Content-type: application/json" -X POST -d '{"type":4, "district_param":[{"district_id":1146}]}' http://panshi.a.ajkdns.com/panshi-cities/district-service?method=getDistrictInfoByDistrictIds
 		>curl -l -H "Content-type: application/json" -X POST -d '{"school_ids":[115427]}' http://panshi.a.ajkdns.com/panshi-cities/school-info-service?method=getSchoolListBySchoolId
@@ -51,7 +53,8 @@
 			又比如：curl -H 'imei: 861498039727957' -H 'dirname: bj'  -H 'version: 8.12.0' -H 'cid: 1'  -H 'os: android' -H 'uid: 35667656346895' 'https://appfang.58.com/api/list/ershoufang?action=getAnxuanFilters'
 				curl -H ':method: GET' -H 'lon: 116.511378' -H 'id58: 98732770446857' -H 'rimei: 861498039727957' -H 'imei: 861498039727957' -H 'dirname: bj' -H 'version: 8.12.0' -H 'productorid: 1' -H 'nettype: wifi' -H 'cid: 1' -H 'deviceid: 395e7a319d9aa8f1' -H 'owner: baidu' -H 'os: android' -H 'currentcid: 1' -H 'platform: android' -H 'location: 1,1142,7551' -H 'uid: 35667656346895' -H 'channelid: 58585858' -H 'lat: 39.993829'  'https://appfang.58.com/api/list/ershoufang?tabkey=allcity&action=getListInfo&signature=c1d792cdf241ac9412a4264a67cea7fc&curVer=8.12.0&appId=1&localname=bj&os=android&format=json&geotype=baidu&v=1&ts=1542699614319&location=1%2C1142%2C7551&filterParams=%7B%7D&sidDict=%7B%22GTID%22%3A%22167293312202204723760992853%22%2C%22PGTID%22%3A%22189593566202204723764000342%22%7D&page=2&geoia=39.993829%2C116.511378' > llxxx.txt
 	>连接操作：将windows下的.ssh/isa.pub里的内容放到linux下的.ssh/autorized_keys里面，然后配置sshd_config, PasswordAuthentication no  PubkeyAuthentication yes然后重启生效：systemctl restart sshd
-
+	>上传下载：pscp上传：pscp D:\\BaiduNetdiskDownload\\jdk-8u221-linux-x64.tar.gz root@39.101.197.111:/usr/local/jenkins-jar/jar/
+		  下载：pscp  root@39.101.197.111:/usr/local/jenkins-jar/hello.sh D:\\BaiduNetdiskDownload
 	>线程操作：
 		>一个进程的线程数：cat /proc/pid/status
 		>一个进程的线程数：ps -hH 17695 | wc

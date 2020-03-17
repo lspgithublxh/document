@@ -1,0 +1,17 @@
+>java篇：
+ >上传和解压jar: pscp D:\\BaiduNetdiskDownload\\jdk-8u221-linux-x64.tar.gz root@39.101.197.111:/usr/local/jenkins-jar/jar/
+				tar -zxvf xxxx.jar /usr/local/java 
+ >环境变量配置和生效：vim /etc/profile
+						export JAVA_HOME=/usr/local/java/jdk1.8.0_171
+						export JRE_HOME=${JAVA_HOME}/jre
+						export CLASSPATH=.:${JAVA_HOME}/lib:${JRE_HOME}/lib
+						export PATH=${JAVA_HOME}/bin:$PATH
+					source /etc/profile 
+ >软连接添加：ln -s /usr/local/java/jdk1.8.0_171/bin/java /usr/bin/java
+ >验证：java -version
+ 
+>外网访问配置：
+ >端口开发： sudo /sbin/iptables -I INPUT -p tcp --dport 7010 -j ACCEPT
+ >查看防火墙对端口的监听状态：netstat -nltp
+  >查看防火墙状态并开关：service firewalld status     service firewalld start  service firewalld stop
+ >阿里云服务控制台安全组规则新增入端口规则：配置7010端口可被访问。
