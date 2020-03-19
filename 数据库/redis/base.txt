@@ -6,7 +6,8 @@
  	>服务安装：redis-server --service-install redis.windows.conf --loglevel verbose
 
 	>登录redis:redis-cli.exe -h 127.0.0.1 6379
-
+	
+	>linux上安装：在tar解压之后，需要进入src执行make install 来编译，然后移动redis-server, redis-cli等到新建里的bin文件夹里。
 
 参考文档：
 https://blog.csdn.net/u012343297/article/details/78839063

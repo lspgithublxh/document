@@ -1,0 +1,62 @@
+linux下的安装：
+	>安装所需软件包：sudo yum install -y yum-utils device-mapper-persistent-data lvm2
+	>设置稳定的仓库：sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+	>安装依赖包：wget https://download.docker.com/linux/centos/7/x86_64/edge/Packages/containerd.io-1.2.6-3.3.el7.x86_64.rpm
+				yum -y install containerd.io-1.2.6-3.3.el7.x86_64.rpm
+	>开始安装：sudo yum install docker-ce docker-ce-cli
+	>开始启动：systemctl start docker
+	>测试：sudo docker run hello-world
+	>配置镜像仓库国内：vim /etc/docker/daemon.json 内容为{"registry-mirrors": ["https://docker.mirrors.ustc.edu.cn"]}
+	 重启服务：systemctl restart docker.service
+>常见指令：
+ >docker info
+ >查看所有容器：docker ps -a
+ 
+ 
+>集成gitlab ci：
+ >新建仓库：touch /etc/yum.repos.d/gitlab-ci-multi-runner.repo  将以下内容加入：
+	[gitlab-ci-multi-runner]
+	name=gitlab-ci-multi-runner
+	baseurl=http://mirrors.tuna.tsinghua.edu.cn/gitlab-ci-multi-runner/yum/el7
+	repo_gpgcheck=0
+	gpgcheck=0
+	enabled=1
+	gpgkey=https://packages.gitlab.com/gpg.key
+ >安装1：sudo yum makecache
+		 sudo yum install gitlab-ci-multi-runner
+ >注册：sudo gitlab-ci-multi-runner register
+   会有一系列的交互：url为gitlab项目的url::可以从settings-->ci/cd--->runner里面看到。
+					token也可以看到。
+					 选docker
+					其余标签、名称、docker镜像可以自己选。从而完成注册。
+ >安装：sudo yum install gitlab-ci-multi-runner
+ >启动：gitlab-ci-multi-runner start
+ >服务启动确认：gitlab-runner status
+ 
+ ----------项目中：
+ >目录下新加文件：.gitlab-ci.yml 内容可以简单如下：
+ 
+image: java:8
+
+stages:
+  - build
+  - test
+  - deploy
+
+before_script:
+  - echo "hello,ci/cd"
+
+build:
+  stage: build
+  script: echo "hello,ci/cd"
+  artifacts:
+    paths:
+      - target/demo-0.0.1-SNAPSHOT.jar
+
+production:
+  stage: deploy
+  script:
+  - echo "hello,ci/cd2"
+  only:
+  - dev
+ 

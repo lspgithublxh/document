@@ -9,4 +9,7 @@
 			flush privileges;
 			quit;
 			mysql -uroot -p lsp
-	
+	>linux上安装：下载xz文件，xz -d xx.xz 后执行tar -xvf xxx.tar
+  	 >远程登录：./mysql -ulishaoping -h 172.26.122.221 -p
+		阿里云内内网内：mysql -ulishaoping -hrm-8vb8ip1jx2pxvmls058870.mysql.zhangbei.rds.aliyuncs.com -p
+		外网需要外网地址：mysql -ulishaoping rm-8vb8ip1jx2pxvmls0jo.mysql.zhangbei.rds.aliyuncs.com -p

@@ -41,7 +41,7 @@
 		>cpu信息查看：cat /proc/cpuinfo会显示逻辑cpu和物理cpu
 				>cat /proc/cpuinfo| grep "physical id"| sort| uniq| wc -l只看物理cpu
 		>内存查看：free -g 显示是G为单位。
-
+		>操作系统查看：lsb_release -a
 
 	>网络端口操作：根据端口号提取剪裁出pid： netstat -lnp | grep 7010|awk '{print $7}'|cut -d/ -f1 
 	 >重定向：0标准输入1标准输出2标准错误
@@ -62,6 +62,10 @@
 		>查看进程详细信息：ps -ef|grep java
 		>查看最大进程数：sysctl kernel.pid_max
 		>查看运行中进程数：ps -eLf | wc -l
+		>查看进程占用的端口：netstat -lnp | grep 26447
+	>yun安装：
+		>已经安装：yum list installed | grep docker
+		>服务状态：systemctl status docker
 	>jvm查看命令：top  jmap最常用最有价值。
 		>查找最耗cpu的线程和代码：
 			>ps -ef|grep "应用名关键字"  jps也可以。
