@@ -1,0 +1,17 @@
+>安装：
+ >wget -c https://nginx.org/download/nginx-1.16.0.tar.gz
+  tar -zxvf nginx-1.16.0.tar.gz
+ >安装依赖项：yum install gcc pcre-devel zlib-devel 
+			验证：./configure
+			lib pcre安装：
+		
+>安装方法2：centos 8 https://www.linuxidc.com/Linux/2019-11/161440.htm
+ >事先可以做：/etc/yum.repo.d目录下面创建一个nginx的yum源。。然后yum repolist 检查是否有这个yum源
+ >sudo yum install -y nginx
+ >设置主机启动后立即启动：sudo systemctl enable nginx
+ >启动：systemctl start nginx
+ >查看状态：systemctl status nginx
+ >配置文件位置：/etc/nginx/nginx.conf
+ ---查看ip地址：sudo hostname -I|awk '{print $1}'
+ >访问主页：http://39.101.197.111:80/即可, 主页位置 /usr/share/nginx/html
+ >查看日志文件：/var/log/nginx/

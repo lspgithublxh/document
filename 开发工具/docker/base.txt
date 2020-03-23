@@ -27,8 +27,9 @@ linux下的安装：
  >注册：sudo gitlab-ci-multi-runner register
    会有一系列的交互：url为gitlab项目的url::可以从settings-->ci/cd--->runner里面看到。
 					token也可以看到。
-					 选docker
-					其余标签、名称、docker镜像可以自己选。从而完成注册。
+					 executor选docker
+					 image选择自己的或者其他。
+					其余标签、名称、docker镜像可以自己选。从而完成注册。完成注册的runner的配置信息在/etc/gitlab-runner/config.toml里面。
  >安装：sudo yum install gitlab-ci-multi-runner
  >启动：gitlab-ci-multi-runner start
  >服务启动确认：gitlab-runner status
@@ -48,7 +49,9 @@ before_script:
 
 build:
   stage: build
-  script: echo "hello,ci/cd"
+  script: 
+  - echo "hello,ci/cd"
+  - mvn package -U
   artifacts:
     paths:
       - target/demo-0.0.1-SNAPSHOT.jar
@@ -59,4 +62,51 @@ production:
   - echo "hello,ci/cd2"
   only:
   - dev
+>专门说明：
+ >里面的内容就是一系列的job的集合。每个job都是由
+ >image:会被安装到docker里。
+ >tags: 是runner名称。
+ >script: runner执行的脚本。
+ >only: 有特殊取值，可以在push的时候就构建，比如pushes。。本质是组合出触发条件
  
+ 
+>将项目打包为docker镜像
+ >开启远程api: vi usr/lib/systemd/system/docker.service 
+				编辑添加ExecStart=项中增加-H tcp://0.0.0.0:2375 -H unix://var/run/docker.sock
+				后重启docker: systemctl stop docker  ; systemctl start docker 因为发现restart其实没有改变ps -ef查看到的进程的参数信息。
+>可以不设置端口开放：sudo /sbin/iptables -I INPUT -p tcp --dport 7010 -j ACCEPT
+			sudo /sbin/iptables -I INPUT -p tcp --dport 9021 -j ACCEPT
+>项目中增加插件：并且通过clean package docker:build指令来执行打包。
+<plugin>
+            <groupId>com.spotify</groupId>
+            <artifactId>docker-maven-plugin</artifactId>
+            <version>0.4.13</version>
+            <configuration>
+                <!-- docker默认远程端口为2375-->
+                <dockerHost>http://39.101.197.111:2375/</dockerHost>
+                <!--用于指定镜像名称, 不能有-特殊符号，否则报socket write error;-->
+                <imageName>hellososo</imageName>
+                <!--用于指定基础镜像，相当于Dockerfile中的FROM指令-->
+                <baseImage>java</baseImage>
+                <!--相当于Dockerfile的ENTRYPOINT指令-->
+                <entryPoint>["java", "-jar", "/${project.build.finalName}.jar"]</entryPoint>
+                <!--是否跳过docker build-->
+                <skipDockerBuild>false</skipDockerBuild>
+                <resources>
+                    <resource>
+                        <targetPath>/</targetPath>
+                        <!--用于指定需要复制的根目录，${project.build.directory}表示target目录-->
+                        <directory>${project.build.directory}</directory>
+                        <!--用于指定需要复制的文件。${project.build.finalName}.jar指的是打包后的jar包文件。-->
+                        <include>${project.build.finalName}.jar</include>
+                    </resource>
+                </resources>
+            </configuration>
+        </plugin>	
+>可以看到在本地成功，而在阿里云上则已经有了hellososo镜像。		
+>启动容器docker run -p 7777:7011 hellososo
+ >注意：如果镜像本身是一个spring-boot应用，而且端口配置是7011端口，那么如果镜像启动第二个端口不是7011那么根本访问不到这个项目----因为只会这么一个转发只转发给特定的端口--既然tomcat不在那个端口听那么自然什么也听不到---是否可以多个端口映射？可以的---只要多次映射-p -p即可。(外层端口变了，那么etc/hosts的配置也就没意义了，所以这个端口映射也是看需要)			
+>查看安装的容器及其状态：docker ps -a
+>通过容器id进入容器：docker exec -it f403703f2c7f bash 或者sh 。退出直接exit就可以了。  
+
+				

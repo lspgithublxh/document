@@ -8,3 +8,37 @@
  >配置上传文件到阿里云：注意sources files是workspace/project/开始的目录下的文件：比如填写：target/*.jar就是上传打包的文件。
  ---阿里云上传：winscp/putty/pscp上传文件。
   >pscp上传：pscp D:\\BaiduNetdiskDownload\\jdk-8u221-linux-x64.tar.gz root@39.101.197.111:/usr/local/jenkins-jar/jar/
+
+
+>linux上安装：https://www.cnblogs.com/chinda/p/7423325.html
+ >wget http://pkg.jenkins-ci.org/redhat-stable/jenkins-2.204.5-1.1.noarch.rpm
+  rpm -ih jenkins-2.204.5-1.1.noarch.rpm
+  service jenkins start  
+  
+ >war目录查看：/usr/lib/jenkins   ; 
+ >工作目录查看(在service...启动之后就会有内容)：/var/lib/jenkins    
+ >配置文件查看：/etc/sysconfig/jenkins
+ >日志查看：/var/log/jenkins/
+ 
+ -----同样插件可以从win上下载：
+ wget http://www.rarsoft.com/rar/rarlinux-x64-5.4.b3.tar.gz
+ tar -zxvf xxx.gz 
+ rar x xxx.rar 
+
+----全局系统配置：
+ ----git安装：sudo yum install -y git
+			 git --version 查看
+			 git config --global user.name "lishaoping"
+			 git config --global user.email "1913796030@qq.com"
+			 ssh-keygen -t rsa -C "1913796030@qq.com"
+	公钥放到github上
+	(私钥有必要的话，可以配置到jenkins的全局工具中)
+>jenkins启动后：全局工具配置和系统配置。包括配置ssh server. 即阿里云的server的连接密码。
+  全局工具中：git项甚至只需要配置git三个字母即可。而java配置$JAVA_HOME也可以。
+  
+  
+>目标1：将项目打包为jar并运行。略。
+>目标2：将项目打包为docker镜像
+ mvn clean package docker:build -DpushImage
+	
+ 
