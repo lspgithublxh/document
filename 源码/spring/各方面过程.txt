@@ -1,11 +1,43 @@
 各模块工作：流程图和世界观
- >spring-core:
- >spring-beans:
+ >spring-core: 
+ >spring-beans: 解析(xml)-封装(为一个个BeanDefinition)-注册(到registry如SimpleBeanDefinitionRegistry类的concurrenthashmap：beanDefinitionMap)。
+  >自定义名称空间-标签的解析：
+  >注册bean其实就是注册到一个简单的concurrenthashmap: 	simple注册器private final Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>(64);而defaultlistablebeanfactory则是256的concurrenthashmap
+  >bean加载：AbstractApplicationContext.getBean(String name)方法为入口。 StaticListableBeanFactory。。。每个实例bean都和一个beanFactory关联。加载过程类(含有注册过程)：DefaultSingletonBeanRegistry(.getSingleton(String beanName))。。。里面有一个单例缓存private final Map<String, Object> singletonObjects = new ConcurrentHashMap<>(256);共有四个缓存对象：singletonObjects(保存beanName-bean依赖关系)，singletonFactories(提前初始化时会加进来的工厂,ObjectFactory产生的obj放入earlySingletonObjects中)，earlySingletonObjects(singletonObjects里还没有---还有依赖项未构建，则先放到这里，目的为了检测循环引用(避免重复创建),比如如果有下一个对象来引用了它，那么到这里从early里找到了就直接返回了--不再创建)，registeredSingletons(new LinkedHashSet<>(256)已经注册了的bean)，
+    >工厂创建getObject()之后：实例初始化：factory-method:
+	 >初始化完成后用户的处理器列表再次处理：	private final List<BeanPostProcessor> beanPostProcessors = new CopyOnWriteArrayList<>();
+	  >典型的：InstantiationAwareBeanPostProcessor
+	 >前中后：在facotry.getObject()前中后
+	  >getObject()的内容：AbstractAutowireCapableBeanFactory.createBean()
+	   >创建bean之前：先后执行所有BeanPostProcessor的(InstantiationAwareBeanPostProcessor.)postProcessBeforeInstantiation()和postProcessAfterInitialization()方法, 有结果则直接返回了。
+	   >创建: AbstractAutowireCapableBeanFactory.doCreateBean().根据RootBeanDefinition等封装出BeanWrapper, 并且注册多种编辑器PropertyEditorRegistrySupport.registerCustomEditor().customEditors。
+	    >默认方法构建：instantiateBean() 最终三种方式实现从构造方法实例化出实例的方法：KotlinDelegate.instantiateClass(ctor, args) : ctor.newInstance(args)， 第三种--如果有方法覆盖(SimpleInstantiationStrategy类里.instantiateWithMethodInjection()方法)RootBeanDefinition.hasMethodOverrides()：new Enhancer().getConstructor(ctor.getParameterTypes()).enhancedSubclassConstructor.newInstance(args)///最终覆盖方法会被获取：用到cglib的CallbackFilter.accept()方法里：方法里区分lookup/replacer返回不同的整数标记：：来实现替代父类的方法---应该就是此时不再invoke父类方法。
+		>工厂方法构建：instantiateUsingFactoryMethod()/instantiate() 最终一种实现factoryMethod.invoke(factoryBean, args)
+	   >bean定义融合：调用BeanPostProcessor的postProcessMergedBeanDefinition方法。
+	   >是否提前暴露bean：是则BeanPostProcessor.getEarlyBeanReference()暴露提前引用的实现--返回一个对象：CglibAopProxy封装cglib的动态代理接口。JdkDynamicAopProxy封装jdk自带的Proxy.newProxyInstance()接口。并放到四个缓存里。
+	   >对创建的beanwrapper填充更多数据对beanwrapper得到的bean初始化(init-method方法等都是invoke反射执行)：填充的数据来源：BeanPostProcessor.postProcessAfterInstantiation(), 填充到的地方：RootBeanDefinition.getPropertyValues()属性值里。继续进行BeanPostProcessor.postProcessProperties()处理，传递给RootBeanDefinition.getPropertyValues()属性里。
+	   >创建完成之后：其实也还在singletonsCurrentlyInCreation属性里，依赖检查：如果含有没有创建完成的，则抛出异常BeanCurrentlyInCreationException。
+	   >创建完成之后注册：单例一次性放到disposableBeans里。private final Map<String, Object> disposableBeans = new LinkedHashMap<>();
+	   
+   >实例初始化时：有依赖其他bean,则先初始化这个依赖bean,
+    >初始化的scope策略：singleton, prototype, request;   
+    >类型转换：
+   >定制实例化：实现FactoryBean接口：
+    >FactoryBean: 三个基本方法。自己实现，那么可以自己实例化
+	 >getObject():自己实例化一个对象返回，而初始值可以标签注入，标签的属性同类的属性名。标签的class=xxx.AFactoryBean这个工厂类的bean。而&id还可以获取到这个FactoryBean
+	 >getObjectType():
+	 >isSingleton(): 
  >spring-aop:
  >spring-context:
  >spring-tx:
  
-
+>目标1：学习一些没见过的基本操作--jdk操作/方法，设计模式(模板,代理，包装), 组织结构(如utils,parser,handler), 习惯操作(加入本地缓存, 代码放入特权块里避免权限问题,退出关闭流，标记暂存--提升效率)，"多余操作/健壮操作/固定搭配一样的操作"()
+ >如：xml文件，通过Properties的load方法转换之后，getkey的值val可以直接转换为某个类的实例。
+ 
+>目标2：发现存在的bug: 没处理的某种特殊情况。
+>方法1：
+ >只看正常分支/主线逻辑分支：可能有多种并列情况出现，意外情况的补充方案分支，但是暂不看。只看主走流程分支。
+ >
 
 
 
