@@ -56,4 +56,111 @@
 	  >默认标签下如果有自定义标签：寻找对应的命名空间处理器。
 	 >注册：holder和registry已经得到。BeanDefinitionHolder和BeanDefinitionRegistry
 	  >registry的方法：注册这个bean的name<-->beanDefinition。再注册所有的别名name<--->alias 
-	  >
+	   >注册实现：put操作。beanName--BeanDefinition放到一个map里。并且是同步放入的。同时还会有beanName的缓存。
+	    >注册别名：	put alias--beanName
+	 >事件监听：注册监听器。
+	>alias标签：name, alias属性。name是bean的名,alias是给这个bean的其他名/别名。。 
+	>import标签：导入其他配置模块配置文件---还是spring的xml。。。resource是属性。   
+	>beans标签：递归解析。
+	>自定义标签的解析：parseCustomElement(root) 解决复杂配置的问题。
+	 >扩展自定义标签：1.定义xsd文件描述组件的内容，编写类实现BeanDefinitionParser接口(AbstractSingleBeanDefinitionParser)---来根据xsd解析组件定义，扩展实现NamespaceHandlerSupport接口----将组件注册到spring容器------编写spring.handlers(http://xxx/user=xx.A), spring.schemas(http://xxx/user.xsd=META-INF/Spring-user.xsd)。，
+	  >xsd文件里：targetNamspace属性描述，xmlns:tns也新描述。 
+	  >parser类里：仅仅1是为了提供class---程序手动指定，第二根据配置文件里的属性值而反射赋值到class实例化后的obj里。
+	  >handler类里：直接将上述自定义Parser类的实例注入到给定父类方法里。
+	  ---spring.xml格式：<myname:user ....>其他第三方标签：<tx:annotation-driven />
+	 >过程：获取命名空间--->再获取handler类--->然后调用parse解析方法
+	>加载bean: factory.getObject()方法内部实际：调用createBean()
+	 >createBean():除了spring自己反射创建bean, 也给用户编写的BeanPostProcessors一个机会创建代理bean，而返回这个bean代替spring自己反射创建的。另外，对于lookup-method, replace-method的处理提供专门的方法来处理，这些信息先存放在BeanDefinition的methodOverrides属性里，此时取出来替换原来的class字节码中相应的方法。
+	  >resolveBeforeInstantiation()
+	  >doCreateBean()
+	  >populateBean()此阶段会对属性填充依赖引用，因此会递归的创建其他bean(autowireByName, autowireByType), 此bean应用一个bean时，先从创建中缓存再从创建后缓存里取引用，没有才实质真正的去创建。
+	   >autowireByType:对于集合类型的处理：会分多种情况。
+	 >属性编辑器：在配置文件中的字符串值，转换为指定某个类的值，则是通过这个属性编辑器实现的，甚至自然地可以使用自定义的属性编辑器。   
+	>初始化-属性填充设置值：在此之前，利用“加载”，“填充值”两个过程之间的空隙，可以增加模板逻辑：相当于事件通知/在前后分别调用若干个处理器来处理，而其中一种后置处理器就是：.properties文件配置内容加载进来放到指定对象里---各个bean在下一步的初始化注入属性时候都可以访问到，这个对象就是实现了BeanFactoryPostProcessor的bean
+	 >开放式设计：就是流程细化，各个环节、步骤前后都增加事件通知/拦截器调用。
+	 >左右树形展开式描述业务逻辑架构：事情--处理(分情况处理是一种处理:多线发散，不分情况直接处理也是处理:单线发散)(相当于流程图中，去掉判断图，而将判断直接放到线上，以更加概括的描述)， 形成一幅业务逻辑树图。
+	  >视觉直观表象需要在内部流程上标记：即是哪个内部流程中的哪个步骤体现出来的。
+	 >数据组织图：如spring中的bean的分类管理于不同的属性中(属性是其他类，则交给它，调用它的方法而传递)。
+	  >包装类：解决附属信息存储的问题。
+	>对于配置文件中有些bean：提取-注册-激活： 
+	>国际化：国际化信息的获取
+	 >解析国际化配置文件的MessageSource类的bean会被设置到context的messageSource属性里。ctx.getMessage(code, Local)两步确定国际化的值。
+	>手动发布事件和listener bean监听事件：
+	 >配置listener bean, 实现相应的接口。然后ctx.publishEvent(event)的调用，则会将事件event传递而调用各个listener的固定接口。
+	 >广播器：ctx发布事件后，调用广播器执行发布事件给各个listner。毕竟容器自己不能亲力亲为，仅仅只是接收转发和下达和调用而已。而在启动时ctx注册监听器也是将每个监听器交给广播器处理。
+	>Lifecycle接口：ctx.lifecycleProcessor属性存储处理器， start/stop时候。LifeCycelBean 
+   >AOP: 可以模拟实现生成一个代理类，代理类每个方法里的内容：遍历所有的切面--反射执行切面的指定的前置方法，再反射执行切面的around方法，无around则直接执行invoke父类方法，最后反射执行所有切面的后置方法。通过cglib可以实现---也即在加载bean的时候生成，属于运行时生成；；java动态代理是不能办到的。	
+    >切点之前执行，切点之后执行，围绕切点执行：在描述切面中的引用切点的通知时。
+	>一个被代理的类的a方法this.b()方式调用了b方法：a,b都做了切面，那么实际执行的时候按照切面代理的生成过程，执行a()实际直接转到了MethodIntercept(),先执行了前置通知，后invoke父类即被代理类的a()方法---此时才执行this.b()，那么这里的this就是被代理类，而不是代理类，那么是不会有切面效果的。所以要用代理类实例引用---通过共享全局变量来获取--都是唯一的，即把this.换成((A)AopContext.currentProxy())----原理就应该是通过获取本实例来从一个已经加载bean时存好的bean-proxyBean这样的map里获取到bean的代理类。
+	 >存在增强方法则创建代理：
+	  >增强器的解析和注册：
+	  >运行中方法与增强器的匹配：每个通知方法都有一个匹配表达式，可以与方法匹配判断。引介增强(只到类级别匹配)和普通增强(方法级别)。
+	  >增强器和每个bean的方法级别相关，所以要和bean绑定，且绑定到方法级别。
+	  >代理类创建工厂：本身加载阶段就加载了所有匹配的增强器。增强器当作拦截器被引用。工厂模式是原料工厂模式。
+	   >MethodIntercept也是Advice的一个子类：即是通知起的一种。会被封装为DefaultPointCutAdvisor
+	  >Support类一般是：配置实体。
+	  >代理类创建工厂的创建过程：利用配置Support实体，判断：激进策略|代理的是类| 无用户接口 就用cglib,  MethodInterceptor-intercept(),  jdk的动态代理则实现InvocationHandler--invoke()(基本上要注入自己的servicebean)
+	 >静态代理：加载字节码的时候动态织入切面。Load-Time Weaving。 使用AspectJ, 需要配置aop.xml指明用哪个包下的增强器对哪个包下的类织入。同时在application.xml中配置<context:load-time-weaver> 
+	 >静态AOP:虚拟机启动时改变目标对象的字节码---增强它。
+	  >java instrumentation: 实现profiler，让一些统计性质的代码不必出现在项目中，而是直接外部直接织入。java agent 
+	   >实现ClassFileTransformer, 方法入参中：字节码数组byte[] , 代码中可以将这个数组封装为CtClass对象，调用它的方法如获取方法CtBehavior进行插入java代码，然后转换为另一个byte[]返回。
+	    >ClassFileTransformer对象添加到一个Instrumentation对象中：写一个类A， 一个方法名为premain(String, Instrumentation )即可，打包的时候，需要在META-INF/MANIFEST.MF中加入Premain-Class:xxx类名， Boot-class-path:添加javassit包的路径----这些都可以在maven-jar-plugins中进行配置。打包出来，这个包就是agent.jar包，当想要统计其他jar时，就可以java -javaagent:agent.jar来加载agent.jar
+		>自定义标签解析器注册的位置：ContextNamespaceHandler中的init()方法中，大量的固定注册语句。 
+	   >加载器的使用：	以及各种LoadTimeWeaver
+	 >数据库连接：Driver的加载-->DriverManager的获取连接Connection--->Connection创建Statement---->Statement执行查询语句返回结果ResulrSet--->从结果中next()获取每行结果并获取每列的结果。--->关闭连接Connection
+	  >结论：是一个模板式的流程。所以可以使用模板模式，传递sql, 而返回结果集合，甚至返回PO结构。对于常见的sql, 甚至不用传递，直接在方法名上体现，而本身入参仅仅DO-->PO的映射。模板就是JdbcTemplate, 只需要注入DataSource来初始化。
+	  >JdbcTemplate的世界观：输入完成一件事情需要的条件--->返回完成这件事情的结果。
+	   >spring此时体现的逻辑：多参数接口都先统一调用最终的一个唯一参数接口---唯一参数封装了各种参数-----多参数接口保证多样性，而最终唯一入参接口可以保证同一的核心逻辑处理(而不是各个方法里都去执行一遍)。同时，统一入参甚至还可以将一些结果也放入里面，即是一个In/Out容器。
+	    >存在事务同步连接：说明共用了数据库连接：那么一个事务结束的时候，仅仅是连接数减1，而不是将连接关闭。非事务型连接，则直接关闭。
+	   >告警模式：Assert.notNull()代替if...return模式。  
+	   >日志debug开启模式：logger.isDebugEnabled()
+	   >多重异常捕获风格：抛出多个异常，分别打印。
+	   >布局代码模式：大量的setBean，参数设置准备，数据准备；当前是不知道，但是以后会使用到。
+	   >参数整合模式：仅仅整合入参，而不执行实际逻辑，而交给其他方法。每一步的整合都提出为一个方法。在spring jdbc的save, query,update方法中常见。
+	 >整合mybatis:独立使用：PO建立-->DAO编写(xml中指定方法映射到sql, 或者直接方法上指定sql)--->配置文件(全局(功能开启和具象)、环境-数据源/事务处理器、插件、映射文件位置、类型处理器)--->映射文件(指定接口完整路径、配置方法对应的sql)--->使用SqlSessionFactoryBuilder加在配置文件得到SqlSessionFactory,再得到Sqlsession, 再session.getMapper(A.class)获取到代理接口--->代理接口方法调用, session.commit()提交。
+	  >可见有固定流程部分：可以建立一个模板代理类，这个代理类甚至只需要Jdk动态代理就足够了，前后增加获取session提交session，中间invoke通过mybatis获取到的Mapper类的方法。
+	   >spring整合中：配置文件无需环境项。新增bean:org.mybatis.spring.SqlSessionFactoryBean
+	    >如果一个类实现了Factorybean接口, 那么通过spring容器获取的getBean()实例实际上是这个类的getObject()方法返回的对象，而不是真正的实例化new了这个类。SqlsessionFactoryBean, MapperFactoryBean就是这样的一个类。MapperScannerConfiguer更强。	
+	   >事务工厂：SpringManagedTransactionFactory	
+	   >向相关BeanDefinition填充了多个工具属性：到了PropertiesValues()里。
+	 >spring事务：事务也是一个流程：打开事务，提交任务，关闭事务/回滚事务。对于事务嵌套，还有7种传播性考虑: 当前有事务---抛出异常A/利用当前事务B/悬挂当前事务(创新新事务C或者无事务D)/设置保存点创建子事务E(嵌套)(也悬挂当前事务), 当前没有事务---创建事务1/无事务执行2/抛出异常3。B1--Required,B2--supports,B3---mandatory,C1--Requires_New， D2-not_supported,A2--Never, E1-Nested
+	  >spring事务隔离级别：1默认数据库级别，剩下4种为数据库的那四种级别。
+	  >事务启用标签：<tx:annotation-drivern > 事务管理器DataSourceTransactionManager  
+	   >事务的流程实现上看：可以看作是对方法的一个环绕通知。前置处理和后置处理方法，在一个处理器内：BeanFactoryTransactionAttributeSourceAdvisor----TransactionInterceptor 
+	   >事务实体：DataSourceTransactionObject
+	   >隔离级别：由Connection控制。它有方法可以直接设置连接的隔离级别。也设置是否只读。
+	   >传播级别：在流程中，getTransctionInfo()方法返回TransactionStatus
+	   >回滚：也是Connection中的方法。
+	 >springmvc: 通过servlet拦截所有的URL请求。
+	  >controller继承AbastractController: handle方法返回一个ModelAndView实例。
+	  >web容器启动时候：也有回调/事件通知：注册context-param, ContextLoaderListerner。因为此类实现了ServletContextListener接口---所以web容器启动的时候会回调它，从而向ServletContext添加任意的对象-----重要的对象就是实例化WebApplicationContext。同时还有servlet(FrameworkServlet)的实例化BeanWrapper化和初始化。
+	   >分层步骤图：每个节点内是下一层的流程----但不是最底层的流程。---然后流程中每个节点各自指向各自的下一层的详细一些的流程：一直往右，直到最底层，没有更细更原子的流程。
+	   >servlet容器还会加载Servlet类：配置并初始化它们。然后在请求到来之后将请求封装作为入参而调用它们的service()方法。
+	  >web容器接收到请求的时候：也有回调/事件通知： 通知注册的过滤器filter和servlet容器， 
+	   >refresh()中的init操作：加入到DispatcherServlet
+	    >MultipartResolver: 解析请求中的multipart。处理文件上传。resolver.resolveMultipart(request)
+		>LocalResolver: 解析请求中的国际化说明。如?locale=zh_CN这种url尾部信息的解析。或者报头中accept-language
+		>ThemeResolver: 页面主题风格的解析控制：主题指定信息保存在session,cookie，默认。所以在请求中可以设置，或者?themeName=x, 通过主题拦截器加载不同主题资源而切换主题风格。
+		>handlerMapping: 解析url对应的转发servlet	。所有的mappings都在this.handlerMappings属性里，通过.handler(request)获取到HandlerExecutionChain.=。路径url匹配到handler.	chain里面就有注入拦截器。
+		>handlerAdapter: 解析返回url请求匹配到的处理器类型：控制器类型、注解控制器类型、远程调用处理器类型。和handler适配的条件就是唯一的：handler是Controller的实例。
+		>handlerExceptionResolver:异常解析。resolveException(request, response, handler,ex)
+		>RequestToViewNameResolver: 解析controller返回的非ModelAndView对象时候，同时也没有往response写东西的时候来如何确定视图。
+		>ViewResoler:根据ModelAndView对象选择合适的View。 resolveViewNames(viewName, locale)返回View
+		>FlashMapManager:暂存请求属性，供其他请求使用。
+	  >一次请求处理的过程：创建LocalContext和RequestAttribute
+	   >拦截器在handler里：前prehandle()，handler.handle(), 后拦截器postHandle(), 然后视图mv.render()
+	   >请求缓存：第一次服务器返回带有Last-Modified报头：第二次请求则带上if-modified-since报头---服务端没有改变则返回304状态码。
+	   >视图解析：
+	   >Controller方法的执行：调用controller的handleRequest()
+	  >HttpInvoker: http远程调用模型。
+	  >spring消息：ActiveMQ: ConnectionFactory-->Connection--->Session--->MessageProducer--->TextMessage 这样的一个创建最后发送图。
+							 ConnectionFactory-->Connection--->Session--->MessageConsumer--->TextMessage 这样的一个创建最后接收图。
+		>spring的门面模式：对消息服务的独立定义：JmsTemplate--->Destination--->(Session--->Message) 创建/回调创建消息后JmsTemplate发送。
+												  JmsTemplate--->Destination--->Message 无需session, JmsTemplate直接received
+														---使用MessageListener则可以异步接收。
+													
+		>子功能代码模板：网络，文件....
+		
+
+													
+														
