@@ -1,0 +1,1 @@
+>eclipse-->工程-->Configure-->Convert to JPA project

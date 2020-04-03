@@ -1,0 +1,166 @@
+drop table if exists sms_record;
+CREATE TABLE sms_record(
+telephone BIGINT(20) NOT NULL  COMMENT '主键, 电话号码',
+CODE VARCHAR(10) NOT NULL COMMENT '验证码',
+update_times SMALLINT(5) NOT NULL DEFAULT 1 COMMENT '验证码更新次数',
+register_day DATE NOT NULL DEFAULT '2020-3-26' COMMENT '注册当天',
+update_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '更新验证码时间',
+PRIMARY KEY(telephone, register_day)
+);
+
+
+-- 区域
+CREATE TABLE region(
+ region_id INT(8) NOT NULL AUTO_INCREMENT COMMENT '主键id',
+ region_name VARCHAR(20) NOT NULL COMMENT '区域名',
+ region_alias VARCHAR(8) NOT NULL COMMENT '区域简称',
+ PRIMARY KEY(`region_id`)
+);
+
+-- 剩余名额
+DROP TABLE IF EXISTS region_rest_num;
+CREATE TABLE region_rest_num(
+ region_id INT(8) NOT NULL  COMMENT '主键id',
+ total_num INT(8) NOT NULL DEFAULT 30 COMMENT '总名额',
+ apply_num INT(8) NOT NULL DEFAULT 30 COMMENT '已申请名额',
+ exam_type_id SMALLINT(5) NOT NULL DEFAULT 1 COMMENT '考试类型',
+ PRIMARY KEY(region_id, exam_type_id)
+);
+
+-- 
+CREATE TABLE user_register(
+ user_id BIGINT(20) UNSIGNED NOT NULL COMMENT '用户id',
+ exam_type_id SMALLINT(5) NOT NULL DEFAULT 1 COMMENT '考试类型',
+ region_id INT(8) NOT NULL  COMMENT '区域id',
+ PRIMARY KEY(`user_id`,`exam_type_id`)
+);
+CREATE TABLE register_page(
+ logo_img VARCHAR(256) NOT NULL COMMENT '公司logo图片',
+ title VARCHAR(128) NOT NULL DEFAULT '一级消防工程师注册考试' COMMENT '标题',
+ exam_type_id SMALLINT(5) NOT NULL DEFAULT 1 COMMENT '考试类型',
+ expire_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '活动截止时间',
+ PRIMARY KEY(exam_type_id)
+);
+
+drop table if exists aspect_config;
+create table aspect_config(
+ config_id bigint(20) not null auto_increment comment '配置id',
+ config_content varchar(256) comment '配置内容',
+ primary key(config_id)
+);
+
+-- 初始化数据
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('1','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('2','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('3','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('4','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('5','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('6','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('7','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('8','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('9','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('10','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('11','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('12','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('13','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('14','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('15','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('16','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('17','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('18','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('19','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('20','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('21','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('22','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('23','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('24','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('25','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('26','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('27','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('28','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('29','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('30','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('31','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('32','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('33','30','6','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('34','30','6','0');
+
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('1','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('2','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('3','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('4','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('5','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('6','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('7','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('8','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('9','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('10','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('11','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('12','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('13','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('14','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('15','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('16','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('17','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('18','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('19','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('20','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('21','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('22','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('23','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('24','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('25','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('26','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('27','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('28','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('29','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('30','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('31','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('32','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('33','30','1','0');
+INSERT INTO `region_rest_num` (`region_id`, `total_num`, `exam_type_id`, `apply_num`) VALUES('34','30','1','0');
+
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('1','北京','京');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('2','天津','津');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('3','河北','冀');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('4','山西','晋');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('5','内蒙古','蒙');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('6','辽宁','辽');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('7','吉林','吉');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('8','黑龙江','黑');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('9','上海','沪');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('10','江苏','苏');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('11','浙江省','浙');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('12','安徽','皖');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('13','福建','闽');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('14','江西','赣');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('15','山东','鲁');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('16','河南','豫');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('17','湖北','鄂');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('18','湖南','湘');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('19','广东','粤');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('20','广西','桂');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('21','海南','琼');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('22','重庆','渝');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('23','四川','川');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('24','贵州','黔');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('25','云南','滇');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('26','西藏','藏');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('27','陕西','陕');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('28','甘肃省','甘');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('29','青海','青');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('30','宁夏','宁');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('31','新疆','新');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('32','台湾','台');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('33','香港特别行政区','港');
+INSERT INTO `region` (`region_id`, `region_name`, `region_alias`) VALUES('34','澳门','澳');
+
+--
+INSERT INTO `register_page` (`logo_img`, `title`, `exam_type_id`, `expire_time`) VALUES('product/xf/image/yi_xiao_qi_ye_zhi_tong_che_ding_dan_ye.png','一级消防工程师注册考试','1','2020-04-03 16:41:42');
+INSERT INTO `register_page` (`logo_img`, `title`, `exam_type_id`, `expire_time`) VALUES('product/xf/image/yi_xiao_qi_ye_zhi_tong_che_ding_dan_ye.png','健康管理师注册考试','6','2020-04-05 17:33:16');
+
+--
+INSERT INTO `aspect_config` (`config_id`, `config_content`) VALUES('1','15');
+INSERT INTO `aspect_config` (`config_id`, `config_content`) VALUES('2','40');
+
+

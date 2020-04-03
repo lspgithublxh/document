@@ -1,0 +1,160 @@
+----------------------------------------------------------------------推荐----------------------
+-- 查询推荐系统对一个用户的所有的推荐的问题和知识点
+SELECT * FROM study_unit su INNER JOIN study_unit_package sp ON sp.`study_unit_package_id`= su.study_unit_package_id
+WHERE sp.user_id=1893 AND sp.exam_subject_id=10
+
+
+-- 查询推荐的问题(根据推荐的知识点)
+SELECT  DISTINCT k.question_id, k.knowledge_point_id FROM knowledge_point_relate_question_detail k 
+INNER JOIN question q ON k.question_id = q.question_id WHERE 1= 1 
+ AND q.purpose IN ('Z','L')  AND q.has_analyze = 1 AND q.status=1 
+AND k.knowledge_point_id IN (18701, 18496, 18836, 18953, 18813)
+
+-- 查询推荐的知识点(综合)
+
+--------------------------------------------------------产品---------订单---------权限-------
+
+-- 查询产品对应的各科
+SELECT pr.`product_id`, p.`end_time`, r.`reference_id`, es.name FROM `group_resource_authority` g INNER JOIN resource r ON r.resource_id = g.resource_id 
+INNER JOIN product_resource pr ON (pr.`resource_ids` REGEXP CONCAT('^(.+,)?',CONCAT(g.`resource_group_id`, '(,.+)?$')))
+INNER JOIN product p ON p.`product_id` = pr.`product_id`
+INNER JOIN `exam_subject` es ON es.`exam_subject_id` = r.`reference_id` 
+
+-- 查询每个用户购买了的赋权了的产品-科目
+SELECT DISTINCT pr.product_id, ur.user_id, es.exam_subject_id, es.name FROM user_resourcegroup ur  INNER JOIN group_resource_authority gr ON ur.resource_group_id=gr.resource_group_id 
+INNER JOIN resource r ON r.resource_id = gr.resource_id 
+INNER JOIN product_resource pr ON (pr.`resource_ids` REGEXP CONCAT('^(.+,)?',CONCAT(gr.`resource_group_id`, '(,.+)?$')))
+INNER JOIN product p ON p.`product_id` = pr.`product_id`
+
+INNER JOIN `exam_subject` es ON es.`exam_subject_id` = r.`reference_id` 
+
+
+-- 查询每个科目购买的用户数
+SELECT  COUNT(DISTINCT ur.user_id), es.exam_subject_id FROM user_resourcegroup ur  INNER JOIN group_resource_authority gr ON ur.resource_group_id=gr.resource_group_id 
+INNER JOIN resource r ON r.resource_id = gr.resource_id 
+INNER JOIN product_resource pr ON (pr.`resource_ids` REGEXP CONCAT('^(.+,)?',CONCAT(gr.`resource_group_id`, '(,.+)?$')))
+INNER JOIN product p ON p.`product_id` = pr.`product_id`
+
+INNER JOIN `exam_subject` es ON es.`exam_subject_id` = r.`reference_id` 
+GROUP BY es.exam_subject_id
+
+
+-- 非客服方式的各个产品购买量
+SELECT sc.product_id, COUNT(DISTINCT po.user_id) FROM product_order po 
+INNER JOIN shopping_cart sc ON po.shopping_cart_id=sc.shopping_cart_id	
+
+WHERE po.order_status=5
+GROUP BY sc.product_id
+
+-- 通过权限 猜测用户购买的产品
+select product_id from product_resource where product_id not in(
+select product_id from( 
+select b.product_id, b.rgid, ur.resource_group_id,ur.`user_id`  from (select pr.product_id, substring_index(SUBSTRING_INDEX(pr.resource_ids, ',', es.exam_subject_id), ',', -1) as rgid,pr.resource_ids from product_resource pr inner join exam_subject es on es.exam_subject_id <= length(pr.resource_ids) - length(replace(pr.resource_ids, ',','')) + 1
+) b left join user_resourcegroup ur on (b.rgid=ur.resource_group_id and ur.`user_id`=2318)
+) c where c.resource_group_id is null
+)
+
+
+-- 查询某个用户的客服方式购买的产品
+SELECT po.user_id, sc.product_id FROM product_order po 
+INNER JOIN shopping_cart sc ON (po.shopping_cart_id=sc.shopping_cart_id AND po.payment_mode='CUSTOMSERVICE')
+INNER JOIN product_resource p2 ON p2.product_id = sc.product_id
+WHERE
+NOT EXISTS(
+SELECT product_id FROM (
+SELECT b.product_id, b.rgid, ur.resource_group_id,ur.`user_id`  
+FROM (SELECT pr.product_id, SUBSTRING_INDEX(SUBSTRING_INDEX(pr.resource_ids, ',', es.exam_subject_id), ',', -1) AS rgid,pr.resource_ids FROM product_resource pr INNER JOIN exam_subject es ON es.exam_subject_id <= LENGTH(pr.resource_ids) - LENGTH(REPLACE(pr.resource_ids, ',','')) + 1
+) b LEFT JOIN user_resourcegroup ur ON (b.rgid=ur.resource_group_id AND ur.`user_id`=2318) -- AND ur.`user_id`=2318
+) c WHERE c.user_id IS NULL AND p2.product_id = c.product_id
+)
+
+- 从权限表查询每个用户购买的产品数
+SELECT user_id, COUNT(DISTINCT product_id) FROM(
+SELECT product_id, user_id FROM (
+SELECT a.*,b.product_id AS pid,a.auth_count - b.auth_count AS com FROM 
+ (SELECT p.product_id, ur.user_id, COUNT(DISTINCT p.resource_group_id) auth_count FROM user_resourcegroup ur  
+ RIGHT JOIN  (SELECT pr.product_id, SUBSTRING_INDEX(SUBSTRING_INDEX(pr.resource_ids, ',', es.exam_subject_id), ',', -1) AS resource_group_id,pr.resource_ids FROM product_resource pr INNER JOIN exam_subject es ON es.exam_subject_id <= LENGTH(pr.resource_ids) - LENGTH(REPLACE(pr.resource_ids, ',','')) + 1
+) p ON p.resource_group_id = ur.resource_group_id 
+ GROUP BY p.product_id, ur.user_id)a
+ LEFT JOIN 
+( SELECT p.product_id,COUNT(DISTINCT p.resource_group_id) auth_count FROM (SELECT pr.product_id, SUBSTRING_INDEX(SUBSTRING_INDEX(pr.resource_ids, ',', es.exam_subject_id), ',', -1) AS resource_group_id,pr.resource_ids FROM product_resource pr INNER JOIN exam_subject es ON es.exam_subject_id <= LENGTH(pr.resource_ids) - LENGTH(REPLACE(pr.resource_ids, ',','')) + 1
+)  p
+ GROUP BY p.product_id)b
+ ON a.product_id=b.product_id
+)c WHERE com =0
+) d GROUP BY user_id
+
+-- 从权限表猜测每个用户购买的产品，
+ SELECT user_id, COUNT(DISTINCT product_id), GROUP_CONCAT(product_id ORDER BY product_id SEPARATOR ',') pids, GROUP_CONCAT(product_name ORDER BY product_name SEPARATOR ',') pnames FROM(
+SELECT c.product_id, user_id, p.`product_name` FROM (
+SELECT a.*,b.product_id AS pid,a.auth_count - b.auth_count AS com FROM 
+ (SELECT p.product_id, ur.user_id, COUNT(DISTINCT p.resource_group_id) auth_count FROM user_resourcegroup ur  
+ RIGHT JOIN  (SELECT pr.product_id, SUBSTRING_INDEX(SUBSTRING_INDEX(pr.resource_ids, ',', es.exam_subject_id), ',', -1) AS resource_group_id,pr.resource_ids FROM product_resource pr INNER JOIN exam_subject es ON es.exam_subject_id <= LENGTH(pr.resource_ids) - LENGTH(REPLACE(pr.resource_ids, ',','')) + 1
+) p ON p.resource_group_id = ur.resource_group_id 
+ GROUP BY p.product_id, ur.user_id)a
+ LEFT JOIN 
+( SELECT p.product_id,COUNT(DISTINCT p.resource_group_id) auth_count FROM (SELECT pr.product_id, SUBSTRING_INDEX(SUBSTRING_INDEX(pr.resource_ids, ',', es.exam_subject_id), ',', -1) AS resource_group_id,pr.resource_ids FROM product_resource pr INNER JOIN exam_subject es ON es.exam_subject_id <= LENGTH(pr.resource_ids) - LENGTH(REPLACE(pr.resource_ids, ',','')) + 1
+)  p
+ GROUP BY p.product_id)b
+ ON a.product_id=b.product_id
+)c 
+inner join product p on c.product_id=p.`product_id`
+WHERE com =0
+) d GROUP BY user_id
+
+-- 从权限表猜测每个产品购买的用户：
+ SELECT product_id, COUNT(DISTINCT  user_id), GROUP_CONCAT(user_id ORDER BY user_id SEPARATOR ',') uids, GROUP_CONCAT(mobile_phone ORDER BY mobile_phone SEPARATOR ',') unames FROM(
+SELECT c.product_id, u.user_id, u.`mobile_phone` FROM (
+SELECT a.*,b.product_id AS pid,a.auth_count - b.auth_count AS com FROM 
+ (SELECT p.product_id, ur.user_id, COUNT(DISTINCT p.resource_group_id) auth_count FROM user_resourcegroup ur  
+ RIGHT JOIN  (SELECT pr.product_id, SUBSTRING_INDEX(SUBSTRING_INDEX(pr.resource_ids, ',', es.exam_subject_id), ',', -1) AS resource_group_id,pr.resource_ids FROM product_resource pr INNER JOIN exam_subject es ON es.exam_subject_id <= LENGTH(pr.resource_ids) - LENGTH(REPLACE(pr.resource_ids, ',','')) + 1
+) p ON p.resource_group_id = ur.resource_group_id 
+ GROUP BY p.product_id, ur.user_id)a
+ LEFT JOIN 
+( SELECT p.product_id,COUNT(DISTINCT p.resource_group_id) auth_count FROM (SELECT pr.product_id, SUBSTRING_INDEX(SUBSTRING_INDEX(pr.resource_ids, ',', es.exam_subject_id), ',', -1) AS resource_group_id,pr.resource_ids FROM product_resource pr INNER JOIN exam_subject es ON es.exam_subject_id <= LENGTH(pr.resource_ids) - LENGTH(REPLACE(pr.resource_ids, ',','')) + 1
+)  p
+ GROUP BY p.product_id)b
+ ON a.product_id=b.product_id
+)c 
+INNER JOIN USER u ON c.user_id=u.`user_id`
+WHERE com =0
+) d GROUP BY product_id
+
+
+
+-- 开权限：
+-- 初快
+UPDATE user_resourcegroup SET authorized=0 WHERE user_id IN (
+SELECT user_id FROM USER WHERE mobile_phone IN ('18243259789'
+) AND resource_group_id IN (25,26,27,28))
+
+-- 消防
+UPDATE user_resourcegroup SET authorized=0 WHERE user_id IN (
+SELECT user_id FROM USER WHERE mobile_phone IN ('13683586150'
+) AND resource_group_id IN (10,11,13,14))
+
+-- 多字段批量更新：
+update product_quota_num p inner join ( 
+ SELECT product_id, COUNT(DISTINCT  user_id) c FROM(
+SELECT c.product_id, u.user_id, u.`mobile_phone` FROM (
+SELECT a.*,b.product_id AS pid,a.auth_count - b.auth_count AS com FROM 
+ (SELECT p.product_id, ur.user_id, COUNT(DISTINCT p.resource_group_id) auth_count FROM user_resourcegroup ur  
+ RIGHT JOIN  (SELECT pr.product_id, SUBSTRING_INDEX(SUBSTRING_INDEX(pr.resource_ids, ',', es.exam_subject_id), ',', -1) AS resource_group_id,pr.resource_ids FROM product_resource pr INNER JOIN exam_subject es ON es.exam_subject_id <= LENGTH(pr.resource_ids) - LENGTH(REPLACE(pr.resource_ids, ',','')) + 1
+) p ON p.resource_group_id = ur.resource_group_id 
+ GROUP BY p.product_id, ur.user_id)a
+ LEFT JOIN 
+( SELECT p.product_id,COUNT(DISTINCT p.resource_group_id) auth_count FROM (SELECT pr.product_id, SUBSTRING_INDEX(SUBSTRING_INDEX(pr.resource_ids, ',', es.exam_subject_id), ',', -1) AS resource_group_id,pr.resource_ids FROM product_resource pr INNER JOIN exam_subject es ON es.exam_subject_id <= LENGTH(pr.resource_ids) - LENGTH(REPLACE(pr.resource_ids, ',','')) + 1
+)  p
+ GROUP BY p.product_id)b
+ ON a.product_id=b.product_id
+)c 
+inner join user u on c.user_id=u.`user_id`
+WHERE com =0
+) d GROUP BY product_id
+) m on p.product_id=m.product_id 
+set p.show_apply_num=p.show_apply_num + m.c
+
+
+
+-- 问题常见：
+1.订单回调接口到了另一个项目，没有看到日志。

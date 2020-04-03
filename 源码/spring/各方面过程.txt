@@ -10,14 +10,20 @@
 	 >前中后：在facotry.getObject()前中后
 	  >getObject()的内容：AbstractAutowireCapableBeanFactory.createBean()
 	   >创建bean之前：先后执行所有BeanPostProcessor的(InstantiationAwareBeanPostProcessor.)postProcessBeforeInstantiation()和postProcessAfterInitialization()方法, 有结果则直接返回了。
-	   >创建: AbstractAutowireCapableBeanFactory.doCreateBean().根据RootBeanDefinition等封装出BeanWrapper, 并且注册多种编辑器PropertyEditorRegistrySupport.registerCustomEditor().customEditors。
-	    >默认方法构建：instantiateBean() 最终三种方式实现从构造方法实例化出实例的方法：KotlinDelegate.instantiateClass(ctor, args) : ctor.newInstance(args)， 第三种--如果有方法覆盖(SimpleInstantiationStrategy类里.instantiateWithMethodInjection()方法)RootBeanDefinition.hasMethodOverrides()：new Enhancer().getConstructor(ctor.getParameterTypes()).enhancedSubclassConstructor.newInstance(args)///最终覆盖方法会被获取：用到cglib的CallbackFilter.accept()方法里：方法里区分lookup/replacer返回不同的整数标记：：来实现替代父类的方法---应该就是此时不再invoke父类方法。
+	   >创建: AbstractAutowireCapableBeanFactory.doCreateBean().根据RootBeanDefinition等封装出BeanWrapper,然后createBeanInstance()之后， 并且注册多种编辑器PropertyEditorRegistrySupport.registerCustomEditor().customEditors。
+	     以下是createBeanInstance()主要分支：
+		>提供者构建：instanceSupplier.get()
+		>默认方法构建：instantiateBean() (构造器方式确定因素：参数名称、参数类型、参数个数)最终三种方式实现从构造方法实例化出实例的方法(Kotlin是一种编程语言，是Kotlin type则第一种方法实例化)：KotlinDelegate.instantiateClass(ctor, args) : ctor.newInstance(args)， 第三种--如果有方法覆盖(SimpleInstantiationStrategy类里.instantiateWithMethodInjection()方法)RootBeanDefinition.hasMethodOverrides()：new Enhancer().getConstructor(ctor.getParameterTypes()).enhancedSubclassConstructor.newInstance(args)///最终覆盖方法会被获取：用到cglib的CallbackFilter.accept()方法里：方法里区分lookup/replacer返回不同的整数标记：：来实现替代父类的方法---应该就是此时不再invoke父类方法。
+		 >cglib: 使用asm(使用sax来提高性能)转换字节码(覆盖父类的非final方法)生成新的类的字节码。Enhancer.setCallbackTypes()方法将两种拦截器设置进去，而调用方法的时候就会调用返回包含拦截器的代理类--可以一次次增强某个类--在还是字节码的时候。
+		 >jdk动态代理：byte[] proxyClassFile = ProxyGenerator.generateProxyClass(proxyName, interfaces, accessFlags);然后byte[]数组加载为定义类private static native Class<?> defineClass0(ClassLoader loader, String name,byte[] b, int off, int len);其中第一个方法内部流程：通过byte[] s = new ProxyGenerator(String name, Class<?>[] interfaces, int var2).generateClassFile();得到生成的字节码。而生成的这个类，肯定有一个构造方法入参为Handler的，从而可以注入而接口方法实现直接调用handler的invoke()方法就没有问题了。
 		>工厂方法构建：instantiateUsingFactoryMethod()/instantiate() 最终一种实现factoryMethod.invoke(factoryBean, args)
 	   >bean定义融合：调用BeanPostProcessor的postProcessMergedBeanDefinition方法。
 	   >是否提前暴露bean：是则BeanPostProcessor.getEarlyBeanReference()暴露提前引用的实现--返回一个对象：CglibAopProxy封装cglib的动态代理接口。JdkDynamicAopProxy封装jdk自带的Proxy.newProxyInstance()接口。并放到四个缓存里。
 	   >对创建的beanwrapper填充更多数据对beanwrapper得到的bean初始化(init-method方法等都是invoke反射执行)：填充的数据来源：BeanPostProcessor.postProcessAfterInstantiation(), 填充到的地方：RootBeanDefinition.getPropertyValues()属性值里。继续进行BeanPostProcessor.postProcessProperties()处理，传递给RootBeanDefinition.getPropertyValues()属性里。
+	    >对initializeBean(): 先设置beanName和beanFactory,再前置beanPostProccessor, 再执行因为实现了InitializingBean接口而执行此接口的afterPropertyset()方法，后methodToInvoke.invoke(bean)最后再后置beanPostProcessor
 	   >创建完成之后：其实也还在singletonsCurrentlyInCreation属性里，依赖检查：如果含有没有创建完成的，则抛出异常BeanCurrentlyInCreationException。
-	   >创建完成之后注册：单例一次性放到disposableBeans里。private final Map<String, Object> disposableBeans = new LinkedHashMap<>();
+	    >构造方法循环依赖是无解的：setter还有。
+	   >创建完成之后有销毁方法destroy-method的bean需要注册到--以便销毁时调用(hasDestroyMethod)：单例一次性放到disposableBeans里。private final Map<String, Object> disposableBeans = new LinkedHashMap<>();
 	   
    >实例初始化时：有依赖其他bean,则先初始化这个依赖bean,
     >初始化的scope策略：singleton, prototype, request;   
@@ -28,16 +34,23 @@
 	 >getObjectType():
 	 >isSingleton(): 
  >spring-aop:
- >spring-context:
+ >spring-context: ApplicationContext优先级更高于BeanFactory的加载bean的。AbstractApplicationContext.refresh()方法。
+  >refresh()过程：
+   >prepareRefresh()-initPropertySources()；配置环境的初始化，属性源初始化如propertySource，开发者自己进行。如对属性environment--(为ConfigurableEnvironment类型)里的MutablePropertySources类型的属性propertySources设置两个key:servletContextInitParams和servletConfigInitParams他们的值如ServletConfigPropertySource类型。检测有空的key会报错。
+   >obtainFreshBeanFactory():AbstractRefreshableApplicationContext, 先摧毁已经存在的baenfactory, 再实例化一个DefaultListableBeanFactory对象，配置bean允许循环引用/方法覆盖等参数，再加载到注册beanDefinition(从resource到document到parse到注册 BeanDefinition；即最后终于到了BeanDefinitionRegistry.registerBeanDefinition(beanName, definitionHolder.getBeanDefinition())---内容就是beanDefinitionMap.put(beanName, beanDefinition)调用层次大概20层)
+   >prepareBeanFactory():在此之前已经完成解析，ApplicationContext的扩展功能由此开始。给beanFactory注入各种属性：增加对SEPL语言的支持setBeanExpressionResolver()(一般在属性填充的时候调用),属性解析器ResourceEditorRegistrar---如对日期的文本识别和解析(可以自定义属性解析器, 值转换的时候会使用，先setValue(),getValue())(默认的已经比较多，在PropertyEditorRegistrySupport.createDefaultEditors()里)， 各种beanPostProcessor(如对aspectJ的支持：LoadTimeWeaverAwareProcessor, aware类ApplicationContextAwareProcessor，listener类ApplicationListenerDetector), 多次registerResolvableDependency(),多次registerSingleton()
+   >postProcessBeanFactory():继续注册beanPostProcessor,ignoreDependencyInterface,registerWebApplicationScopes等。List<BeanFactoryPostProcessor>
+   >invokeBeanFactoryPostProcessors():激活list<beanFactoryPostProcessors>的两个方法 postProcessBeanDefinitionRegistry,postProcessBeanDefinitionRegistry,postProcessBeanFactory
  >spring-tx:
  
->目标1：学习一些没见过的基本操作--jdk操作/方法，设计模式(模板,代理，包装), 组织结构(如utils,parser,handler), 习惯操作(加入本地缓存, 代码放入特权块里避免权限问题,退出关闭流，标记暂存--提升效率)，"多余操作/健壮操作/固定搭配一样的操作"()
+>目标1：学习一些没见过的基本操作--jdk操作/方法，设计模式(模板,代理，包装), 组织结构(如utils,parser,handler), 习惯操作(加入本地缓存, 代码放入特权块里避免权限问题,退出关闭流，标记暂存--提升效率, 包装习惯--wrapper将多个属性封装到一个类作为一个整体里减少参数传递。概要总结-子概要总结分解的上下层方法之间的层叠关系|流程1和流程1的A步骤的内部流程分开到两个方法的习惯(如果左边流程1比较长---也可以分解为两部分)，转换器习惯-数据类型的统一， aware接口方式来注入bean的习惯--某个bean可以通过实现某个aware接口而获得(接口中就是seAware()方法)， 开放式架构---各种注册仓库供开发者注册各种事情各个阶段的过滤器/拦截器/链式处理器在各种事情的前后，事件机制--做完一件事通知给订阅者, 事件处理器--handler)，"多余操作/健壮操作/固定搭配一样的操作"()
  >如：xml文件，通过Properties的load方法转换之后，getkey的值val可以直接转换为某个类的实例。
  
 >目标2：发现存在的bug: 没处理的某种特殊情况。
 >方法1：
  >只看正常分支/主线逻辑分支：可能有多种并列情况出现，意外情况的补充方案分支，但是暂不看。只看主走流程分支。
  >
-
+>目标3：会话活动图。
+>目标4：理解开发不能让完成什么功能就只实现某种功能：不完成更多附加的功能--如统计/日志/监控---方便以后1.出问题找原因2.新需求在此基础上轻松开发3.实时监控开发的功能评估效果4.以后统计数据不会窘迫困难甚至无法得出准确数据。不能让做什么就只做什么。
 
 

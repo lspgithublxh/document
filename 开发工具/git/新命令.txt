@@ -12,6 +12,8 @@
 		>远程分支fix_bug: 先pull让本地有远程分支的名称-红色。然后：
  		   >git checkout -b fix_order pro/stage
 		>捡起其他分支上的某些提交到本分支上：git cherry-pick <C2_id>  即在本分支上直接cherry-pick其他分支的commit-id不用写分支名。git cherry-pick --continue持续提升。
+		  >git cherry-pick a2b2b4be26145eec13d00135d3ae74e3f4f45203 3baf1e5f64b7fbb7ef1a8fbd36f21b1600ef16df
+		  >含首不含尾： git cherry-pick 3baf1e5f64b7fbb7ef1a8fbd36f21b1600ef16df..da00b32c5098bf70cfd6132e6f5ab31f657c7b42
 		>丢弃分支上的某些提交：git rebase -i commit_c_id编辑drop或者#。
 		 >git log查看提交。
 		 >git rebase --abort 撤销

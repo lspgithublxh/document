@@ -9,3 +9,5 @@
 
 		INSERT INTO dis_lock VALUES('id3', 'localhost', '2019-3-20', NOW(), NOW());
 		INSERT INTO dis_lock VALUES('id4', 'localhost', NOW(), NOW(), NOW());
+
+	>¸´ÔÓÓï¾ä£ºINSERT INTO sms_record(telephone, CODE, update_times, register_day) SELECT '111', '122', 1, CURRENT_DATE FROM DUAL WHERE NOT EXISTS ( SELECT 1 FROM sms_record b WHERE b.update_times >= 10 AND telephone = '111' AND CODE = '122' AND register_day = CURRENT_DATE) ON DUPLICATE KEY UPDATE sms_record.update_times = sms_record.update_times+1 ,sms_record.update_time=CURRENT_TIMESTAMP

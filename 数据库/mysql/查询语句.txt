@@ -1,3 +1,10 @@
-1.问题：
+1.问题：非常重视过滤的先后顺序：当有join的时候，先on中过滤和最后在where里过滤效果 是不一样的。
+        过滤先后是一种逻辑关系。
 	>简单的：
-	>
+	>行列转换：
+	 -- 行列转换::突破在于发现：一个单元格拓展为多行单元格(另一张表)可以通过连接实现---只要连接条件用这个单元格的特征来表示.
+	  >SELECT * FROM product_resource pr INNER JOIN exam_subject es ON es.exam_subject_id <= LENGTH(pr.resource_ids) - LENGTH(REPLACE(pr.resource_ids, ',','')) + 1
+	  >SELECT pr.product_id, SUBSTRING_INDEX(SUBSTRING_INDEX(pr.resource_ids, ',', es.exam_subject_id), ',', -1),pr.resource_ids FROM product_resource pr INNER JOIN exam_subject es ON es.exam_subject_id <= LENGTH(pr.resource_ids) - LENGTH(REPLACE(pr.resource_ids, ',','')) + 1
+    >值传递问题：外层传递给里层。
+	 >可以传递给on的条件里，但是不能传递到inner join 的查表语句里。
+	 >where是否可以传递？

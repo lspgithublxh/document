@@ -1,0 +1,104 @@
+-- 建立一张同步表:和kp同步一样字段的表。命名为k_p_sync
+-- 查询删除的进来
+truncate kp_sync;
+insert into kp_sync(knowledge_point_id, sync_status) select kp.knowledge_point_id, kp.sync_status FROM knowledge_point kp       LEFT JOIN knowledge_point_relate_question_detail re ON re.knowledge_point_id = kp.knowledge_point_id     
+  LEFT JOIN question q ON (re.question_id = q.question_id %qPurpose% %qType% %qAnalysis% AND q.status=1 
+  AND q.exam_type_id=:examTypeId)      
+    INNER JOIN knowledge_point_weight w ON w.knowledge_point_id = kp.knowledge_point_id   
+      WHERE kp.level = :kpLevel  AND kp.status=1 
+  AND sync_status=2 AND finish_status=0;
+  
+-- 新增删除
+delete from  %env%.%tableName% where 
+knowledge_point_lvl_end_id in (SELECT knowledge_point_id FROM `kp_sync` WHERE sync_status=2)
+
+-- 状态更新：  
+ UPDATE knowledge_point SET finish_status=1 AND last_finish_timestamp=CURRENT_TIMESTAMP WHERE 
+ knowledge_point_id IN (SELECT knowledge_point_id FROM kp_sync);
+ 
+-- 新增 增加
+-- 查询新增的进来
+TRUNCATE kp_sync;
+INSERT INTO kp_sync SELECT kp.*
+FROM knowledge_point kp       LEFT JOIN knowledge_point_relate_question_detail re ON re.knowledge_point_id = kp.knowledge_point_id     
+  LEFT JOIN question q ON (re.question_id = q.question_id %qPurpose% %qType% %qAnalysis% AND q.status=1 
+  AND q.exam_type_id=:examTypeId)      
+    INNER JOIN knowledge_point_weight w ON w.knowledge_point_id = kp.knowledge_point_id   
+      WHERE kp.level = :kpLevel  AND kp.status=1 
+  AND sync_status in(3,4) AND finish_status=0;
+
+INSERT INTO %env%.%tableName%(user_id,knowledge_point_lvl_end_id,knowledge_point_lvl0_id,last_update_time, grasp_lvl,priority, exam_subject_id,exam_type_id, code)    
+ SELECT DISTINCT :userId, kp.knowledge_point_id,kp.top_level_id,unix_timestamp(current_timestamp()) * 1000,   :initGraspVal, 1 - 1/ (1 + 20 * (1 - EXP(-:importanceNorm * w.importance))   * (1 - EXP(-:importanceNorm * w.importance))   * (1 - (1- EXP(-:complexNorm * w.complexity)) * (1- EXP(-:complexNorm * w.complexity))) * (1 - :initGraspVal)) as priority, :examSubjectId,kp.exam_type_id,kp.code 
+ FROM kp_sync kp      
+    inner join knowledge_point_weight w on w.knowledge_point_id = kp.knowledge_point_id     WHERE kp.level = :kpLevel AND 
+ and kp.status=1 AND sync_status in(3,4) AND finish_status=0
+  ON DUPLICATE KEY UPDATE last_update_time=UNIX_TIMESTAMP(CURRENT_TIMESTAMP()) * 1000
+
+-- 新增更新 权重--如果是,那么其实不用更新：下次就自动更新了。code暂时不管。其他情况如级别-和科目类别的变化则当做：删除-新增处理。
+TRUNCATE kp_sync;
+update %env%.%tableName%
+(user_id,knowledge_point_lvl_end_id,knowledge_point_lvl0_id,last_update_time, grasp_lvl,priority, exam_subject_id,exam_type_id, CODE)    
+ set SELECT DISTINCT :userId, kp.knowledge_point_id,kp.top_level_id,UNIX_TIMESTAMP(CURRENT_TIMESTAMP()) * 1000,   :initGraspVal, 1 - 1/ (1 + 20 * (1 - EXP(-:importanceNorm * w.importance))   * (1 - EXP(-:importanceNorm * w.importance))   * (1 - (1- EXP(-:complexNorm * w.complexity)) * (1- EXP(-:complexNorm * w.complexity))) * (1 - :initGraspVal)) AS priority, :examSubjectId,kp.exam_type_id,kp.code 
+ FROM kp_sync kp      
+    INNER JOIN knowledge_point_weight w ON w.knowledge_point_id = kp.knowledge_point_id     WHERE kp.level = :kpLevel AND 
+ AND kp.status=1 AND sync_status IN(2,3) AND finish_status=0
+  ON DUPLICATE KEY UPDATE last_update_time=UNIX_TIMESTAMP(CURRENT_TIMESTAMP()) * 1000
+
+-- 状态更新：  
+ UPDATE knowledge_point SET finish_status=1 AND last_finish_timestamp=CURRENT_TIMESTAMP WHERE 
+ knowledge_point_id IN (SELECT knowledge_point_id FROM kp_sync);
+ 
+ 
+-- 需要新增删除的：
+SELECT COUNT(1) FROM kp_sync WHERE sync_status=2 AND finish_status=0
+-- 需要新增更新/增加的
+SELECT COUNT(1) FROM kp_sync WHERE sync_status IN (3,4) AND finish_status=0
+
+-- 建表语句：
+ALTER TABLE knowledge_point ADD sync_status SMALLINT(3) DEFAULT 3 COMMENT '知识点同步之前的状态：2删除3新增。默认新增';
+ALTER TABLE knowledge_point ADD finish_status SMALLINT(3) DEFAULT 0 COMMENT '知识点同步状态：0未完成1完成';
+
+CREATE TABLE `kp_sync` (
+  `knowledge_point_id` BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '题目id',
+  `exam_type_id` SMALLINT(5) UNSIGNED COMMENT '考试类型，比如消防',
+  `level` TINYINT(3) UNSIGNED  COMMENT '第几级',
+  `parent` BIGINT(20) UNSIGNED  COMMENT '父级知识点id',
+  `title` VARCHAR(128) COMMENT '标题',
+  `code` VARCHAR(128) DEFAULT NULL COMMENT '编号',
+  `status` TINYINT(1) DEFAULT '1' COMMENT '状态。1:生效，0:失效',
+  `create_time` DATETIME ,
+  `update_time` DATETIME DEFAULT NULL,
+  `top_level_id` BIGINT(20) UNSIGNED COMMENT '一级知识点的id',
+  `prefix` VARCHAR(256) DEFAULT NULL COMMENT '从一级知识点到该知识点的排列',
+  `exam_subject_ids` VARCHAR(256) DEFAULT NULL COMMENT '考试科目id。同一id对应多个科目用逗号分隔',
+  `version` TINYINT(3) UNSIGNED DEFAULT '1' COMMENT '知识点版本号',
+  `sync_status` SMALLINT(3) DEFAULT '3' COMMENT '知识点同步之前的状态：2删除，3新增，4修改(kp表顶级知识点id,科目类型,code等)。默认新增',
+  `finish_status` SMALLINT(3) DEFAULT '0' COMMENT '知识点同步状态：0未完成1完成',
+  `last_finish_timestamp` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '最近同步完成的时间',
+  PRIMARY KEY (`knowledge_point_id`),
+  KEY `idx_level` (`level`),
+  KEY `idx_title` (`title`),
+  KEY `idx_code` (`code`)
+) ENGINE=INNODB DEFAULT CHARSET=utf8 COMMENT='知识点'
+
+CREATE TABLE up_sync(
+  `knowledge_point_lvl_end_id` BIGINT(20) UNSIGNED NOT NULL COMMENT '末级知识点id',
+  `knowledge_point_lvl0_id` BIGINT(20) UNSIGNED NOT NULL COMMENT '顶级知识点id',
+  `exam_subject_id` SMALLINT(5) UNSIGNED NOT NULL DEFAULT '0' COMMENT '考试科目id',
+  `grasp_lvl` DOUBLE(9,8) NOT NULL COMMENT '掌握程度',
+  `priority` DOUBLE(9,8) NOT NULL COMMENT '知识点优先级',
+  `last_update_time` BIGINT(16) UNSIGNED NOT NULL COMMENT '上次回答问题后更新知识掌握度的时间',
+  `exam_type_id` SMALLINT(5) UNSIGNED NOT NULL DEFAULT '0' COMMENT '考试类型id',
+  `code` VARCHAR(128) DEFAULT NULL COMMENT '编号',
+  PRIMARY KEY (`knowledge_point_lvl_end_id`,`exam_subject_id`)
+) ENGINE=INNODB DEFAULT CHARSET=utf8 COMMENT='用户知识掌握程度';
+
+--是否开启同步
+CREATE TABLE switch(
+ switch_name VARCHAR(20) NOT NULL COMMENT '开关名',
+ switch_val TINYINT(1) NOT NULL COMMENT '开关值',
+ PRIMARY KEY (switch_name)
+)ENGINE=INNODB DEFAULT CHARSET=utf8 COMMENT='知识点';
+
+-- 有变更的时候需要将finish_status=0设置。新增不用，删除/修改(一级知识点id,code,考试类型，考试科目)需要。
+-- 

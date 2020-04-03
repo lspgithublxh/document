@@ -1,0 +1,63 @@
+ 产品详情接口：/api/v2/productDetail/info 接口参数同上，但需要新增一个productId。
+ 
+ 
+ -- 产品亮点
+CREATE TABLE product_sparkle(
+ product_sparkle_id BIGINT(20) NOT NULL AUTO_INCREMENT COMMENT '产品亮点id',
+ content VARCHAR(128) NOT NULL COMMENT '一条亮点内容',
+ product_id BIGINT(20) NOT NULL COMMENT '产品id',
+ sequence SMALLINT(5) NOT NULL COMMENT '产品亮点的展示顺序',
+ PRIMARY KEY(product_sparkle_id)
+); 
+-- 产品一级标题
+CREATE TABLE product_title_lvl1(
+ product_title_lvl1_id BIGINT(20) NOT NULL AUTO_INCREMENT COMMENT '产品详情一级标题id',
+ title_lvl1 VARCHAR(128) NOT NULL COMMENT '一级标题内容',
+ product_id BIGINT(20) NOT NULL COMMENT '产品id',
+ sequence SMALLINT(5) NOT NULL COMMENT '产品一级标题的展示顺序',
+ PRIMARY KEY(product_title_lvl1_id)
+);
+
+-- 产品二级标题
+CREATE TABLE product_title_lvl2(
+ product_title_lvl2_id BIGINT(20) NOT NULL AUTO_INCREMENT COMMENT '产品详情二级标题id',
+ product_title_lvl1_id BIGINT(20) NOT NULL  COMMENT '产品详情一级标题id',
+ title_lvl2 VARCHAR(128) NOT NULL COMMENT '二级标题文本',
+ content_lvl2 VARCHAR(512) NOT NULL COMMENT '二级标题下的内容',
+ sequence SMALLINT(5) NOT NULL COMMENT '产品二级标题的展示顺序',
+ PRIMARY KEY(product_title_lvl2_id)
+); 
+-- 产品标签
+CREATE TABLE product_tags(
+ product_tags_id BIGINT(20) NOT NULL AUTO_INCREMENT COMMENT '产品标签id',
+ content VARCHAR(128) NOT NULL COMMENT '一条标签的内容',
+ product_id BIGINT(20) NOT NULL COMMENT '产品id',
+ sequence SMALLINT(5) NOT NULL COMMENT '产品标签的展示顺序',
+ PRIMARY KEY(product_tags_id)
+); 
+
+
+-- 产品新增图片属性
+DROP TABLE IF EXISTS product_detail;
+CREATE TABLE product_detail(
+`product_detail_id` BIGINT(20) NOT NULL AUTO_INCREMENT COMMENT '自增id',
+`product_id` BIGINT(20) NOT NULL  COMMENT '产品id',
+`product_spice_img_url` VARCHAR(512) NOT NULL COMMENT '产品的分割图片url',
+`img_sequence` SMALLINT(4) NOT NULL COMMENT '图片顺序编号', 
+PRIMARY KEY(`product_detail_id`)
+)
+
+
+-- 新增数据
+DROP TABLE IF EXISTS product_quota_num;
+CREATE TABLE product_quota_num(
+product_quota_num_id BIGINT(20) NOT NULL AUTO_INCREMENT COMMENT '自增id',
+`product_id` BIGINT(20) NOT NULL  COMMENT '产品id',
+`total_num` INT(8) NOT NULL DEFAULT '100000' COMMENT '总名额',
+`apply_num` INT(8) NOT NULL DEFAULT '0' COMMENT '已经购买名额',
+`show_apply_num` INT(8) NOT NULL DEFAULT '0' COMMENT '随机处理后的已经购买名额',
+PRIMARY KEY(product_quota_num_id)
+);
+-- 数据初始化
+INSERT INTO product_quota_num(product_id) SELECT product_id FROM product ON DUPLICATE KEY UPDATE apply_num=apply_num;
+
