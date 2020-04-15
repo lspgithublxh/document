@@ -1,0 +1,14 @@
+>事情1：注册回调函数到tomcat, 使得启动和接收到请求的时候收到通知。
+>事情2：请求json参数封装到实体类，对get请求也可以。注册一个HttpMessageConverter实现类。
+	>对于请求报头类型为application/json and application/*+json  with UTF-8的： 注册bean: MappingJackson2HttpMessageConverter 底层猜测是采用反序列化如JsonParser.deserialize方法
+	>对于请求报头类型为application/octet-stream, */*的：注册ByteArrayHttpMessageConverter 来接收转换为byte[]
+	>对于请求报头类型为text/plain, */*的：注册StringHttpMessageConverter来接收转换为string
+	>对于请求报头类型为application/x-www-form-urlencoded, multipart/form-data的：注册AllEncompassingFormHttpMessageConverter转换为Map<key,List<?>>
+	>对于请求报头类型为application/xml, text/xml, application/*+xml的：注册SourceHttpMessageConverter转换为Source对象。
+>事情3：数据返回的统一封装：用@RestControllerAdvice	注解一个自定义实现ResponseBodyAdvice<Object>接口的类，在类中重新封装数据到一个新的类。
+
+
+
+
+参考：
+https://www.jianshu.com/p/3e1de3d02dd8

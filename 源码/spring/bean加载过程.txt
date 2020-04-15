@@ -2,8 +2,12 @@
 //spring的逻辑结构：情况-要做的事情； 数据-要做的事情：
 //流程动作> 调用方法@  分支判断# 
 //世界观：*
-//不止是为了单单为了实现这单一的功能仅此而已，必须考虑更多(情况)做更多(事情，准备)，而不是直接仅仅只做什么。
+//不止是为了单单为了实现这单一的功能仅此而已，必须考虑更多(情况)做更多(事情，准备；化被动为主动去做)，而不是直接仅仅只做什么。
 //考虑-决定-预防-收益/影响/后果-预测下一步要做什么(甚至下n步)
+//大的想法，具体行动。
+//出现了if-else就是因为有不同的考虑。
+//阅读文档达到直接可以看出思路编写程序的清晰逻辑的地步。
+//一个大函数功能直接看懂而描述。
 >加载bean: 
  >AbstractApplicationContext.getBean(String name)开始的：
 	@考虑到(什么情况)(预防)：beanFactory的活跃状态、关闭状态影响是否获取bean, 如不活跃则不获取。决定(做一件什么事)：判断beanFactory活跃，否则抛出错误。世界观：容器有active,closed状态
@@ -11,22 +15,159 @@
 	@由于：本质上bean加载是beanFactory的功能，决定：获取上下文里的beanFactory让它去获取这个bean: getBean(name)
 		#当采用AbstractBeanFactory实现时：
 			@由于：为了各种各样的入参情形适配，决定：转发给一个统一的参数调用接口：doGetBean(name, null, null, false)
-				@由于：name取值各种格式，需要转化为权威的：
+				>由于：name取值各种格式，需要转化为权威的：
 					@由于：可能存在前缀&，需要全部去除；同时额外的事情：缓存下来，无需每次都这样去除。//要做多件事情 ，而不是仅仅就解析而已。如缓存。
 					@由于：这个name可能是alias即别称，需要转换为权威的。决定：通过aliasMap来找到别称对应的权威名称。SimpleAliasRegistry中存在这个aliasMap
-				@2由于： 决定：获取name的单例：getSingleton(beanName)
+				>2由于： 决定：获取name的单例：getSingleton(beanName)
 					@由于：经常存在获取单例的不同入参的需求，决定：统一调用一个统一的单例获取接口：DefaultSingletonBeanRegistry.getSingleton(...)，其中一个参数：是否允许提前引用allowEarlyReference。。。整体试图从各个工具那里获取bean的顺序--三次尝试：单例对象map-->提前单例对象map(正在创建过程中--应该是存在循环引用)--->单例工厂里先获取对象工厂(正在创建过程中)。。。三次尝试都不行，那么可能是个工厂bean--&开头。
 						#当单例map:singletonObjects包含时：取它。
 						#没有则当“正在创建的bean集合”set:singletonsCurrentlyInCreation包含name时：进入同步
 							#当提前单例map:earlySingletonObjects包含时：取它 
 							#没有则当“允许提前引用”时：从单例工厂map:singletonFactories里取它的对象工厂
 							#当存在时：从工厂里获取.getObject(), 并保存在提前单例map里--以便并发获取时下一个线程直接从这里获取，并从单例工厂里移出name, 从而不会再调用.getObject()---保证了工厂创建只执行一次。
-				@3由于：第二步返回的instance可能满足：instance != null && args == null, 决定：专门处理
+				#3由于：第二步返回的instance可能满足：instance != null && args == null, 决定：专门处理
+					>允许打印日志：如果在创建中：singletonsCurrentlyInCreation中，打印日志。
 					#当name是&开头说明是FactoryBean：如果instance不是FactoryBean类型则要抛出错误。NullBean类型直接返回。否则继续。
 					#此时name可能：&开头的FactoryBean类型实例，不是&开头的任意类型。对于第一种，决定：直接返回。对于第二种：如果instance不是FactoryBean类型也直接返回。
-					#此时name可能：不是&开头的FactoryBean类型。
+					#此时name可能：不是&开头的FactoryBean类型。后面的目的则为：要从factory里获取object，并且条件下执行处理器方法。
 						#由于： 效率考虑，工厂bean也进行缓存。决定：先从工厂bean缓存map:FactoryBeanRegistrySupport.factoryBeanObjectCache中取，有则直接返回它。
-						#此时如果没有：
+						#此时如果缓存没有：决定：尝试通过instance这个FactoryBean获取。考虑到：bean工厂获取时如果这个bean是非合成类型，则有非合成bean需要postProcess事情，此时情况：instance强转Factory
+							@由于：判断bean是否合成类型是从它的RootBeanDefinition信息中判断，而RootBeanDefinition存在的条件是：DefaultListableBeanFactory.beanDefinitionMap包含name; 决定：看这个包含条件是否满足
+							@当条件满足：即包含这个name的定义--beanDefinitionMap中含有。获取bean的RootBeanDefinition信息mbd
+								#当已融合的RootBeanDefinition map:mergedBeanDefinitions中包含时：取它，直接返回。
+								#没有则:先进行融合。融合的条件：BeanDefinition先找到。
+									@获取BeanDefinition：从map:DefaultListableBeanFactory.beanDefinitionMap里，没有则报错。
+									@然后获取合并后的RootBeanDefinition(事情/任务)：考虑：到这种获取融合bean常见，决定：转发给一个统一入参的接口：AbstractBeanFactory.getMergedBeanDefinition()。
+										#考虑到性能：决定：使用同步块，先从已融合的beanDefinition map:AbstractBeanFactory.mergedBeanDefinitions里取，有则直接返回。
+										#如果此时该融合map里没有：则需要新建bean definition 和root bean definition并融合。具体步骤分为：
+											#当bean没有parent时：可以简单的复制属性处理。
+												#当它是RootBeanDefinition类型：则直接复制各个属性到一个新的子类型ClassDerivedBeanDefinition/ConfigurationClassBeanDefinition实例中。
+												#否则：直接属性赋值传递到新建一个RootBeanDefinition实例里。
+											#当有parent时：考虑到子类属性更多，决定：需要先转换，再合并到一个RootBeanDefinition实例里。
+												#由于：bean的parent的权威名可能和bean的权威名一样，需要区分处理，决定区分处理：先获取parent的权威名
+													#当二者权威名不相同：考虑到获取bean的应该有多种渠道，而设计了至少两种来获取parent的bean definition。
+														#当beanDefinitionMap里不包含且parentBeanFactory是ConfigurableBeanFactory类型：认为bean的各级parent中最终肯定有一级的parent的beanFactory已经被包含了----如果到根也没有包括且还是ConfigurableBeanFactory类型就会报错了, 所以只需要递归地找parent的权威name进行寻找bean definition。
+														#否则的情况就是：beanDefinitionMap包含或者parentBeanFactory不再是ConfigurableBeanFactory类型：那么直接从本地获取---是一个统一的接口。? getMergedLocalBeanDefinition(String beanName)
+															@由于：可能其他线程会先调用而产生而放到mergedBeanDefinitions，所以依然先从mergedBeanDefinitions里查看是否有：有则直接返回。
+															@否则没有：则转发给一个统一的获取融合bean definition的方法，其入参是先获取这个parent name的BeanDefinition。AbstractBeanFactory.getMergedBeanDefinition(String beanName, BeanDefinition bd);
+																@由于：获取融合bean definition非常普遍，所以再次递归地传递给了统一的获取mergeBean的接口：AbstractBeanFactory.getMergedBeanDefinition(String beanName, BeanDefinition bd, @Nullable BeanDefinition containingBd)
+													#否则对于权威名相同的情况：同名，则考虑从parentBeanFactory里获取。
+														#当它的parentBeanFactory是ConfigurableBeanFactory类型，则调用它的通用的接口：getMergedBeanDefinition(String beanName)来获取			
+														#否则：抛出异常。并被直接捕获，再向上抛出异常。	
+													>现在的情况则是已经获取到了parent的BeanDefinition：需要做的事情就是属性传递到一个新的RootBeanDefinition实例mbd，这个实例overrideFrom 它的child的BeanDefinition 实例引用。		
+													>考虑到属性传递接口通用：如果mpd有scope值，那么这里需要强制传递mbd的scope范围是：RootBeanDefinition.SCOPE_SINGLETON		
+													>最后的事情：将mpd放到融合bean definition map:AbstractBeanFactory.mergedBeanDefinitions.put(name, mpd)		
+							>由于：信息已经足够：决定：判断bd是否为合成类型--通过mbd中的字段判断。
+							@由于：工厂bean有了，合成类型也有了，FactoryBean类型的name也有了，决定从工厂bean中获取实例。FactoryBeanRegistrySupport.getObjectFromFactoryBean()
+								#当工厂bean管理的bean是单例模式 且 单例池singletonObjects里包含了name: 认为是单例模式，
+									#由于：多线程下可能多次调用创建：而进入同步块，再次尝试从FactoryBeanRegistrySupport.factoryBeanObjectCache里获取，取到则直接返回。
+									#没有则进行实质的通过factorybean来获取：对于这件事情，考虑到：从factorybean里获取可能需要权限，因此可能需要放到权限框架里，还有一些收尾工作。doGetObjectFromFactoryBean()
+										#当设置了权限框架：则委托给权限框架来执行：AccessController.doPrivileged(()->{}...)。
+										#否则没有设置：直接factoryBean.getObject()
+										#此时的情况是已经通过调用方法来获取Object: 考虑到它可能为null而需要的后续处理，决定：继续分两步：
+											#当不为null：直接返回。 
+											#如果为空: 进一步判断如果工厂bean的beanName在创建过程中:singletonsCurrentlyInCreation,认为是有问题的，抛出异常。如果不为null,那么返回NullBean()实例。 
+									#此时的情况：考虑到可能在getObject()执行过程中就已经将object放置到了factoryBeanObjectCache里：所以再次尝试从factoryBeanObjectCache里获取：取到则直接返回。没有需要进一步判断。 
+										#此时factoryBeanObjectCache里没有：
+											#如果是合成的类型，那么直接先不做什么。
+											#否则非合成的需要后续处理:
+												#如果name在“当前正在创建”的单例池中：即name包含在set:singletonsCurrentlyInCreation，则不能后续处理，所以直接返回object
+												#否则已经创建完成：开始bean的processer处理器的三段通知/观测回调。考虑到：工厂创建的bean也需要一般化的初始化后的处理器处理(BeanPostProcessors)，前后也有一些通知操作。决定： 
+													@前置处理：如果name的bean包含--即singletonsCurrentlyInCreation包含(添加失败)，且需要创建中检查--即set:inCreationCheckExclusions不包含 , 则抛出异常，不被捕获。否则什么也不做，直接返回。
+													@处理器处理：AbstractAutowireCapableBeanFactory.postProcessObjectFromFactoryBean(Object object, String beanName)
+														@由于：bean创建后初始化之后都需要处理器处理，决定：复用统一的处理器处理接口，转发给它。AbstractAutowireCapableBeanFactory.applyBeanPostProcessorsAfterInitialization(Object existingBean, String beanName)
+															>获取全部的beanPostProcessors，遍历每一个：利用上个beanPostProcessor编织的结果来获取本次进一步编织后的结果，执行每一个的postProcessAfterInitialization(result, beanName)方法
+																#如果这个结果为null, 则直接返回上次编织后的结果。
+																#否则不为空：继续下一轮编织。直到编织完全，返回。这个object覆盖老的object
+													@后置处理：如果name的bean不包含--即singletonsCurrentlyInCreation不包含(移除失败),且需要创建中检查--即set:inCreationCheckExclusions不包含，则抛出异常。不被捕获。 
+											>如果单例池singletonObjects里包含name: 将工厂调用getObject()返回的object 放到 工厂名-生产的对象 这个map:factoryBeanObjectCache里：(name, object)
+										>最后返回object
+								#否则此时情况：工厂bean不是单例 或者 单例池不包含；那么此时不需要同步块，也不需要前置后置处理，决定： 直接进行实质的通过factorybean来获取object, 然后执行处理器处理即可。
+									>实质的factorybean获取object:doGetObjectFromFactoryBean
+									#当为非合成的则需要处理器处理：调用处理器：postProcessObjectFromFactoryBean
+									>返回object
+							>返回object 
+				#否则args为null或者instance为null: 
+					@当“正在创建中的bean集合”的线程局部变量prototypesCurrentlyInCreation里包含时：直接抛出异常。
+					#此时则name没有在创建：此时考虑可能可以通过parentBeanFactory来获取bean,决定：获取parentBeanFactory
+					#如果此时parentBeanFactory不为null且还没有bean definition:即beanDefinitionMap里没有, 则决定通过parentBeanFactory来获取bean,具体过程如下：
+						@由于：可能出现递归的调用“通过factory来获取bean”方法，所以决定：获取name的原始name---就是权威名/&权威名(如果是工厂bean)
+							#当parentBeanFactory是AbstractBeanFactory类型时：则递归调用:AbstractBeanFactory.doGetBean()
+							#否则不是这种类型，进一步如果args != null:则此时instance为null, 决定：使用args入参从bean工厂里获取实例：parentBeanFactory.getBean(原始name, args)	
+							#否则args==null, 进一步requiredType	如果!= null: 调用rt入参来获取parentBeanFactory.getBean(nameToLookup, requiredType)							
+							#否则就只能直接根据name获取：parentBeanFactory.getBean(nameToLookup)								
+					>否则此时：parentBeanFactory==null 或者已经有name的BeanDefinition了；考虑可能出现重复创建，所以先标记已经在创建：同步方式加到alreadyCreated:set中---且删除mergedBeanDefinitions里的同name key。显然只会加一次，移除一次。
+					>考虑后面会通过各种参数和条件而用不同路径创建bean, 决定：先通用的方法获取本地融合bean:getMergedLocalBeanDefinition(name) mbd
+						#如果mbd是抽象的：那么抛出错误。
+					>进一步考虑：bean可能有依赖，依赖自然要先创建，所以决定：先从mbd获取所有的依赖名数组，并先将这些依赖逐个创建和注册。							
+						#当依赖不为null: 考虑到循环依赖，且接口常用，所以转发委托给专门的依赖检测接口：					
+							@循环依赖检测接口的检测：如果存在，则抛出异常。通过 权威名-依赖此name的set 这个map:DefaultSingletonBeanRegistry.dependentBeanMap来帮助判断：取出值集合dependentBeans。					
+								#当dependentBeans为null:则自然不会有循环依赖。返回false
+								#否则dependentBeans包含被依赖的name:则说明依赖此name的bean集合中有的还被此bean依赖，则说明存在循环依赖，返回true.
+								#否则检测dependentBeans的每个元素的依赖主 集合：即递归地往上找，是否在依赖主的依赖主 集合里依赖了该bean。				
+							@注册依赖bean: 一个是放到 name<-依赖name的set map:dependentBeanMap里--上面也会使用来帮助判断循环依赖，一个是放到name->被依赖的name的set map:dependenciesForBeanMap里---来在销毁依赖前，先把依赖的销毁。		
+							@开始真正的要做的事-:创建依赖bean: 由于这是一个常见的方法，且有多个入参接口，且显然也应该和最开始获取bean的接口一样，所以直接调用：AbstractBeanFactory.getBean(name)。。和最开始调用的方法一样。			
+					#当mbd是单例时：开始实质性的获取单例,而不是像之前的仅仅从缓存里。通过单例工厂方式。
+						@考虑到：可能多线程创建，所以需要同步块，需要缓存---先判读是否单例池中存在,如果存在直接返回
+							#否则不存在：考虑到当前可能在运行销毁单例：所以从正在销毁单例池singletonsCurrentlyInDestruction中查看，有则抛出错误。
+							#此时的情况：则name没有创建在单例池也没有被销毁：开始常见的前面已经叙述的三段通知：
+								>前置处理：同前述
+								>单例工厂获取单例：singletonFactory.getObject()
+									>单例工厂为lamda注入：做的事情为：创建--->编织/异常则销毁
+										@创建：并且初始化、各种post-processors处理。createBean(String beanName, RootBeanDefinition mbd, @Nullable Object[] args)
+											@解析获取bean的Class对象：直接从mdb获取，或者：或许需要放到权限框架地：通过beanExpressionResolver.evaluate()入参为bean name/ 定义中的Scope来获取 评估结果：expressionParser.parseExpression()来获取表达式对象，使用该对象的Expression.getValue(EvaluationContext context)得到评估结果---可能和name一样或者是个Class类型对象。$$$$
+												#解析结果是Class类型：则直接返回了。
+												#否则：交给统一的ClassUtils.forName()方法来获取。AbstractBeanDefinition.resolveBeanClass()
+											#此时如果解析的Class对象不为空且 当mbd有类名无类Class ：那么将mdb重新封装到一个新的RootBeanDefinition实例，并且Class对象设置到setBeanClass()属性里。	
+											>当存在覆盖方法时需要专门处理：AbstractBeanDefinition.methodOverrides保存了覆盖方法。遍历每个方法，进行相同的统一处理：
+												@当此时beanClass还没有设置：直接抛出错误
+													#有设置则通过一个巧妙的方法找到同名方法个数：在本Class, 全部父类、全部接口，递归向上的寻找。
+													#当这个个数小于0：那么没有覆盖--则抛出错误。
+													#否则如果==0: 该覆盖方法是否重载属性设置为false: MethodOverride.setOverloaded(false)
+											@后面将进行实例初始化，此时进行一次BeanPostProcessors责任链 处理：看实例初始化之前是否有代理产生。也属于通知的应用。AbstractAutowireCapableBeanFactory.resolveBeforeInstantiation(String beanName, RootBeanDefinition mbd)	
+												#当“实例初始化前处理器已经准备好”属性已经生效：beforeInstantiationResolved==true
+													#进一步当mbd表面非合成类型且工厂包含处理器InstantiationAwareBeanPostProcessor：hasInstantiationAwareBeanPostProcessors==true
+														#进一步检测目标类而获取tagetType Class对象: 目的时尽量使的不创建bean,
+															#当目标类targetType不为null: 如果工厂方法名为null,则直接进行上述的解析获取bean的Class对象：如果工厂方法名不为空，则以更加苛刻的目标类检查过程，来从mbd的factoryBeanName建立它的类Class单例(也可以mbd中本身类同上解析创建), 甚至如果时cglib类还要返回它的父类，此间种种条件下都可能返回null:AbstractAutowireCapableBeanFactory.getTypeForFactoryMethod(String beanName, RootBeanDefinition mbd, Class<?>... typesToMatch)
+															#当上述之后返回的targetType Class仍然不为null:则确认是完成了解析目标类：设置mbd.resolvedTargetType=targetType
+														#当检测出的targetType不为null: 开始初始化前的处理器通知applyBeanPostProcessorsBeforeInstantiation
+															@由于处理器通知是常见的，所以统一接口：此时关注实例化前通知方法，所以以一个具体方法来走处理器责任链。
+																#遍历所有BeanPostProcessors: 对所有的InstantiationAwareBeanPostProcessor类型的处理器：
+																	@调用对应方法来尝试获取代理：但是不会层层编织--只会编织一次--InstantiationAwareBeanPostProcessor.postProcessBeforeInstantiation(targetType, beanName)
+																		#如果结果不为null:则返回这个结果。最后否则返回null。
+														#当上述处理器通知返回的结果不为null时：需要进行后置处理器处理---前面有使用过。applyBeanPostProcessorsAfterInitialization	
+															@同样，后置处理器处理也是统一的接口：应用通知，只需要直接获取所有的处理器，直接调用后置方法BeanPostProcessor.postProcessAfterInitialization(result, beanName)层层编织。
+																#编织的结果为null: 则直接返回上次编织的结果。
+																#否则不为Null: 继续当作下次编织的对象。
+											#当上一步返回的编织结果不为null:则直接返回这个编织结果。
+											#否则没有编织：开始真正的实质的创建doCreateBean()。
+												@	
+											>返回实质创建结果。													
+															
+															
+															
+															
+															
+															
+															
+												
+												
+												
+												
+												
+												
+												
+												
+												
+								>后置处理：同前述 
+								>加入单例池：singletonObjects加入，单例工厂singletonFactories中移除name, 提前单例池earlySingletonObjects中移除，带注册顺序的注册单例池：registeredSingletons添加。
+							>返回单例。
+					#否则如果mbd是原型模式时：
+					#否则其他所有情况：
+				>如果创建的bean的类型就是参数中requireType，需要做一些后续处理：		
+													
+													
+													
  >AbstractBeanFactory.getBean(String name, Class<T> requiredType)开始的：
  
  
@@ -49,3 +190,15 @@
   >singletonFactories： 单例工厂：有getObject()方法，
   
   
+>待研究课题：
+	>springmvc切面代理：方法拦截：@RestControllerAdvice--异常捕获，@Log日志记录 , @DataScope方法权限验证(如直接查库，或者加where部分限制--角色限制也加到sql里)@RequiresPermissions方法权限验证(如文件访问权限)
+									@DataSource数据源切换--加到服务Service级别。
+	>spring-jdbc手动数据源切换关键：AbstractRoutingDataSource继承并实现的类实例，会在每次都调用determineCurrentLookupKey()方法返回一个注册的数据源名---来从配置的数据源即左边那类型的实例(路由型数据源)的一个属性map:targetDataSources里找到数据源对象，然后才开始具体的发送sql等等，那么就可以在该方法里读取一个数据源名线程局部变量--那么外面就可以动态存放到这个局部变量里---如做一个注解切面做在一个服务bean上，每次执行方法的时候在执行切面的时候从注解中获取数据源而设置到该线程局部变量里，然后之后才执行正式的代码。
+
+>重要结论：
+	>可以给任意的每个bean都增加切面：那么可以对@Entity也进行切面，切面配置为：加了某个注解的类的所有方法，或者加了某个注解的所有方法 都被切。然后获取类和获取方法。
+	>可以运行时修改类上注解的某个属性的值：同理，方法上也可以。
+	>可以查看定时任务自己的线程池：org.quartz.simpl.SimpleThreadPool
+		>定时任务框架Quatz核心概念-世界观：主方法-cron表达式调度一个任务：Scheduler.scheduleJob(JobDetail, CronTrigger)，(其中JobDetail由Job类创建) 此外，可以删除和暂停job: deleteJob(JobKey)和pauseJob(JobKey) ，另外，可以立即激活triggerJob(JobKey jobKey, JobDataMap data)
+			>根据上述世界观-四个调度方法(排-删-停-起)：完全可以构造出一个任务调度系统
+	

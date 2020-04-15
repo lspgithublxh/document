@@ -120,51 +120,6 @@ INNER JOIN USER u ON c.user_id=u.`user_id`
 WHERE com =0
 ) d GROUP BY product_id
 
-----------------------------------------------------------------------------学习/讲练解
--- 某个科目-的知识量-所有板块id--开启条件0.5  `study_goal_for_exam_subject`
--- 某个一级知识点-知识量：`study_goal_for_knowledge_point`
-
--- 某个板块-的知识量-的全部一级知识点`study_goal_for_section`
--- 某个用户-的某个科目的：是否完成画像题、解锁包的数量、学习了的知识量、学习的时长、上次选择本科目的时间 `study_progress_on_exam_subject`
-	-- (进度id)
-
--- 某个进度id(即某个用户-的某个科目)-的某个一级知识点： 学习时长、正在学习的unit_package_id、学习了的知识量、该一级知识点的学习是否完成	`study_progress_on_knowledge_point`
--- 某个进度id(即某个用户-的某个科目)-的某个板块id：学习时长、正在学习的unit_package_id、学习了的知识量、是否开启、是否完成 `study_progress_on_section`
-
--- 某个用户-的某个考试类型-的学习状态：一阶段(是否注册)/二阶段(是否开启)/画像题(是否开启)、上次修改时间 `study_state`
-	-- 学习状态id
--- 某个学习状态id: 老状态、新状态、改变原因(初始化、注册、画像题之后、体验课之后、推新题之后、)、改变时间。`study_state_change_history`
-
--- 某个学习包unit_package_id-的某个学习单元study_unit：学习的内容(5个知识点/推荐的问题/问题的答案/问题的解析)、开始时间、结束时间、学习时长、单元学习是否完成、是否是内容为null的单元`study_unit`
-
--- 某个考试类型-的讲/练/答/解的：顺序、是否可以重入 `study_unit_config`
-
--- 某个知识点的：内容图片、可用状态`study_unit_overview`
--- 某个用户-的某个科目-的某个学习包unit_package_id: 当前正在学习的学习单元study_unit, package是否完成、若干个一级知识点、所有末级知识点、板块id   `study_unit_package`
-----------------------------------------------具体应用：
-
--- 应用1：查看每个用户 的每个科目 的每个板块 的每轮学习(一轮一个unit_package_id, 4个学习单元) ：各个学习单元的学习时长、开始结束时间、单元学习是否完成、package是否完成、正在学习的单元
-
-select sup.user_id, sup.exam_subject_id,sup.study_unit_package_id, sup.active_study_unit_id, sup.finish as package_finish,study_unit_id, start_time, end_time,su.finish as finish from `study_unit_package` sup inner join study_unit su on sup.study_unit_package_id=su.study_unit_package_id
-
--- 应用2：查看每个用户 的每个科目 的每个板块 的：学习时长、正在学习的unit_package_id、学习了的知识量、是否开启、是否完成、package是否完成、
-
-select sup.user_id, sup.exam_subject_id,sup.section_id,sup.study_unit_package_id, sup.active_study_unit_id, sup.finish as package_finish,
-	spos.study_progress_id, spos.learned_knowledge_amount,spos.study_duration, spos.open, spos.finish, spos.active_study_unit_package_id
-from `study_unit_package` sup inner join study_progress_on_section spos on sup.section_id=spos.section_id
-
--- 应用3：查看每个用户整个科目的进度情况: 学习了的知识量、知识总量、。。。
-SELECT sup.user_id, sup.exam_subject_id,sup.section_id, spos.study_goal_for_section_id,sup.study_unit_package_id, sup.active_study_unit_id, sup.finish AS package_finish,
-	spos.study_progress_id, spos.learned_knowledge_amount,spos.study_duration, spos.open, spos.finish, spos.active_study_unit_package_id,
-	'-', spoes.finish_portrait_question, spoes.free_package_count,spoes.last_selected_time,spoes.learned_knowledge_amount, spoes.study_duration,
-	'-', sgfes.knowledge_amount, sgfes.study_goal_for_section_ids, sgfes.max_free_package_num, sgfes.open_condition,sgfes.open_time_str
-FROM `study_unit_package` sup INNER JOIN study_progress_on_section spos ON sup.section_id=spos.section_id
-inner join study_progress_on_exam_subject spoes on spoes.study_progress_id = spos.study_progress_id
-inner join study_goal_for_exam_subject sgfes on sgfes.exam_subject_id = sup.exam_subject_id
-
-
-
-------------------------------------------------------------------------
 
 
 -- 开权限：
@@ -173,25 +128,10 @@ UPDATE user_resourcegroup SET authorized=0 WHERE user_id IN (
 SELECT user_id FROM USER WHERE mobile_phone IN ('18243259789'
 ) AND resource_group_id IN (25,26,27,28))
 
--- 初会
-INSERT INTO `user_resourcegroup` (`user_id`, `resource_group_id`, `insert_time`, `end_time`, `authorized`) VALUES('4248','25','2020-02-08 18:32:34','2021-03-20 00:00:00','1');
-INSERT INTO `user_resourcegroup` (`user_id`, `resource_group_id`, `insert_time`, `end_time`, `authorized`) VALUES('4248','26','2020-02-08 18:32:34','2021-03-20 00:00:00','1');
-INSERT INTO `user_resourcegroup` (`user_id`, `resource_group_id`, `insert_time`, `end_time`, `authorized`) VALUES('4248','27','2020-02-08 18:32:34','2021-03-20 00:00:00','1');
-INSERT INTO `user_resourcegroup` (`user_id`, `resource_group_id`, `insert_time`, `end_time`, `authorized`) VALUES('4248','28','2020-02-08 18:32:34','2021-03-20 00:00:00','1');
-
-
-
 -- 消防
 UPDATE user_resourcegroup SET authorized=0 WHERE user_id IN (
 SELECT user_id FROM USER WHERE mobile_phone IN ('13683586150'
 ) AND resource_group_id IN (10,11,13,14))
-
--- 消防
-INSERT INTO `user_resourcegroup` (`user_id`, `resource_group_id`, `insert_time`, `end_time`, `authorized`) VALUES('4248','10','2020-02-08 18:32:34','2021-03-20 00:00:00','1');
-INSERT INTO `user_resourcegroup` (`user_id`, `resource_group_id`, `insert_time`, `end_time`, `authorized`) VALUES('4248','11','2020-02-08 18:32:34','2021-03-20 00:00:00','1');
-INSERT INTO `user_resourcegroup` (`user_id`, `resource_group_id`, `insert_time`, `end_time`, `authorized`) VALUES('4248','13','2020-02-08 18:32:34','2021-03-20 00:00:00','1');
-INSERT INTO `user_resourcegroup` (`user_id`, `resource_group_id`, `insert_time`, `end_time`, `authorized`) VALUES('4248','14','2020-02-08 18:32:34','2021-03-20 00:00:00','1');
-
 
 -- 多字段批量更新：
 update product_quota_num p inner join ( 
@@ -215,15 +155,6 @@ WHERE com =0
 set p.show_apply_num=p.show_apply_num + m.c
 
 
--- 统一的日期运算问题：时间戳用unix_timestamp来计算整数
-SHOW GLOBAL VARIABLES;
-SET GLOBAL event_scheduler = ON;
-DROP EVENT IF EXISTS update_register_page_expire_time;
-CREATE EVENT update_register_page_expire_time ON SCHEDULE EVERY 1 DAY STARTS DATE_ADD(CURDATE() + 1, INTERVAL 1 SECOND)  
-DO UPDATE register_page SET expire_time=DATE_ADD(DATE_ADD(DATE_ADD(DATE_ADD(CURDATE(), INTERVAL 1 DAY), INTERVAL 23 HOUR), INTERVAL 59 MINUTE), INTERVAL 59 SECOND)
-
-	
-SELECT DATE_ADD(DATE_ADD(CURDATE(), INTERVAL 24 DAY), INTERVAL 2 HOUR) FROM DUAL;
 
 -- 问题常见：
 1.订单回调接口到了另一个项目，没有看到日志。

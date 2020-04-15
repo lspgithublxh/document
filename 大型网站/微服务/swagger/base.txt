@@ -1,0 +1,2 @@
+>swagger:是对controller的请求文档+前端postman:::从而不必自己写文档和自己测试，但是问题也是：不够灵活：：我想循环调用？。
+>使用：依赖+配置bean+注解：@Api/@ApiOperation/@ApiParam/@ApiResponses@ApiResponse

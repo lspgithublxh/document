@@ -1,0 +1,15 @@
+>面对问题，核心观点和世界观：工作逻辑
+//事情-流程多个子事情(不同情况下做不同的子事情)
+	>面对问题：uri路径需权限访问的实现问题：当然不止这一件，但是核心。统一目标：1.路径权限配置。
+	>世界观：逻辑核心:ShiroFilterFactoryBean(所有请求的权限问题都访问它而获得解答)(本身继承实现了处理器BeanPostProcessor),下面是它的工作模块：
+		>安全管理器：SecurityManager。先注入各种基本的管理器：如session(管理器里就有session超时设置),remember,cache管理器(通过磁盘文件持久化一些信息--如登录时的图片验证码kaptcha)。
+			>会话管理器：OnlineWebSessionManager尤其需要。用户继承SimpleSession来填充更多的属性的会话，通过实现SessionFactory的类的实例来注入会话管理器。而这个session实例就是每次httprequest获取到的session，所以可以放置一些key-value下次访问。
+				>在一次请求到来后：任何时候无参数地获取一个session:SecurityUtils.getSubject().getSession()。过程：首先shiro创建上下文DefaultSessionContext，然后通过安全管理器SecurityManager.start(context)创建包装了当前获取的javax的session的shiro自己的session--HttpServletSession,提供的方法其实都是基于javax的session---比如设置attribute和获取attri的值；创建完成之后， shiro会把session放到自己的线程局部变量ThreadContext里。   MapContext
+					>请求中的uri参数获取：RequestContextHolder可以得到。
+			>方法权限验证：需要继承AuthorizingRealm：来根据用户id查询权限列表(如角色，菜单， perm列表)设置到addStringPermission()setRoles()方法里；那么controller的方法注解上@RequiresPermissions("val")里的val值就表示访问用户必须有的权限--从他的权限列表里查找是否包含。
+		>各种带上下文的过滤器： Map<String, Filter>, key是一个name, value就是过滤器。key是被使用的。可以认为key就是过滤器名。
+		>设置过滤器链：LinkedHashMap<String, String>,key就是uri, value就是上述的key。具体自然就是走上述value过滤器。从而实现各种不同uri走不同过滤器的效果---指定过滤器名即可。
+		>登录uri和认证失败uri: 最基本的，需要设置。因为这两个肯定不会需要任何权限。
+	>附加模块：
+		>shiro注解通知器：AuthorizationAttributeSourceAdvisor
+		

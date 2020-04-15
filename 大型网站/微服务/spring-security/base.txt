@@ -1,0 +1,21 @@
+>面对问题，核心观点和世界观：工作逻辑
+//事情-流程多个子事情(不同情况下做不同的子事情)
+	>面对问题：实现一个 任意uri访问都需要权限验证 的过滤器。但不是单单实现这个功能，而是更强大带来更多重大好处而不冗余的功能：
+	>世界观：核心逻辑：配置一个继承WebSecurityConfigurerAdapter的带@EnableGlobalMethodSecurity注解的特殊bean。所有请求从这个bean里找到验证是否通过的答案。下面是它需要的静态配置：
+		>认证管理器：AuthenticationManager 通过方法来注入。
+		>uri权限配置-HttpSecurity配置：1.路径-请求方法：需要的权限的配置：2.session是否创建--无状态无需。3.认证失败、登入登出url和handler配置。4.实现一个自己的OncePerRequestFilter过滤器--jwt验证：通过.addFilterBefore(a, xxFilter.class)filter先后顺序来有序注入。
+		>configure()方法中对AuthenticationManagerBuilder实例注入用户信息获取接口的实例--UserDetailsService，可以设置密码散列器：如BCryptPasswordEncoder实例。
+	>附加：
+		>在登陆的时候验证用户名密码：使用AuthenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));可以使用之前的服务进行验证。
+		>方法权限验证：@PreAuthorize注解。首选需要实现UserDetailsService，这个接口里获取用户信息实例，这个用户信息实例必须实现UserDetails接口，里面有一个权限列表获取方法getPermissions()，用户需要实现。
+			>@PreAuthorize注解的值：实例name.方法名(入参)，， 所以spring-security会用反射的方式调用这个方法看这个用户是否有这个权限。
+	>真正世界观：
+		>jwt构成：header(base64).payload(base64).signature
+		>jwt的生成：Jwts.builder().setClaims(claims).signWith(SignatureAlgorithm.HS512, secret).compact()
+        >jwt的反解：Jwts.parser().setSigningKey(secret) .parseClaimsJws(token) .getBody().get(Constants.LOGIN_USER_KEY)  
+                
+               
+                     
+                
+		
+		
