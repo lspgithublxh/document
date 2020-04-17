@@ -188,7 +188,7 @@
 																			-需要解析每个方法参数：类型和值，需要进行引用解析，因为可能是未解析类型，甚至需要重新beanFactory.getBean(name)、加入依赖表beanFactory.registerDependentBean(refName, beanName)
 																			>准备工作：构造一个值解析器BeanDefinitionValueResolver实例valueResolver
 																			#如果某个方法参数值类型为：BeanMetadataElement
-																				@使用值解析器解析值：valueResolver.resolveValueIfNecessary("constructor argument", argValue)
+																				@使用值解析器解析值：(BeanDefinitionValueResolver)valueResolver.resolveValueIfNecessary("constructor argument", argValue)
 																					-根据值类型的不同 而调用不同的解析方法，也返回不同的类型：直接返回bean或者直接返回beanName
 																					#如果值是运行时引用RuntimeBeanReference类型：
 																						@调用值解析器的解析引用方法：BeanDefinitionValueResolver.resolveReference()
@@ -244,7 +244,7 @@
 																								@调用接口：TypedStringValue.resolveTargetType()来解析
 																									#看属性targetType是是什么类型：string, class, 都可以获取为string, 然后反射加载对应的Class: ClassUtils.forName(typeName, classLoader)
 																									#为null则返回null, 否则就是加载的结果。
-																						#如果目标类Class不为null: 需要转换为要求的类型。即上述解析的类型。将值转换为这个类型。
+																						#如果此时的解析后的目标类Class不为null: 需要转换为要求的类型。即上述解析的类型。将值转换为这个类型。
 																							@统一调用：this.typeConverter.convertIfNecessary()
 																								@统一封装调用：TypeConverterSupport.doConvert()
 																									@再次委托调用：TypeConverterDelegate.convertIfNecessary()
@@ -376,13 +376,118 @@
 																													#否则如果转换值是Number类型且要求类可以赋值给Number: 那么统一方法转换为目标类类型：@NumberUtils.convertNumberToTargetClass()		
 																														>对目标类可能的各种包装类类型：都需要专门处理：由于转换值具体可能是BigInteger/BigDecimal类型， 再检查值域，未通过可能会抛出异常。
 																														-再次标记standardConversion = true 
-																												#	
+																												#否则：转换值为null.需要小的处理：目标类是Optional类型时，赋值为Optional.empty()	
+																												-此时转换值可能已经被处理过。还需要一些处理。
+																												#如果此时转换值还属于不能赋值给要求类：
+																													#先看转换服务是否可用：就是看有没有转换器@GenericConversionService.canConvert()，前面有讲述getConverter();如果有那么直接用这个转换服务转换@GenericConversionService.convert()，并将转换结果直接返回。
+																													#否则不可用：开始构造抛错信息，直接抛出错误new IllegalArgumentException(msg.toString())
 																														
-																														
-																														
-																														
-																														
-																														
+																											>返回转换值	。返回TypeConverterDelegate.convertIfNecessary()按需转换。
+																						#如果解析后的目标类是null: 那么直接返回上一步返回的评估结果。								
+																					#如果是NullBean类型：返回null 
+																					#其他情况都统一返回评估结果：入参就是值，@evaluate(value)
+																						#值是字符串：直接真正评估：@doEvaluate(v)
+																							@统一转发给统一的评估bean定义接口：beanFactory.evaluateBeanDefinitionString()
+																								@转发给专门的评估类：AbstractBeanFactory.beanExpressionResolver.evaluate(beanName, BeanExpressionContext)
+																						#如果值是字符串数组,则遍历每个元素，每个元素都进行转换真正的转换并设置：@doEvaluate(v)		
+																						#其他类型直接返回。
+																			#如果参数值类型为AutowiredArgumentMarker：调用统一的自动绑定参数解析方法@ConstructorResolver.resolveAutowiredArgument()
+																				#如果方法参数可以赋值给InjectionPoint类型：则从线程局部变量currentInjectionPoint里取出InjectionPoint对象，没有则抛错，有则返回。 
+																				>开始统一的解析依赖：把方法参数传递进来。@DefaultListableBeanFactory.resolveDependency()
+																					#初始化方法参数名发现器：parameterNameDiscoverer   @DependencyDescriptor.initParameterNameDiscovery()
+																					#如果依赖类型是Optional：统一调用依赖创建@createOptionalDependency()
+																						#构造一个NestedDependencyDescriptor对象---覆盖某些方法。
+																						@统一调用解析依赖接口@doResolveDependency()
+																							>先设置注入点线程局部变量：@ConstructorResolver.setCurrentInjectionPoint()	,内容就是设置到ConstructorResolver.currentInjectionPoint属性里。		
+																							>解析shortcut捷径:@ShortcutDependencyDescriptor.resolveShortcut(BeanFactory beanFactory) ，本质上就是调用beanFactory.getBean()获取。
+																							#如果shortcut不为null: 那么可以返回它。
+																							-否则此时需要专门处理。
+																							>获取自动绑定候选解析器autowireCandidateResolver来 获取注解值@QualifierAnnotationAutowireCandidateResolver.getSuggestedValue(DependencyDescriptor descriptor)
+																								@统一调用从注解中获取值方法：@QualifierAnnotationAutowireCandidateResolver.findValue(Annotation[]) 
+																									>先将注解放到AnnotatedElement对象，AnnotatedElementUtils.forAnnotations()很巧妙，直接放到类定义的返回值上。
+																									>再获取注解属性：@AnnotatedElementUtils.getMergedAnnotationAttributes()	
+																										@先统一调用根据类型或者名称搜索查找注解方法@searchWithGetSemantics() ,注入一个实例MergedAnnotationAttributesProcessor切面处理器, 和目标注解类型valueAnnotationType---后面会放到一个集合里。
+																											@统一转发给统一参数接口@searchWithGetSemantics()
+																												>获取声明的注解，利用了缓存declaredAnnotationsCache,也利用了之前的元素AnnotatedElement @AnnotationUtils.getDeclaredAnnotations()
+																												>再次统一转发给专门的接口：@searchWithGetSemanticsInAnnotations()再里面遍历注解，来获取正确的匹配注解。
+																													>遍历上一步获取的声明注解：对每个注解
+																														#如果注解类型不在java注解包下：
+																															#如果目标注解类型集合包含它：
+																																>先用处理器处理：@processor.process()
+																																	@统一调用注解属性解析方法：@AnnotationUtils.retrieveAnnotationAttributes()
+																																		>获取注解的定义类字节码Class: .annotationType()：封装到一个new AnnotationAttributes()实例中
+																																		>通过注解的定义类Class对象获取它所有的属性：@AnnotationUtils.getAttributeMethods() 使用了缓存机制attributeMethodsCache
+																																			>只需要用这个Class对象.getDeclaredMethods() 就获取到了：需要过滤一下--确认是注解方法：返回类型不等于void.class 且getParameterCount()为0， 当然方法要setAccessible
+																																		>对每个注解方法：反射，获取invoke(annotation)获取注解值，getDefaultValue()获取默认的注解值。
+																																		#如果设置值和默认值相等：设置值重新赋值为：new DefaultValueHolder(dfv)
+																																		>统一放到AnnotationAttributes实例中：key:注解方法名、调整值@adaptValue()
+																																			#如果类值作为字符串：
+																																				#如果设置值就是Class类型，直接返回设置值的name()
+																																				#否则如果是Class[]类型，则遍历，每个元素也获取name(),从而返回字符串数组。
+																																			#如果设置值是注解类型Annotation：
+																																				#如果允许嵌套注解：统一调用解析方法@getAnnotationAttributes() 内容和searchWithGetSemantics()类似：
+																																					>先解析注解属性：@retrieveAnnotationAttributes()
+																																					>再注解属性获取之后的处理器处理：@postProcessAnnotationAttributes()
+																																				#否则不允许嵌套：那么只进行同步：@synthesizeAnnotation() 结果直接返回。
+																																					>设置值是SynthesizedAnnotation类型或者设置值仅仅是不同的java类型：@hasPlainJavaAnnotationsOnly那么直接返回这个设置值，不做处理。
+																																					>查看是否可以同步：@isSynthesizable() 基本注解类型不能同步。
+																																						>获取注解类Class对象：采用缓存机制：map:synthesizableCache
+																																						>获取注解Class对象的所有属性方法：即注解属性。遍历：
+																																							>对每个方法：查看它的别称@getAttributeAliasNames():其实就是看有没有AliasFor注解-及其内容，如果有并且验证通过而没有报错：@AliasDescriptor.validate()  $
+																																							#如果有别称：那么就认为可以同步，直接退出循环，缓存一下，而返回。
+																																							>否则再看这个方法的返回类型ReturnType():
+																																								#如果可以赋值给Annotation[]：把返回类型的数组元素类型取出来，递归看是否可以同步@isSynthesizable();如果可以，那么可以同步，退出循环，缓存一下，返回。
+																																								#否则如果可以赋值给Annotation：那么对这个返回类型也进行递归看是否可以同步@isSynthesizable();如果可以，认为可以同步，退出循环，缓存一下，返回。
+																																					#如果不可以同步：那么直接返回，不做处理。		
+																																					>否则可以同步：构造默认注解属性提取器new DefaultAnnotationAttributeExtractor()	注入一个新构造的同步注解InvocationHandler:new SynthesizedAnnotationInvocationHandler()
+																																					>定义代理类的实现接口：SynthesizedAnnotation和本注解类
+																																					>使用java动态代理生成这两个接口的代理类：Proxy.newProxyInstance()返回这个动态代理类。
+																																			#如果设置值是注解数组类型Annotation[]：
+																																				#同理如果允许嵌套：设置值转换为注解数组，遍历每一个，并获取每个注解的注解属性封装到一个AnnotationAttributes对象，最终得到它的数组而直接返回。									
+																																					>这个封装过程为：调用统一方法@getAnnotationAttributes()	,同上方法。
+																																				#否则不允许嵌套：调用统一的处理方法@synthesizeAnnotationArray()	结果直接返回。	
+																																					#如果是普通java注解：直接返回注解数组。
+																																					#否则构造一个注解数组：Array.newInstance(),元素类型就是 入参注解数组的元素类型	
+																																					>开始遍历这个入参注解数组：对每一个注解，调用上述@synthesizeAnnotation()同步方法获取结果，设置到新建数组中。		
+																																			>返回传入值。				
+																																		>返回这个AnnotationAttributes实例即可。					
+																																>如果上一步处理结果不为null:
+																																	#如果需要聚合结果：则将处理结果放到聚合list里：processor.aggregatedResults					
+																																	#否则直接就返回这个处理结果result了。作为@searchWithGetSemanticsInAnnotations()的返回。
+																															>否则不包含，如果当前这个注解 和容器类型相同：			
+																																#							
+																																							
+																																							
+																																							
+																																							
+																																							
+																																							
+																																							
+																											>注解属性之后的处理器处理：@AnnotationUtils.postProcessAnnotationAttributes()
+																												
+																										
+																										
+																										
+																										
+																										
+																										
+																										
+																										
+																										
+																										
+																										
+																										
+																										
+
+
+
+
+
+
+
+																			
+
+																					
 											>返回实质创建结果。
 															
 															
