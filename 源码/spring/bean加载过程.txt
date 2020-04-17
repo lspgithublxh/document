@@ -313,29 +313,77 @@
 																													#返回编辑器。					
 																												-此时编辑器获取完毕，开始利用来进行实质的转换值为目标类型：doConvertValue()						
 																													#如果值不是字符串：调用编辑器setValue()又取出getValue()，如果两个值不相等，那么取出的值作为最新的值，下一步使用。同时该编辑器不再使用。						
-																													-此时如果要求的类型不是数组，但是此时的转换值是字符串数组，则调用方法将字符串数组转换为逗号分隔的字符串：@StringUtils.arrayToCommaDelimitedString					
-																																		
-																																		
-																																		
-																																		
-																																		
-																																		
-																																		
-																																		
-																																		
-																																		
-																																		
-																																		
-																																		
-																																		
-																																		
-																																		
-																																		
-																																		
-																																		
-																																		
-																																		
-											>返回实质创建结果。													
+																													-此时如果要求的类型不是数组，但是此时的转换值是字符串数组，则调用方法将字符串数组转换为逗号分隔的字符串：@StringUtils.arrayToCommaDelimitedString()					
+																													-此时如果转换值是字符串：
+																														#如果编辑器不为null: 统一转换设置@doConvertTextValue()
+																															>直接设置转换前的值editor.setValue(oldValue)，设置当前转换值editor.setAsText(newTextValue)，返回值editor.getValue() 
+																															#直接返回doConvertValue()
+																														#否则如果要求类型就是字符串：那么直接返回当前转换值
+																													-返回doConvertValue()		
+																											-此时如果要求要求类型不是null: 还需要应用一些标准的类型转换规则。						
+																												#此时的转换值不为null时：如果要求类型是Object那么直接返回转换值。			
+																													#否则如果要求类型是数组：如果转换值是String且要求类型的元素类型可以赋值给Enum枚举类型，那么将字符串转换为字符串数组：@StringUtils.commaDelimitedListToStringArray()						
+																														-此时统一再次进行转换值的转换：@convertToTypedArray()					
+																															#如果转换值是集合Collection类型：构建一个该元素类型的数组Array.newInstance(componentType, coll.size())，并将集合元素值处理后设置set进去Arrary.set(r,i,v)				
+																																-元素值的处理：先属性名转换，后按需转换：
+																																@将属性名转换：@buildIndexedPropertyName() , 在属性名后面加[i] 这样的数组元素标记
+																																@按需转换：走统一的按需转换方法：@TypeConverterDelegate.convertIfNecessary()
+																																>直接返回
+																															#否则如果转换值是数组Array类型：
+																																#判断属性编辑器仓库里是否有组成元素的编辑器：调用@propertyEditorRegistry.hasCustomEditorForElement()
+																																	>遍历“路径属性编辑器”map: PropertyEditorRegistrySupport.customEditorsForPath	
+																																		#如果某个编辑器entry的key匹配到了属性名：@PropertyAccessorUtils.matchesProperty() 并且entry.value即CustomEditorHolder类型的属性编辑器存在--元素类型可以赋值给要求类型：那么返回true	
+																																	-如果上述遍历都没有找到，那么就从“一般的定制编辑器”map:PropertyEditorRegistrySupport.customEditors里找：包含则返回true,否则其他情况都是false		
+																																#如果没有包含:那么直接返回输入值，不再转换处理。			
+																																#否则包含：那么直接按照之前的处理方法：构建一个该元素类型的数组Array.newInstance(componentType, Array.getLength(input))	并将集合元素值处理后设置set进去Arrary.set(r,i,v)	
+																															#否则其他任意类型：
+																																>统一直接上述的构建数组后，逐个元素处理后设置。
+																													#否则如果转换值值是集合Collection类型：
+																														>调用统一的方法转换集合元素类型为目标类型：@convertToTypedCollection() 并设置standardConversion=true标记为标准转换。
+																															#如果要求类型不是各种基本的集合类型：@CollectionFactory.isApproximableCollectionType(requiredType)				
+																																#进一步如果要求类也不可以创建实例：canCreateCopy(requiredType) ---可创建条件：Modifier.isAbstract()非抽象和接口，是public且有构造方法。。那么返回集合不做处理。			
+																															#否则此时检查 如果值可以赋值给要求类型，且属性编辑器仓库没有null&这个属性名的编辑器@propertyEditorRegistry.hasCustomEditorForElement()：那么不做处理，直接返回。
+																															#否则检测可迭代？不可以则返回。
+																															#否则可以迭代，且如果前面检测出的是基本集合类型，那么获取最近似的集合类型：@CollectionFactory.createApproximateCollection()
+																																>逐个基本集合类型判断：看值是否是它的实例instanceof ，是则返回这个。List/SortedSet			
+																															#否则不是基本集合类型的集合类型：那么先设置反射允许再反射构造。@ReflectionUtils.accessibleConstructor(rt).newInstance()				
+																															-此时已经构造出复制的集合：下面开始往里面添加内容。
+																															>遍历原始集合：获取每个元素，进行上述的buildIndexedPropertyName+convertIfNecessary获取结果，添加到集合里。
+																															#如果转换后的元素全部都和转换前的集合元素相等==，且待转换值就是要求类的值，那么直接返回入参里的原始转换值。
+																																#否则才返回这个新的各个元素转换后的集合。
+																													#否则如果是此时的转换值是Map类型：		
+																														>调用统一的转换方法：@TypeConverterDelegate.convertToTypedMap()	
+																															#如果要求类可以赋值给Map直接返回。不转换。
+																															-判断是否存在近似的基本Map类型：CollectionFactory.isApproximableMapType()，基本map就是常见的HashMap等。
+																															#同上在无近似且要求类不可复制时：直接返回。不转换。 
+																															#同上在值可以赋值给要求类 且  属性编辑器仓库没有null&这个属性名的编辑器：直接返回，不转换。 
+																															#同上查看是否可迭代：不可，直接返回。 
+																															#如果有近似Map：那么创建近似Map:@CollectionFactory.createApproximateMap() 
+																															#没有近似Map则直接反射创建：ReflectionUtils.accessibleConstructor(requiredType).newInstance()
+																															-此时已经构造出新的Map,但没有元素，下面开始加元素。
+																															>遍历原始Map: 同样方式按需转化key:buildKeyedPropertyName+convertIfNecessary, value则直接转换convertIfNecessary()
+																															#同理，再如果每次转换前后值都没变且老值可以赋值给requireType那么返回老值，否则返回这个新的集合。
+																													-此时可能转换已经进行了一部分。		
+																													#如果值是数组array且长度为1，那么：将元素取出来赋给转换值。	标记standardConversion=true	
+																													#如果要求类型是字符串，而转换值是基本类型或者其包装类：tostring()返回。	
+																													#否则如果转换值是字符串 且 转换值不是要求的类型：
+																														#如果要求类不是接口 且不是枚举：那么获取要去类的单str参数构造方法，然后用这个构造方法和转换值 来构造实例：@BeanUtils.instantiateClass(ct,args) 前面已经描述。
+																														-细碎的判断：如果转换值字符串为空串且要求类是枚举，那么直接返回null
+																														@尝试转换值为枚举：attemptToConvertStringToEnum()
+																															#如果要求类是枚举类Enum：那么尝试将字符串认为是 枚举类型.fieldName ,而恢复它的枚举类Class,和属性Field; 方法就是分割为2半，类则用ClassUtils.forName()加载，再反射Field.get(null)获取属性的值作为新的转换值。
+																															#作为一个退路：兜底，如果新的转换值和原来的值一样，那么用要求类直接反射获取Field(原来值作为参数),再Field获取转换值。	
+																														-再次标记设置standardConversion = true	
+																													#否则如果转换值是Number类型且要求类可以赋值给Number: 那么统一方法转换为目标类类型：@NumberUtils.convertNumberToTargetClass()		
+																														>对目标类可能的各种包装类类型：都需要专门处理：由于转换值具体可能是BigInteger/BigDecimal类型， 再检查值域，未通过可能会抛出异常。
+																														-再次标记standardConversion = true 
+																												#	
+																														
+																														
+																														
+																														
+																														
+																														
+											>返回实质创建结果。
 															
 															
 															
