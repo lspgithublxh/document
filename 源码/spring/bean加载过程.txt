@@ -255,7 +255,7 @@
 																													#如果获取的结果仍然为null: 那么猜测可能要求类是 customEditors里的key的子类，这样的话，也可以；就用这个超类的属性编辑器；同时缓存起来customEditorCache，key=requiredType, value=editor
 																											>再从属性注册器仓库获取转换服务：propertyEditorRegistry.getConversionService()
 																											#如果没有编辑器但是有转换服务：那么考虑使用转换服务来转换：
-																												@统一调用GenericConversionService.convert()
+																												@统一调用GenericConversionService.convert() 结果直接返回作为convertIfNecessary()返回值。
 																													@根据源类型和目标类型 统一获取转换器：GenericConverter.getConverter()
 																														>先缓存里获取：converterCache
 																														#没有则调用发现服务来获取：
@@ -274,23 +274,67 @@
 																															#此时converter不是null：存到map:converterCache属性里 并返回它,否则存一个new NoOpConverter("NO_MATCH")实例--并返回null。	
 																													#获取的转换器不为Null: 那么统一使用@ConversionUtils.invokeConverter()来转换为目标值。
 																														>转换器就直接转换：converter.convert(source, sourceType, targetType)，得到一个转换结果。
-																														#对结果handler一下处理：@GenericConversionService.handleResult() 内容为做一些抛错判断，直接返回。
-																													#没有转换器异常抛错判断：handleConverterNotFound ，有的话则会抛出。
-																														
-																														
-																														
-																														
-																														
-																														
-																														
-																														
-																														
-																														
-																						
-																						
-																						
-																						
-																						
+																														#对结果handler一下处理：@GenericConversionService.handleResult() 
+																															#如果结果为null, @assertNotPrimitiveTargetType():由于null不能赋值给基本类型，所以判断targetType是否是基本类型primitive type, 是则抛出异常：ConversionFailedException 。。其他情况下都直接返回result;
+																													#没有发现转换器的处理：handleConverterNotFound() ，有的话则会抛出。
+																														#此时对转换之前的值进行判断：source为null,那么还是null-基本类型是否抛出错误判断：@assertNotPrimitiveTargetType()
+																														-当源类型可以赋值给目标类型且source是目标类型(基本类型也可以)的实例(instanceof , isInstance(obj))，那么直接返回source就可以。条件是：sourceType 是null。其他情况都抛出未发现异常：ConverterNotFoundException
+																											#如果转换后的值不是requireType要求类型：			
+																												#如果要求类型是集合类型且转换后的值是字符串类型：从赋值角度检查Collection.class.isAssignableFrom()		
+																													@将逗号分隔的字符串转换为字符串数组：@StringUtils.commaDelimitedListToStringArray(str)
+																														@统一转发给：@delimitedListToStringArray()
+																															@再转发给统一参数入口的接口：@delimitedListToStringArray()
+																																>内容描述：从逗号分隔indexOf找到位置，不断substring出来放到一个集合里，最后集合转换为数组：collection.toArray(new String[0])---自己之前也曾使用过。	
+																												-此时可能已经获取到了转换后的字符串数组，需要其他方式进一步转换“字符串数组”
+																												#如果编辑器为null, 那么就获取默认的：@findDefaultEditor(requiredType)
+																													>从属性编辑器仓库获取：@TypeConverterDelegate.propertyEditorRegistry.getDefaultEditor(rt)	
+																														#查看默认编辑器激活开关：是否启用。开启才用。
+																														>先尝试从map:overriddenDefaultEditors属性获取，有则返回。
+																														#没有则看defaultEditors属性，如果为null: 则创建它@createDefaultEditors()
+																															>除了注册常规的编辑器如：CharsetEditor/FileEditor/PathEditor/URLEditor/UUIDEditor/, configValueEditorsActive
+																															>也注册集合编辑器如：new CustomCollectionEditor(Set.class)/new CustomMapEditor(SortedMap.class)
+																															>也注册基本类型及其数组、包装类编辑器：new CustomNumberEditor(Double.class, false)/new CustomNumberEditor(Double.class, true))
+																															>在configValueEditorsActive激活时注册：	new StringArrayPropertyEditor() 给short[]/int[]/long[]/String[]类型。
+																														>从默认编辑器里取：map:defaultEditors, 直接get返回。
+																													#如果此时依然没有发现编辑器：通过转换服务获取BeanUtils.findEditorByConvention()：
+																														#不处理数组、不知道的targetType:直接返回null 
+																														-尝试使用“加载编辑器类”的方式，而假设编辑器类类名等同于targetType的name+"Editor"
+																														>所以先获取加载器：顺序：targetType.getClassLoader() > ClassLoader.getSystemClassLoader()
+																														>构造编辑器名字：editorName=targetType.name + "Editor"
+																														#开始加载cl.loadClass(editorName)，如果加载成功：检查Class对象是否可以赋值给PropertyEditor
+																															#如果不可以：放入垃圾堆-不知道的编辑器类型map:unknownEditorTypes.add(targetType)，返回null 
+																															#如果可以：需要对Class对象初始化：@BeanUtils.instantiateClass(ec) 里面会捕获可能发生的各种BeanInstantiationException异常。结果直接返回findEditorByConvention()
+																																#使用构造器方法初始化：统一调用@instantiateClass(Constructor<T> ctor, Object... args)
+																																	>设置构造方法可访问：ReflectionUtils.makeAccessible(ctor)， 几个判断。
+																																	#如果构造方法类是特殊类：KotlinDetector.isKotlinType() 那么委托进行初始化：@KotlinDelegate.instantiateClass(ctor, args)
+																																		-基本内容就是：使用KFunction实例ReflectJvmMapping.getKotlinFunction(ctor)的.callBy(argParameters)方法进行初始化。
+																																	#否则简单的直接反射的构造方法调用：@ctor.newInstance(args)	
+																																		-里面最终调用ConstructorAccessor.newInstance() 里面又BootstrapConstructorAccessorImpl.newInstance() 里面又：UnsafeFieldAccessorImpl.unsafe.allocateInstance(this.constructor.getDeclaringClass())
+																													#返回编辑器。					
+																												-此时编辑器获取完毕，开始利用来进行实质的转换值为目标类型：doConvertValue()						
+																													#如果值不是字符串：调用编辑器setValue()又取出getValue()，如果两个值不相等，那么取出的值作为最新的值，下一步使用。同时该编辑器不再使用。						
+																													-此时如果要求的类型不是数组，但是此时的转换值是字符串数组，则调用方法将字符串数组转换为逗号分隔的字符串：@StringUtils.arrayToCommaDelimitedString					
+																																		
+																																		
+																																		
+																																		
+																																		
+																																		
+																																		
+																																		
+																																		
+																																		
+																																		
+																																		
+																																		
+																																		
+																																		
+																																		
+																																		
+																																		
+																																		
+																																		
+																																		
 											>返回实质创建结果。													
 															
 															
