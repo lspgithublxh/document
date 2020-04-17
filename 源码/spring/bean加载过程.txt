@@ -8,6 +8,8 @@
 //出现了if-else就是因为有不同的考虑。
 //阅读文档达到直接可以看出思路编写程序的清晰逻辑的地步。
 //一个大函数功能直接看懂而描述。
+//从网上找答案变为从源码中找答案。
+
 >加载bean: 
  >AbstractApplicationContext.getBean(String name)开始的：
 	@考虑到(什么情况)(预防)：beanFactory的活跃状态、关闭状态影响是否获取bean, 如不活跃则不获取。决定(做一件什么事)：判断beanFactory活跃，否则抛出错误。世界观：容器有active,closed状态
@@ -140,8 +142,155 @@
 																#编织的结果为null: 则直接返回上次编织的结果。
 																#否则不为Null: 继续当作下次编织的对象。
 											#当上一步返回的编织结果不为null:则直接返回这个编织结果。
-											#否则没有编织：开始真正的实质的创建doCreateBean()。
-												@	
+											@否则没有编织：开始真正的实质的创建AbstractAutowireCapableBeanFactory.doCreateBean()。工作为：创建、处理器、两步初始化、各种key缓存、注册
+												>事情1：创建BeanWrapper包装类
+													>mbd是单例模式，则先看缓存池里是否有bw: 工厂bean name到beanWrapper的映射缓存池factoryBeanInstanceCache中：没有则开始真正的创建createBeanInstance()
+														#@：先解析beanClass, 如果mbd里有则直接返回，AbstractBeanFactory.resolveBeanClass()
+															#没有则或带安全框架进行真正的解析beanClass: AbstractBeanFactory.doResolveBeanClass()。过程分为几步：先必然要获取加载器
+																>获取beanClassLoader: AbstractBeanFactory.beanClassLoader属性，
+																#如果mbd的bean类名就是null: 那么直接调用mbd的AbstractBeanDefinition.resolveBeanClass(cl)返回null , 该方法非常简单：就是用ClassUtils.forName(className, classLoader)来加载类字节码Class<?>对象---显然需要类名和类加载器：：最基本的加载一个Class的条件数据。
+																	>这个加载过程：用了缓存;考虑了名称的--基本数据类型、考虑了数组类型、考虑列表类型,做了不同的处理，统一返回带类型的数组类型Array.newInstance(ec,0).getClass()；
+																		#如果cl也为null: 那么开始考虑使用的其他类加载器来加载，尝试的cl顺序为：当前线程上下文加载器Thread.currentThread().getContextClassLoader() > 本工具ClassUtils类的类加载器ClassUtils.class.getClassLoader() > 系统加载器/根加载器/bootstrap 类加载器/sun.misc.Launcher类的加载器
+																		>最后使用：java的Class.forName(name, false, clToUse)来加载类字节码
+																#否则不为null: 先评估beanDefinition， 
+																	@转发给专门的评估类：AbstractBeanFactory.beanExpressionResolver.evaluate(beanName, BeanExpressionContext)
+																		>对Expression和StandardEvaluationContext使用了缓存模式：说明个数不多。expr.getValue(context)的评估结果：评估工作简单：LiteralExpression直接返回.literalValue,而SpelExpression则多一些工作。
+																	#如果上述评估结果和className一样：说明className是正常名，则可以直接mdb.resolveBeanClass(cl)加载类字节码对象。
+																	#否则是一个表达式名或者Class对象：需要专门解析：如果是Class对象，直接返回。 
+																		#否则是表达式名：其实也是一个类名cn, 此时优先使用前面获取到的cl来加载.loadClass(cn)--比较客户化, 没有才使用比较官方的ClassUtils.forName(className, dynamicLoader)来加载，然后返回。
+														#此时：已经解析 获取到Class对象，还要判断：Bean Class是否public和可以access, 不行的话抛出异常。
+														-准备创建实例：按照一个顺序从各种渠道工具来创建实例：instanceSupplier > factoryMethod > 手动
+														#如果实例提供器不为null: 用这个工具创建，三步走
+															>设置线程局部变量-当前正在创建的Bean: AbstractAutowireCapableBeanFactory.currentlyCreatedBean为给定的beanName
+															>调用实例提供器的get()方法 
+															>恢复设置线程局部变量-当前正在创建的Bean：为设置之前的beanName
+															#创建的实例为null: 则设置为new NullBean()实例 
+															>将实例直接封装为BeanWrapperImpl实例：bw
+															@对这个bw初始化：AbstractBeanFactory.initBeanWrapper() 核心事务概述：注册属性编辑器
+																>设置bw的转换服务：conversionService
+																@注册客户的编辑器：bw实现了PropertyEditorRegistry接口，其中有注册方法，来注册一些PropertyEditorRegistrar实例，来辅助bean的属性值的注入。AbstractBeanFactory.registerCustomEditors()
+																	@注册方法：ResourceEditorRegistrar.registerCustomEditors()
+																		@实际注册方法：ResourceEditorRegistrar.doRegisterEditor()
+																			#判断registry类型而分别存放：PropertyEditorRegistrySupport类型则存放到：map:PropertyEditorRegistrySupport.overriddenDefaultEditors
+																			#否则注册到：可能是map:PropertyEditorRegistrySupport.customEditors属性里。DataBinder也是。
+																			-上述map:都是key为资源类型如：File.class/URL.class/InputStream.class/Resource.class/Reader.class等，value则为对应的编辑器：FileEditor/ReaderEditor等
+															>返回这个bw
+														#@如果mbd的工厂BeanName不为null: 调用工厂方法进行创建：instantiateUsingFactoryMethod()
+															@统一转发给ConstructorResolver.instantiateUsingFactoryMethod()实现：先给ConstructorResolver实例注入工厂引用本身AbstractAutowireCapableBeanFactory
+																>直接new BeanWrapperImpl()实例：bw
+																@调用工厂的初始化方法初始化bw: AbstractBeanFactory.initBeanWrapper() 同上方法。
+																#如果工厂beanName和beanName一样：则不正确，抛出异常。
+																#否则不一样：开始获取bean: 获取方式即递归最开始的方法：this.beanFactory.getBean(factoryBeanName)。AbstractBeanFactory.getBean(String name)
+																>开始创建前，要做存在性判断：入股mbd是单例模式，且单例池中已经存在该bean: singletonObjects.containsKey(beanName) 则抛出异常
+																#到此则说明单例池没有，该bean还没有创建：对构造参数explicitArgs开始判断
+																	#如果为null: 则从mbd中获取：构造方法获取：mbd.resolvedConstructorOrFactoryMethod； 和方法参数获取：mbd.resolvedConstructorArguments /没有则预备参数：mbd.preparedConstructorArguments; 
+																		#如果使用了预备参数：则需要进一步解析处理：解析获取参数：ConstructorResolver.resolvePreparedArguments()
+																			-需要解析每个方法参数：类型和值，需要进行引用解析，因为可能是未解析类型，甚至需要重新beanFactory.getBean(name)、加入依赖表beanFactory.registerDependentBean(refName, beanName)
+																			>准备工作：构造一个值解析器BeanDefinitionValueResolver实例valueResolver
+																			#如果某个方法参数值类型为：BeanMetadataElement
+																				@使用值解析器解析值：valueResolver.resolveValueIfNecessary("constructor argument", argValue)
+																					-根据值类型的不同 而调用不同的解析方法，也返回不同的类型：直接返回bean或者直接返回beanName
+																					#如果值是运行时引用RuntimeBeanReference类型：
+																						@调用值解析器的解析引用方法：BeanDefinitionValueResolver.resolveReference()
+																							>先评估这个值的BeanName名：BeanName
+																							#看这个值是否是父类的工厂方法创建：是则用父类工厂getBean(refName)
+																							#否则用本beanFactory来getBean(): 之后保存依赖关系对：beanFactory.registerDependentBean(refName,beanName)即保存到了dependentBeanMap和dependenciesForBeanMap里。
+																					#如果值是运行时名称引用RuntimeBeanNameReference类型：
+																						>先评估这个refName,评估结果转换为name, 如果它不在beanFactory中，抛出错误
+																						#在，则返回这个评估结果。
+																					#如果值是bean定义持有类型BeanDefinitionHolder：bh
+																						@转发调用解析内部bean：valueResolver.resolveInnerBean()
+																							@调用统一的方法合并为mbd:RootBeanDefinition类型：beanFactory.getMergedBeanDefinition() 该方法之前已经讲解过。
+																							-因为bh的beanName就是innerBeanName
+																							#当mbd是单例模式：这个innerBeanName需要调整。
+																								@调整方法调用：BeanDefinitionValueResolver.adaptInnerBeanName()功能在于对innerBeanName后面添加#1, 即认为这个name可能被使用过，则数字累加：alias中使用map:aliasMap, 单例池singletonObjects使用map:, 定义map:beanDefinitionMap使用，或者是工厂Bean?FactoryBean--解析一下看是否能解析成功， 或者依赖map里有：dependentBeanMap。
+																							-此时则得到了真正的内部beanName:actualInnerBeanName
+																							@开始注册到“一个bean包含的所有bean的map”中：DefaultSingletonBeanRegistry.registerContainedBean() containedBeanMap			
+																								#如果注册成功：那么继续注册依赖：@注册到依赖map:dependentBeanMap/dependenciesForBeanMap。方法同之前。beanFactory.registerDependentBean()
+																							>将mdb所有的依赖bean创建和注册：mbd.getDependsOn()对每个依赖的bean, 注册依赖关系beanFactory.registerDependentBean(), 第二，获取依赖bean: beanFactory.getBean(String name)					
+																							@此时才开始真正创建bean: 调用bean工厂创建:this.beanFactory.createBean(actualInnerBeanName, mbd, null) 这就是递归了。
+																							-此时创建完毕，但是bean的类型可能还是工厂bean类型：
+																							#如果创建的结果bean是工厂bean类型：FactoryBean	那么需要通过工厂bean的方式创建它：beanFactory.getObjectFromFactoryBean()前面使用过此方法。
+																							#如果结果bean是NullBean类型：返回null
+																							#否则直接返回innerBean。#				
+																					#如果值是bean定义类型BeanDefinition：
+																						>先获取innerBeanName: (inner bean)#4fesx 其中#后面的就是值的hashcode的十六进制字符串。
+																						@转发调用解析内部bean：valueResolver.resolveInnerBean()
+																					#如果是ManagedArray: 则元素类型需要考虑
+																						>加载元素类型：array.resolvedElementType使用：ClassUtils.forName(elementTypeName, this.beanFactory.getBeanClassLoader())
+																						@专门解析每个元素类型：BeanDefinitionValueResolver.resolveManagedArray()
+																							>遍历每个元素：递归解析BeanDefinitionValueResolver.resolveValueIfNecessary() 
+																							#解析完成则返回。
+																					#如果是ManagedList：
+																						@专门解析resolveManagedList(): 
+																							>遍历每个元素：递归解析BeanDefinitionValueResolver.resolveValueIfNecessary() 
+																								#解析完成则返回。
+																					#如果是ManagedSet：
+																						@专门解析resolveManagedSet(): 
+																							>遍历每个元素：递归解析BeanDefinitionValueResolver.resolveValueIfNecessary() 
+																								#解析完成则返回。	
+																					#如果是ManagedMap：
+																						@专门解析resolveManagedMap(): 
+																							>遍历每个key-value：两个都递归解析BeanDefinitionValueResolver.resolveValueIfNecessary() 
+																								#解析完成则返回。	
+																					#如果是ManagedProperties类型：
+																						>转换为Properties类型：所有的键值都要评估。
+																						#只要有一个评估结果为null都抛出异常。
+																					#如果是TypedStringValue类型：
+																						>先评估：得出评估结果
+																						>再解析这个值的目标类：BeanDefinitionValueResolver.resolveTargetType() 目标类就是要求类
+																							#属性有目标类：即targetType属性是Class实例类型，直接返回。
+																							#否则需要借助beanClassLoader来解析：
+																								@调用接口：TypedStringValue.resolveTargetType()来解析
+																									#看属性targetType是是什么类型：string, class, 都可以获取为string, 然后反射加载对应的Class: ClassUtils.forName(typeName, classLoader)
+																									#为null则返回null, 否则就是加载的结果。
+																						#如果目标类Class不为null: 需要转换为要求的类型。即上述解析的类型。将值转换为这个类型。
+																							@统一调用：this.typeConverter.convertIfNecessary()
+																								@统一封装调用：TypeConverterSupport.doConvert()
+																									@再次委托调用：TypeConverterDelegate.convertIfNecessary()
+																										@再次转到统一参数接口：TypeConverterDelegate.convertIfNecessary()
+																											>先根据要求类型获取属性编辑器：propertyEditorRegistry.findCustomEditor()
+																												@转发调用统一的从用户定制的编辑器里获取属性编辑器：PropertyEditorRegistrySupport.getCustomEditor()
+																													>获取顺序：map:customEditors  > map:customEditorCache
+																													#如果获取的结果仍然为null: 那么猜测可能要求类是 customEditors里的key的子类，这样的话，也可以；就用这个超类的属性编辑器；同时缓存起来customEditorCache，key=requiredType, value=editor
+																											>再从属性注册器仓库获取转换服务：propertyEditorRegistry.getConversionService()
+																											#如果没有编辑器但是有转换服务：那么考虑使用转换服务来转换：
+																												@统一调用GenericConversionService.convert()
+																													@根据源类型和目标类型 统一获取转换器：GenericConverter.getConverter()
+																														>先缓存里获取：converterCache
+																														#没有则调用发现服务来获取：
+																															@统一发现转换器服务：converters.find(sourceType, targetType)来获取：
+																																>两个类的由近及远的类继承体系：通过这个两两组合对ConvertiblePair 作为key参数，调用map:converters来获取出ConvertersForPair，
+																																@根据每个组合Pair获取注册的converter:getRegisteredConverter()
+																																	@统一调用ConvertersForPair.getConverter(): ConvertersForPair有list:converters属性，
+																																		@遍历每个converter进行匹配：ConditionalGenericConverter.matches() 
+																																			@如果匹配成功：立即返回该converter
+																																	
+																																	#如果此时没有匹配成功：则继续从globalConverters属性里获取GenericConverter来一个个的匹配：
+																																		#如果匹配成功则返回。否则返回null
+																																#如果此时converter不为null:那么返回。否则没有一个组合满足，直接返回null。
+																															#如果此时没有发现converter:	那么 调用默认转换器获取方法获取@getDefaultConverter()
+																																#只看源类是否可以赋值给目标类(isAssignableTo)：可以则返回new NoOpConverter("NO_OP")实例。 
+																															#此时converter不是null：存到map:converterCache属性里 并返回它,否则存一个new NoOpConverter("NO_MATCH")实例--并返回null。	
+																													#获取的转换器不为Null: 那么统一使用@ConversionUtils.invokeConverter()来转换为目标值。
+																														>转换器就直接转换：converter.convert(source, sourceType, targetType)，得到一个转换结果。
+																														#对结果handler一下处理：@GenericConversionService.handleResult() 内容为做一些抛错判断，直接返回。
+																													#没有转换器异常抛错判断：handleConverterNotFound ，有的话则会抛出。
+																														
+																														
+																														
+																														
+																														
+																														
+																														
+																														
+																														
+																														
+																						
+																						
+																						
+																						
+																						
 											>返回实质创建结果。													
 															
 															
