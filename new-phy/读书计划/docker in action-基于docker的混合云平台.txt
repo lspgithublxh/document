@@ -1,0 +1,213 @@
+---------读书战略：自顶向下，从应用层到底层细节。先熟悉的常用的，后底层的不常用的。精读好书---《深入理解系列》
+--------es的处理思想都对应有 相应的“某种举动 及其导致 的问题”
+>需求背景-痛点陈述：现实开发中遇到了什么痛点导致XXX的开发？  
+>那么痛点的原因、产生的条件：分析是什么环境、什么动作 什么效果什么目的 等精准形容词的事实描述 导致了痛点的必然发生，难以避免？。条件-痛点。原因-结果。
+>则可以消除痛点的最简单的精准事实陈述是什么：修改“条件-痛点”陈述的哪一部分就可以导致没有痛点产生。 要做的根本事情是什么：
+>那么新陈述表明的解决动作是什么：
+>新情况的新痛点是什么：新举动、新环境会产生的新痛点描述出来， 继续上述4条操作。
+>学习要有战略和格局：过于零散、孤立、末支、叶子的知识点就没必要化太多时间，懂得放弃。聚焦在根节点、枢纽节点、产生分支的节点、主干知识点、枢纽知识点、关联到很多知识点的知识点上。
+ >对于主干知识点：要有全新的认识视角和进行精细的描述，大量的提问和好奇和进行必要的实验以获取支撑观点/导出观点的数据。
+ >规范是工程最独特的特征.
+ >慢慢读：
+>一种新技术的学习：
+ >它面对的情况和问题、它的世界观、它的方案、它的方案验证/论证/能处理的解决的所有情况及能成功处理的理由/功能边界
+  >所有的软件：都可以看作是向上封装一层接口，根据自己的世界观封装底层而向上/对外提供统一的(统一的更简单的更直观的更业务的更少底层信息的)接口，底层包含一系列的第三方的插件/构件/组件；内部则去做兼容和调用(对底层)(对上层则做逻辑分解和底层实现)。
+
+  
+>举动-痛点：在docker中运行软件好些。2.当作软件管理工具集---(减少琐碎配置的时间；比如亲自打包制作一个mysql镜像，那么下次直接使用就可以，不必再次重复的配置)
+ >解法/处理思想：
+  >核心：unix容器技术。docker则是利用这个技术的最佳实践来构建配置正确的最佳容器；而且这个最佳实践被层层封装，而向用户提供成本很低的接口，用户创建容器就变得非常容易简单了。
+   >docker让用户更方便的使用操作系统的容器技术，而本身并没有提供虚拟化技术。docker是一个搬运工，运行-复制-分发 容器，像轮船火车运送集装箱一样。容器里装的就是image
+   >基本功能：容器可以精细的划分使用操作系统8大资源(而不越界)；容器可以运行镜像(自然是使用自己获取到的独立资源来运行，从执行镜像的启动脚本配置脚本开始)、许多工具都可以将带启动脚本配置脚本的软件打包成镜像分发(存储到仓库，或者从仓库获取)、。docker像一个农民，国家就是操作系统, 土地就是资源，镜像就是各种菜苗。
+   >现实问题：软件有依赖，软件有的需要升级依赖到不同版本，软件不好轻易移除。  
+    >容器：每个镜像都有自己的一份依赖，而不是依赖共同的。
+     >在Mac/Windows中，docker使用一个轻量级虚拟机来运行所有的容器。而不是创建很多虚拟机来运行各个软件。从而一个软件可以运行在各种操作系统环境中---因为完全可以让虚拟机运行一种同一的操作系统；而容器也是；底层操作系统可以不同。
+   >doker命令：
+    >一步到位：下载、安装、运行nginx镜像(没有连接到命令行，后台运行，守护进程，只能网络连接访问到)：docker run --detach --name web nginx:latest   
+	 >将终端绑定到容器的输入输出：docker run --interactive --tty --link web:web --name web_test busybox:latest /bin/sh (此时还运行了容器里的脚本sh)..测试：wget -O - http://web:80
+			代理关联运行：docker run -it --name agent --link web:insideweb --link mailer:insidemailer dockerinaction/ch2_agent
+	>PID名称空间：一个名称空间namespace下有多个进程1，2，3，4，5.。其中1往往是/bin/sh , 2则是正式的命令 docker run -d --name namespaceA busybox:latest /bin/sh -c "sleep 30000"   		然后执行docker exec namespacA ps 可以看到运行docker中产生的其他进程。
+	>容器隔离三大工具：linux namespace, file system roots, virturalized network components
+	>容器状态：exited-->running-->paused--->restarting
+	>容器依赖：
+     >文件系统：
+	 >环境变量注入：
+	  >例子：注入例子--env的使用：docker run --env MY_ENVIRONMENT_VAR="this is a test" busybox:latest env 。。。其实也可以先docker create 后docker start $CID
+	  >执行容器内的命令：docker exec lamp-test kill xxx	
+	  >监控进程：可以自动重启被监控进程。
+	 >卷：Volumes和策略。容器和本机的数据共享问题，比如数据库镜像的数据存储问题。将数据写到容器外，不因容器的开闭而消失。访问这些容器理的应用写入的容器外的日志文件？
+	  >卷：是容器目录树中的一个挂载点(主机的目录树的一部分被挂载了)，分割和存储数据的工具---独立于容器的生命周期，映射到容器中的目录---来占用主机的存储。镜像---静态文件；卷--管理动态数据。使用主机的存储来映射容器中的目录。
+	  >卷的类型: 在docker管理空间创建还是在本地主机文件系统中创建。
+		>卷绑定到本机的运行容器方法：docker run -d --name bmweb -v -/example-docs:/usr/local/apache2/htdocs -p 80:80 httpd:latest 左边是本地:右边是container容器内:ro只读， 如果只读，那么容器内的进程是不能在挂在目录下创建文件的，这个目录下完全被本地的那个文件目录的文件所覆盖。可以精确到文件挂载。
+		>卷绑定到容器内部的目录的方法：docker run -d -v /var/lib/cassandra/data --name cass-shared alpine echo Data Container 那么其实也会将目录隐含映射到docker管理的本地目录下：通过docker inspect查看
+	  >卷容器：
+	  >使用卷在容器之间共享数据：只需要-v的前半部分相同就可以。
+	   >使用管理卷进行：从其他容器里获取文件：--volumes-from image1 --volumes-from image2 。可以传递式获取。
+	  >管理卷独立的生命周期： 每个容器都可以有多个管理卷，且不同的容器可以有相同，容器本身不能删除其中的数据。可以从共享的地方建立脚本执行来实现容器的多态。
+	>验证例子：
+	 >启动wp: docker run -d --name wp --read-only wordpress:4
+	  >检测启动状态：docker inspect --format "{{.State.Running}}" wp 
+	  >查看容器日志：docker logs wp
+	  >新增启动：docker run -d --name wpdb -e MYSQL_ROOT_PASSWORD=ch2demo mysql:5  启动这个依赖后，启动新的wp: docker run -d --name wp2 --link wpdb:mysql -p 80 --read-only wordpress:4
+		>另一种方法：docker run -d --name wp3 --link wpdb:mysql -p 80 -v /run/lock/apache2/ -v /run/apache2/ --read-only wordpress:4
+	>拉取镜像：docker pull quay.io/dockerinaction/ch3_hello_registry:latest   
+	 >从tar安装：docker load .... 同时还可以docker save 保存为.tar
+	>基本技术：
+	 >MNT namespaces:
+	 >chroot: 
+	>lays层：包括镜像运行在的操作系统，可以统一一个，这样来运行多个镜像。可以指定镜像运行在什么系统上：--storage driver  
+	>协议、网络接口和端口：
+		>协议：http协议，提供www服务。
+		>网络接口：两种：以太网接口，回环接口。网络地址--ip地址(ip协议定义)，同一个地址可以多个接收者：他们的端口不同(port通过tcp协议定义)。
+		>端口：tcp定义。区分不同的信息接收者。
+	   >一台主机上docker创建的虚拟网络，连接到本机网络端口：虚拟网络称为第二网络，为bridge桥。
+	   >两种类型的网络：单主机虚拟网络和多主机虚拟网络。：docker在网络中隔离容器。
+	    >docker构建本地虚拟网：具体和定制化的虚拟网络拓扑。这样本地的容器之间可以通过docker桥互相局域地址通信。
+			>docker桥是一个接口：docker桥接口又attached附加在本机网络上。
+			>linux内核空间提供私有网络接口：但是不提供网络暴露和隔离，这是防火墙的路由规则决定。
+		>四种网络容器原型：	
+			>不和逻辑主机接口交互：关闭型容器。只能自说自听,外面访问不了里面，里面访问不了外面。参数：--net none。。没有到更大网络的路由。
+			>间接和逻辑主机接口交互：中间层为：docker bridge 虚拟接口 ，再上一层：容器虚拟接口和连接容器虚拟接口。桥接容器(默认)和连接容器。
+				>桥接容器：docker0接口两个好处：所有连接到它的接口之间互相通信，也可以通过它访问更大的网络。--net bridge
+					>ip地址的名字：域名dns。 docker可以给一个容器创建”域名“映射，放到这个容器的/etc/hosts里。--hostname abc 是配置私有接口的名字，不是回环地址。
+					>外部dns server: 谷歌的8.8.8.8 通过--dns 8.8.8.8设置。--dns-search docker.com更简单的域名，后缀即可，。
+					>名-地址配置：--add-host test:10.10.10.255
+					>默认情况下：主机外部不能访问主机内的桥接容器内部。因为防火墙配置和网络拓扑没有这个路由。路由+主机 就构成了网络。
+					>主机网络栈和桥接容器接口之间：可以建议mapping映射。-p 3333表示主机端口动态任意但容器端口3333, -p 3333:2222 主机3333映射到容器端口2222 。。-p 192.168.0.32::2222主机ip固定端口动态而容器端口2222。-p192.168.0.32:2222:3333主机ip端口都定了容器端口定了。
+						>上述方式就会创建一个从主机端口到容器端口的route路由。
+					>主机上的多个桥接容器之间通信：通过docker bridge virtural interface 。设置--icc=false则不会被发现。
+						>定制：桥的ip和子网范围。--bip 192.168.0.128/25  启动docker时的docker0 。可以--fixed-cidr 设置。以太网接口最大的包大小是:1500字节。-mtu 1200设置。还可以使用一个自己配置的桥而不是默认的docker的docker0桥，--bridge  mybridge
+				>连接容器：	管理卷的容器间网络原型。--net container:old 将会连接到另一个容器old。即便服务注册不可用，dns不可用也可以互相通信。	
+					>容器间通信服从防火墙规则：
+					>一个容器通过一个没有暴露的端口访问另一个容器：可以直接join 另一个容器来实现。使用回环地址就可以相互通信。连接一个已经运行的容器也可以。
+					>容器之间可以：
+			>直接和逻辑主机接口交互：并且回环地址也是使用逻辑主机接口的。开放容器
+				>开放容器：--net host 共享主机的网络接口。从而可以绑定到<1024的端口
+		>深度防御：配置合适，网络规则严格，声明服务依赖。		
+		>创建网络依赖：Links --link imagename:alias 这样还会创建环境变量包括端口协议和dns域名在新的容器里。	
+	>资源保护、共享内存、用户、chroot()文件系统根隔离		
+		>内存、cpu和设备的限制使用配置：--memory 256m    --cpu-shares 512权重   --cpuset-cpus 0,1,2 指定运行在哪些cpu核上，
+		>在主机和容器之间共享设备：设备映射：--device /dev/video0:/dev/video0 只要主机的/dev/video0下就是设备文件。
+		>共享内存：进程间通信。IPC	如生产者和消费者。-producer -consumer
+			>使用另一个容器的ipc名称空间来达到共享内存：消费者使用生产者的。--pic container:imageproducer 每个容器都有自己的ipc内存空间，所以共享时候需要--ipc引用指定。
+				>开放内存容器：甚至可以和其他进程通信。--ipc host 	 移除容器和卷：docker -rm -vf imagename 
+		>用户：默认root根用户启动容器。避免有此权限的其他进程影响到docker容器，而需要换成其他用户权限。反过来，容器用户的权限使用不当也会影响到主机上的文件系统。
+			>运行参数：--entrypoint "" 加上 whoami 或者id 将输出name和id等信息。容器名后的命令被容器执行，所以加了--entrypoint 
+			>运行应用的用户常设置：--user nobody:default 用户:组  uid:gid
+			>扔掉能力：--cap-drop net_raw  能力就是修改进程、配置、文件等的权限许可。 内存、设备、能力是一类，文件系统和网络是另一类。前者对于特权用户可以使用主机的。
+			>增加能力：--cap-add sys_admin
+				>特权容器：运行特权命令。--privileged
+			>安全选项：LSM模块。docker构建使用lxc..更换容器提供者：--exec-driver=lxc 进一步配置：--lxc-conf="lxc.cgroups.cpuset.cpus=0,1"
+				>--security-opt 
+				>cgroups使得用户可以限定内存使用、cpu时间等。
+	>镜像的组织、定制、具体化和构建分发。
+		>将容器打包为一个镜像：启动配置也会被打包到一个新的镜像里。docker run --name xxx ubuntu:latest touch /helloworld  然后docker commit hw_container hw_image  从而生产了一个镜像hw_image
+			>1.从一个合适的镜像启动开始：一般是文件系统镜像：docker run -it --name image-dev ubuntu:latest /bin/bash 
+			>2.在容器里安装软件：apt-get -y install git 
+			>3.退出容器并关闭容器：那么git就被安装在了ubuntu:latest镜像的顶部。
+				>查看文件系统中修改的文件：docker diff image-dev 
+			>4.提交修改为一个新的镜像：docker commit -a "lsp" -m "create a new image" ubuntu-git 
+				>查看新建的镜像：docker images 
+				>为了增加入口点：重新启动镜像并且设置入口点：docker run --name cmd-git  --entrypoint git ubuntu-git ; 提交：docker commit -m "update" -a "lsp" cmd-git ubuntu-git 
+		>层：每次文件修改都会新增一层到统一文件系统。一个镜像就是一个层栈。	层标记符。
+			>仓库：主机/用户/shortname 。 tag指向layer id 。每个镜像都有latest标签。	
+			>打标签：docker tag imagename:latest imagename2:tag2
+		>镜像中的文件输出：docker export  --output content.jar runimagename  	
+	>自动构建：使用dockerfile和一些指令。			
+		>从dockerfile构建：建立一个dockerfile文件：内容：共14条指令可以用。
+			from ubuntu:latest #第一条命令
+			matainer "lsp"
+			run apt-get install -y git 
+			entrypoint ['git']
+		 >执行命令：docker build --tag ubuntu-git:auto 从而构建出一个name=ubuntu-git 标签为auto的镜像。其他参数--file dockerfile的名
+		>.dockerignore文件：里面的文件名不会被构建。
+		>其他指令：
+			>expose 3333端口暴露。
+			>user 用户组:用户
+			>env a=b 环境变量
+			>label a.name=b 标签 
+			>workdir namespace 工作空间
+			>add . xxx  文件系统命令
+			>volume ["a/b"]
+			>copy a/b, c/d 文件系统命令, 从当前到容器里。
+			>cmd ["a/b"]在容器内启动一个进程,启动脚本默认为容器里的/bin/sh。
+			>onbuild 其他指令  。当本image被其他image继承 from 时执行。即在from之后立即执行。
+		>启动脚本和多进程：基于最佳实践：failing fast , precondition validation
+			>启动脚本做一些验证：网络端口、网络连接、卷、环境变量、
+			>初始化进程：各有好处和代价：
+			>共同的基准：docker pull aa:release 后输出的Digest:的值作为from 命令的值：from deban@d5frgtderfvd46gd 叫做CAIID
+	>仓库构建：主机仓库
+		>在Docker.Hub上注册一个账户，本地创建自己的dockerfile之后：docker build -t username/imagenme -f xxx.df
+		>登录：docker login 输入username ,password ...
+		>推送：docker push username/iamgename 一层一层的推送。 
+		>本地仓库构建：docker run -d -p 5000:5000 -v "$(pwd)"/data:/tmp/registry-dev --restart=always --name local-registry registry:2
+			>推送： docker push localhost:5000/username/imagename 
+		>手动分发：tar格式分发，http等协议，然后下载下来，解开安装。 	
+		>镜像源码分发：github上。拉下来需要自己docker build 
+	>构建一个curl镜像，运行并用来远程访问registry:
+	>安装htpasswd镜像：运行它：docker run -it --rm htpasswd -nB username 然后在控制台输入密码两次，就会输出bcrpt加密的结果字符串，复制放到registry.password文件。
+		>然后再创建一个nginx的conf配置文件，内容中除了常规的：443端口-certificate .crt/certificate_key .key 安全ssl配置，还需要在location下配置：auth_basic "registry.localhost" ; auth_basic_user_file /etc/nginx/conf.d/registry.password;
+			>然后用这四大文件创建一个新的dockerfile:运行nginx: 
+				From nginx:latest
+				label source=dockerinaction 
+				label category=infrastructure
+				copy ["./tls-auth-proxy.conf",
+						"./localhost.crt",
+						"./localhost.key",
+						"./registry.password",
+						"./etc/nginx/conf.d/"]
+	>同理安装registry镜像：也是。创建yml文件，配置到.df文件里，然后创建。
+				from registry:2
+				label source=dockerinaction
+				label category=infrastructure
+				cmd ["/azure-config.yml"]
+				copy ["./azure-config.yml","/azure-config.yml"]
+			然后就可以docker build -t dockerinaction/azure-registry -f azure-config.df
+	>cdn是一个内容交付网络：离客户近则用那个节点传输内容，aws cloudfront. 客户端用一个url请求内容，cdn就近返回。
+	>仓库registry集成：cdn ,redis, s3,notifications 都可以。Calaca和es使用， 配合nodejs, 可以做仓库事件的通知的拉取、搜索、展示。而仓库又被反向代理，而元数据缓存到redis, 而镜像持久化到S3等对象存储里--远程字节存储Azure\s3\ceph。
+	>docker compose: 定义、启动、管理服务的；根据配置而启动多个运行不同镜像的容器---单机。一个服务由若干个容器分片。定义yml文件用docker-compose命令来完成一系列任务。	
+		>构建镜像：
+		>启动容器化应用作为服务：
+		>管理单一服务的状态：
+		>启动服务的满系统：
+		>扩展收缩服务：
+		>查看容器集合的日志：
+	 >yml文件：
+		wordpress:
+			image:wordpress:4.2.2
+			links:
+			 -	db:mysql 
+			ports:
+			 - 80:80
+		db:
+			image:mariadb
+			enviroment:
+				MYSQL_ROOT_PASSWORD: example 
+	>构建上线：docker-compose up
+	>构建yml中的自服务：docker-compose build calaca pump
+	>批量启动运行了相同服务的容器：docker-compose scale coffee=5  且都放开同一个容器端口--但是映射了不同的主机端口：0.0.0.0:xxxx
+	>docker swarm:docker machine 
+		>docker machine: 创建虚拟机virtualBox : docker-machine create --driver virtualbox host1 多次创建，ip是不一样的。
+			>docker-machine inspect host1  机器提供docker api 
+		>docker swarm: 发现在不同机器上的容器服务。一个机器可以是一个管理者或者一个简单的节点-代理。一台物理机上就可能：运行一个docker engine, 一个swarm agent 或者和一个swarm manager
+			>创建管理者：
+				docker-machine create 
+					--driver virtualbox 
+					--swarm
+					--swarm-discovery token://<TOKEN>
+					--swarm-manager 
+					machine0-manager 
+			>创建代理节点：	
+				docker-machine create 
+					--driver virtualbox 
+					--swarm 
+					--swarm-discovery token://<TOKEN>
+					machine1-node  
+		>docker客户端连接到docker swarm manager: 创建容器分配到不同的机器节点上。
+		>调度算法：
+			>spread: 对所有节点进行排名：最多资源未使用和最少的容器 排在前，选择排在前的。为什么要排名，因为节点上的容器可能自发的变化，比如关闭，而节点本身也可能故障。
+				>过滤器：每个节点都可以设置过滤器，使得满足一定规格约束条件的容器才能被创建。
+				>创建机器时增加创建参数：--engine-label size=small
+				>运行在一个节点上已经有或者没有某个镜像的容器：docker run -d -e affinity:image=nginx -p 80:80 nginx 
+				----均匀分的后果就是最后每个节点没有太大的大块空余空间剩余。
+			>binPack: 先将一个节点最大化利用，目的是留下尽量大块的单节点上的连续空间，：即被利用则要要尽量充分最少剩余空间，不被利用则要尽可能多大块剩余空间。但风险就聚集了。

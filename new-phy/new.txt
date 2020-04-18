@@ -758,6 +758,9 @@ Spring方面：
   --回答离职原因：不要回答什么没有活儿、涨工资问题。直接个人发展，没有技术挑战。。甚至可以说工作重复、乏味。
 				 以前的公司都不是最终的归宿。(缺少技术挑战，不甘平凡)
 				 想去大公司，职业背景，学以致用，运用一下自己的理论。接触和解决更复杂的问题(以前的处理好了吗？)。
+				 工作重复简单没有技术含量没有挑战。
+				 
+				 
   --回答能给公司带来什么：
 				1.开发写代码(了解规范，看过源码，熟悉工具包---如guava),熟悉java,mysql,redis,spring,spring-boot,spring-cloud,linux下的devops, ci/di(swagger/jenkins/ansible/zipkin/maven/git/docker/k8s/nginx)(自动开发编译测试部署)
 				2.制定技术方案和评估(微服务架构，推荐系统架构, 分布式数据库)，熟悉kafka/hbase/es/zk/rocksDB/oceanbase/spanner。各种微服务问题，微服务专家。全部数据库问题，数据库专家。(网络问题网络专家，操作系统问题操作系统专家)
@@ -774,8 +777,8 @@ Spring方面：
    >Web Container的服务发现：
    
   
-  
-  
+>做非常困难的事：什么困难复杂做什么---比如源码理解，模型建立，预测分析计算，并且8月能力修炼完毕而预备以后去大公司。  
+  >重复很无聊，但是重复可以很深刻。所以很少人 成功。
 参考资料：
 1.https://max.book118.com/html/2018/0827/7146011140001144.shtm(fastleader算法)
 2.https://blog.csdn.net/qq_16525279/article/details/82424422(隔离性的较好描述)
