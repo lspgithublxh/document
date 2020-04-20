@@ -454,33 +454,158 @@
 																																>如果上一步处理结果不为null:
 																																	#如果需要聚合结果：则将处理结果放到聚合list里：processor.aggregatedResults					
 																																	#否则直接就返回这个处理结果result了。作为@searchWithGetSemanticsInAnnotations()的返回。
-																															>否则不包含，如果当前这个注解 和容器类型相同：			
-																																#							
-																																							
-																																							
-																																							
-																																							
-																																							
-																																							
-																																							
-																											>注解属性之后的处理器处理：@AnnotationUtils.postProcessAnnotationAttributes()
-																												
-																										
-																										
-																										
-																										
-																										
-																										
-																										
-																										
-																										
-																										
-																										
-																										
-																										
-
-
-
+																															>否则不包含，如果当前这个注解 和容器注解类型相同：
+																																@决定获取批量的注解@getRawAnnotationsFromContainer()			
+																																	>先获取容器的注解：@AnnotationUtils.getValue()							
+																																		@统一转发给标准入参接口：获取注解的value属性的值AnnotationUtils.getValue(annotation, attrName);返回的值认为是一个注解数组A[],不为null则返回到getRawAnnotationsFromContainer()，否则返回一个空数组。
+																																>然后遍历获取到的注解数组，对每个注解用处理器处理：@processor.process()	
+																																	#如果处理结果不为null,那么放到聚合list列表里：list: processor.aggregatedResults				
+																													>再次遍历上次获取到的声明注解：对每个注解，做一些递归性质的处理。
+																														#如果注解类型不在java注解包/spring语言包下：直接递归标准的入参最多的最后一层的@searchWithGetSemantics()，得到搜索结果。
+																															#如果这个搜索结果不为null: 
+																																@进行处理器的后置处理@MergedAnnotationAttributesProcessor.postProcess()。
+																																	>获取注解同步结果：@AnnotationUtils.synthesizeAnnotation()
+																																	>遍历参数注解的所有方法：使用了缓存机制获取所有的方法。	对每个方法： 
+																																		>获取本身的名字和覆盖的名字----覆盖的名字的作用：过滤器容器的作用：一旦某个属性覆盖了，那么其他属性如果还覆盖，那么不做处理直接退出。
+																																		>如果覆盖属性不为null:
+																																			>获取这个方法的别称属性集合：@AliasDescriptor.getAttributeAliasNames() $$
+																																				>如果不为null:遍历这个别称属性集合：第一次获取的所有别称+方法的覆盖名称，作为一个参数，它们在AnnotationAttribute中的值应该是一样的，所以需要调用来覆盖：@overrideAttributes()
+																																					>设置相同值之前，需要获取这个相同值：@getAdaptedValue()
+																																						>获取注解的这个属性的值：@AnnotationUtils.getValue()
+																																						>值需要调整一下：@AnnotationUtils.adaptValue() 然后将值直接返回。
+																																					>然后才开始对属性多个键设置同一个转换值：AnnotationAttributes.put()
+																																		>否则为null,进一步如果属性名不是value,且属性map:AnnotationAttributes不包含这个属性名：
+																																			>直接使用覆盖方法：@overrideAttribute()---仅仅覆盖这一个属性的值。
+																																#如果允许聚合且metaDepth==0(入参确实是0)：那么增加这个递归结果到processor.aggregatedResults																										
+																																#否则：直接返回这个递归结果。返回到@searchWithGetSemanticsInAnnotations()																										
+																													>到此都没有返回，则返回null.																														
+																												>此时已经获取了注解的语义结果: 如果结果不为null那么就直接返回了。返回到searchWithGetSemantics()																															
+																												#否则此时注解的语义结果为null:	最后一次机会处理。																														
+																													#如果AnnotatedElement是Class类型：获取ele的父类，																														
+																														#如果父类不是Object，不是null:	那么从ele的所有注解getAnnotations()里排除声明注解getDeclaredAnnotations()而获取的继承的注解集合：																												
+																														>对这个继承注解集合：也进行语义上的搜索处理@searchWithGetSemanticsInAnnotations()得到一个处理结果。																													
+																															#如果这个结果不为null:直接返回这个结果。																												
+																												>到此还没有获取到语义结果而返回，那么直接返回null。																															
+																										>此时已经获取到了注解属性map:AnnotationAttributes对象：开始处理器的后置处理：@AnnotationUtils.postProcessAnnotationAttributes()																																		
+																											#没有属性，直接返回null 
+																											#有属性，获取注解的Class对象：	
+																											#如果属性还没有验证：需要做一些验证工作。																																	
+																												>获取注解类的"方法-别名list“的这样的map:@getAttributeAliasMap()																																
+																												>开始遍历这个map: 同时建立一个set,来过滤掉已经处理过的同一类的属性名---中间可能加进来别称属性。																																
+																													>从入参属性里获取属性值，如果不为null且不是DefaultValueHolder类型，那么认为是当前值：valuePresent=true																															
+																													>遍历别称list：同理set记录处理过的别称，后面不再处理。																															
+																														>从入参属性里获取别称的值，同理确定是否有别称值：如果不为null且不是DefaultValueHolder类型																												
+																														#如果属性值或者别称值至少有一个有：	需要验证																													
+																															#两个都有：	且不相等@!ObjectUtils.nullSafeEquals(),那么抛出异常new AnnotationConfigurationException()																												
+																															#否则如果仅仅别称值有：则把别称值适配一下@adaptValue()再设置到入参属性里.																													
+																															#否则如果仅仅属性值有: 则把属性值适配一下@adaptValue()再设置到入参属性里.																													
+																												>此时遍历完成:设置验证标记为true: attributes.validated = true																															
+																											>验证完成，需要对默认值做处理：																																	
+																												>遍历入参属性的所有kv: 对于上一步已经验证过的---加入set的，不再处理，对于其他的：																																
+																													#如果属性值是DefaultValueHolder类型，那么获取这个类型的defaultValue属性值，适配一下@adaptValue()设置到入参属性里。																															
+																											>返回。																																	
+																									>此时已经进行了获取注解属性的过程，如果获取的注解属性AnnotationAttributes不为null:	则提取value值：@extractValue()														
+																										>直接取"value"键的值：结果为null要抛出异常new IllegalStateException(),否则返回这个结果。	
+																								>此时已经获取值完成：如果结果不为null:获取描述符的方法参数MethodParameter				
+																									>如果不为null:需要再次寻找它的方法注解@getMethodAnnotations()的值：@findValue()	来替换上一步find的value
+																								>此时返回值value作为最终的建议值。		
+																							#如果获取的注解值不为null: 那么稍微处理就可以返回了。			
+																								#获取的注解值是string类型：则必须要经过一系列的内嵌值解析器的过滤处理：@AbstractBeanFactory.resolveEmbeddedValue()		
+																									#对所有的值解析器：只要有一个解析结果为null就没通过，直接返回。过滤过程调用：@PlaceholderResolvingStringValueResolver.resolveStringValue()	
+																										@统一调用格式替换：@PropertyPlaceholderHelper.replacePlaceholders() 替换占位符为实际值。占位符有前缀和后缀、还可能嵌套。
+																											@统一转发给带占位符的解析出值的方法：@parseStringValue() 处理算法：
+																												>确定占位符前缀开始位置:indexOf()，再确定占位符结束位置：@findPlaceholderEndIndex()
+																													#对结束位置的寻找：从前缀的下一个位置开始：匹配占位符后缀字符串@StringUtils.substringMatch()
+																														#如果匹配到了：那么可以直接返回当前这个位置。
+																														#否则如果匹配到了前缀：那么说明有了嵌套，则必须经过两个后缀才可以退出，所以有一个嵌套个数标记withinNestedPlaceholder。并从这个前缀的后一个字符开始，下一轮匹配。
+																														#否则其他情况：仅仅直接index++,向后移动一个字符即可。
+																													>那么最后就找到了输入的前缀的后缀的开始index位置。否则返回-1
+																												#如果得到的后缀位置不是-1: 那么前缀和后缀之间的字符串就是 占位符。
+																													>截取这个中间的占位符：考虑到嵌套占位符的存在，需要递归解析：所以调用解析@parseStringValue(),由于只允许最多2次嵌套，所以得到的解析结果认为就是最终的 无嵌套的占位符(变量名)。
+																													>开始调用占位符解析器解析：@PropertyPlaceholderConfigurerResolver.resolvePlaceholder(String placeholderName)
+																														@统一转发给解析PropertyPlaceholderConfigurer.this.resolvePlaceholder(): 入参之一为“系统解析模式”/系统属性模式快速失败
+																															>此模式下调用：@resolveSystemProperty()
+																																>值从系统属性里取：System.getProperty(key)，为null时如果可以还从 System.getenv(key)里获取结果里返回。
+																													#如果此时获取的属性值是null,且值分割符不为null: 那么需要将值按分割符分割处理，分割符之前的一半是真正的属性名，分隔符之后的是默认值。
+																														>调用解析器解析真实值：@resolvePlaceholder() 和上述一样，获取了一个系统属性值，如果这个属性值为null,那么就设置属性值为默认值。
+																													>此时如果属性值不是null了：再次递归式的解析这个属性值@parseStringValue() 得到一个新的属性值。这个属性值，才用来替换 占位符开始和结束之间的内容。
+																														>那么下一步的替换和解析就是从替换之后的那个位置的下一个字符开始。	
+																													#否则如果可以忽视未解析的占位符：那么直接从占位符的下一个字符开始，继续解析。
+																													#否则其他情况：抛出异常。
+																												#否则可以直接退出了。			
+																										#占位符替换成功之后：需要trim则要trim()一下，如果是空串则返回null,否则还是原样返回。						
+																									#如果解析结果为null:就认为没通过，而直接返回null到resolveEmbeddedValue()								
+																								>此时考虑bean定义合并：先看当前工厂/父类工厂是否包含bean：	
+																									>查询是否包含：@containsBean()											
+																										>转换为标准名										
+																										>如果单例池或者bean定义map:beanDefinitionMap中包含：那么直接返回：包含条件：不是$开头，或者是factoryBean:(!BeanFactoryUtils.isFactoryDereference(name) || isFactoryBean(name)) $$
+																											@是否是工厂bean: isFactoryBean() 结果直接返回。
+																												>转换为标准名 
+																												>从单例池中获取：(不从提前单例池中获取)
+																												#如果存在：则如果是FactoryBean实例则是工厂bean，否则就不是，直接返回。
+																												>此时不存在：可能没创建：
+																													#如果bean定义map:beanDefinitionMap不包含, 且父类工厂不是ConfigurableBeanFactory实例：那么调用父类工厂递归判断：getParentBeanFactory().isFactoryBean() 结果直接返回。
+																												>最后的判断：先获取融合本地bean定义：@getMergedLocalBeanDefinition()前面已将；结果作为入参继续判断：@isFactoryBean(name, bd)	
+																													>猜测bean的类型：@predictBeanType()
+																														>bd的目标类有则返回：否则直接解析bean类：@resolveBeanClass()---所谓的带权限解析。结果Class对象直接返回。
+																													#如果结果Class可以赋值给FactoryBean：那么就是工厂类，否则不是。
+																										>获取父bean工厂：检查父工厂中是否包含：@containsBean()	作为直接结果返回。		
+																									>如果包含：获取合并定义@getMergedBeanDefinition()；不包含则结果为null										
+																									>开始评估bean定义：@evaluateBeanDefinitionString()	评估的值，覆盖之前的值。											
+																									>开始使用转换器转换：也是按需转换：先获取类转换器@getTypeConverter()												
+																										>先获取用户定制的类转换器：@getCustomTypeConverter() 												
+																											>直接返回AbstractBeanFactory.typeConverter													
+																										#如果不为null:则直接返回这个转换器。
+																										#否则构造一个转换器：注入转换服务，并且注册：new SimpleTypeConverter()	 注册为：@registerCustomEditors()
+																										>然后才返回这个构造的类转换器。																	
+																									>开始按需转换：如果描述符中Field属性不为null:则先用Field属性值进行值的转换：@converter.convertIfNecessary()	转换后的值直接返回@doResolveDependency()																
+																							>此时则建议值为null: 则可能是多个bean,那么解析获取之后 也可以返回了：解析多bean的方法为：@resolveMultipleBeans()																				
+																								#根据依赖描述的不同类型而分别处理：如果是StreamDependencyDescriptor类型：																				
+																									>获取和自动绑定匹配的符合要求类型的候选bean集合：@findAutowireCandidates()																				
+																										@直接调用统一的方法获取候选的names数组：BeanFactoryUtils.beanNamesForTypeIncludingAncestors()																				
+																											@先获取该类的所有beanNames:@DefaultListableBeanFactory.getBeanNamesForType()																		
+																												#如果配置冻结、要求类为null、不允许提前初始化：	调用统一的实质类解析方法@doGetBeanNamesForType()																	
+																													>遍历所有的bean定义：DefaultListableBeanFactory.beanDefinitionNames	, 对每个beanName																		
+																														#如果不是别称：																			
+																															>获取融合定义：@getMergedLocalBeanDefinition(bn)	
+																															#如果不是抽象类型、且(允许提前初始化|有beanClass|非延迟初始化|允许提前类加载)且	不要求提交对类初始化@requiresEagerInitForType()----是工厂bean且单例池中没有：那么就“要求提前对类初始化”		
+																																>获取是否是工厂bean: @isFactoryBean()			
+																																#判断是否匹配：非工厂bean|允许提前初始化|...且类匹配@isTypeMatch(beanName, type)--其实是看遍历的当前beanName是否和目标类Type相匹配：
+																																	>名称转换为权威名：@transformedBeanName()
+																																	>单例池中非提前池中获取实例：@getSingleton()
+																																	#如果获取到的实例不为null不是NullBean的实例：
+																																		#如果是FactoryBean: 那么实例直接强转为FactoryBean类型，
+																																			#如果name不是&开头：进一步用带权限框架的方式获取这个bean的类型：@getTypeForFactoryBean()
+																																				@FactoryBean.getObjectType()
+																																				
+																																#如果不匹配且是工厂bean类型：需要重新判断是否匹配。				
+																																	>先beanName恢复：加前缀&		
+																																	>赋值是否匹配：也是以类匹配为主：@isTypeMatch(beanName, type)		
+																																#此时如果匹配了：则结果里加上这个beanName----作为候选的names之一。			
+																																			
+																																			
+																																			
+																																			
+																																			
+																																			
+																																			
+																																			
+																																			
+																																			
+																																			
+																																			
+																																			
+																																			
+																																			
+																																			
+																																			
+																																			
+																																			
+																																			
+																																			
+																																			
+																																			
+																																			
 
 
 
@@ -547,4 +672,4 @@
 	>可以查看定时任务自己的线程池：org.quartz.simpl.SimpleThreadPool
 		>定时任务框架Quatz核心概念-世界观：主方法-cron表达式调度一个任务：Scheduler.scheduleJob(JobDetail, CronTrigger)，(其中JobDetail由Job类创建) 此外，可以删除和暂停job: deleteJob(JobKey)和pauseJob(JobKey) ，另外，可以立即激活triggerJob(JobKey jobKey, JobDataMap data)
 			>根据上述世界观-四个调度方法(排-删-停-起)：完全可以构造出一个任务调度系统
-	
+	>公共的方法：其实合并了逻辑：合并了多个业务在这里的逻辑，导致看不出分别的逻辑，是逻辑的合成和兼容。
