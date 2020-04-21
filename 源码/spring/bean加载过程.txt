@@ -574,10 +574,79 @@
 																																	>名称转换为权威名：@transformedBeanName()
 																																	>单例池中非提前池中获取实例：@getSingleton()
 																																	#如果获取到的实例不为null不是NullBean的实例：
-																																		#如果是FactoryBean: 那么实例直接强转为FactoryBean类型，
-																																			#如果name不是&开头：进一步用带权限框架的方式获取这个bean的类型：@getTypeForFactoryBean()
-																																				@FactoryBean.getObjectType()
-																																				
+																																		#如果是FactoryBean类型: 
+																																			#如果name不是&开头：那么实例直接强转为FactoryBean类型，进一步用带权限框架的方式获取这个bean的类型：@getTypeForFactoryBean()(@FactoryBean.getObjectType())
+																																				#在获得这个bean类型之后：如果不是null, 那么就开始用@ResolvableType.isAssignableFrom()进行比较
+																																					>即看获得的这个Type是否可以赋值给开始初始化时给的那个类：如果可以返回可以匹配，否则返回不能匹配。
+																																			#否则不是&开头：那么判断这个单例是否是入参ResolvableType实例的实例：@ResolvableType.isInstance()即可以赋值给这个ResolvableType类。可以则返回true,否则false:返回到isTypeMatch()
+																																		#否则如果不是&开头：
+																																			#直接判断实例是否可以赋值给ResolvableType：	@ResolvableType.isInstance()， 是那么就直接返回了。
+																																			#否则不是ResolvableType的实例：进一步判断是否有一般参数@ResolvableType.hasGenerics() 和map:beanDefinitionMap包含@containsBeanDefinition()
+																																				@先获取是否一般参数：@getGenerics()的长度>0就是true
+																																					>基于ResolvableType.generics属性：属性不为null直接返回。
+																																					#如果该属性为null: 需要构造。
+																																						#如果type属性是Class: 
+																																							>获取这个type属性的getTypeParameters()参数数组
+																																							>构造一个ResolvableType[]数组
+																																							>开始遍历获取到的参数数组：对每个参数类型：
+																																								>转换后设置到ResolvableType[]相应的位置：转换方法为@ResolvableType.forType()
+																																									@统一转发给@ResolvableType.forType() ：对给定类型返回ResolvableType类型。
+																																										//其他情况下会SerializableTypeWrapper.forTypeProvider()调用访问，但此时不会。
+																																										>如果给定类型是Class:则直接new ResolvableType()返回。
+																																										-否则考虑使用ConcurrentReferenceHashMap<ResolvableType, ResolvableType>来进行缓存：
+																																										>先清空：ConcurrentReferenceHashMap.purgeUnreferencedEntries()
+																																										>再构造：new ResolvableType()
+																																										>再缓存：cache.put()
+																																						#否则如果type是ParameterizedType类型：
+																																							>获取这个type的真实type数组：@getActualTypeArguments()
+																																							>遍历这个数组：对每个type:进行统一的解析获取解析type:ResolvableType 转换方法@ResolvableType.forType()
+																																						#否则其他任何类型：都统一处理：获取解析类@ResolvableType.resolveType()之后 获取一般解析类型getGenerics()结果需要设置到舒兴国generics里。
+																																							@对于resolveType()处理： 
+																																								#如果type属性是ParameterizedType类型：
+																																									>获取它的type簇后转发到forType() 结果也直接返回@resolveType()
+																																								#否则如果type是WildcardType类型：
+																																									>则获取泛型变量type的上边界：@WildcardType.getUpperBounds() 然后获取第一个类型：@resolveBounds()
+																																									#如果这个类型为null: 再次尝试：此时获取泛型变量的下边界：@WildcardType.getLowerBounds() 同样进行过滤。
+																																									>最后统一调用@forType():入参就是此时的转换类型.返回 
+																																								#否则如果type是TypeVariable类型：
+																																									#如果变量解析器不是null:则调用变量解析器来解析这个类型变量为解析类型：@variableResolver.resolveVariable()
+																																										>遍历TypeVariablesVariableResolver.variables属性：对每个TypeVariable对象，unwap之后和入参的TypeVariable同样unwrap之后进行比较，如果相等，那么就返回对应索引位置的ResolvableType.TypeVariablesVariableResolver.generics[i]解析类。
+																																											@SerializableTypeWrapper.unwrap() 解开方法：是一个迭代的过程。
+																																									>如果此时得到的解析类型不是null:则直接返回。
+																																									#否则到此时，需要进行统一的转发给@forType()处理	：入参包含：获取变量的边界(上下)
+																																								#否则其他类型直接返回None: new ResolvableType(EmptyType.INSTANCE, null, null, 0)		
+																																							@对于@getGenerics()处理： 
+																																								>要么递归：要么是返回一个空对象：new ResolvableType[0]
+																																						>最后就是设置给generics属性	
+																																					>此时就可以直接返回generics属性了。
+																																				@再看定义map是否包含：直接。
+																																				>如果上述两个都是true:
+																																					>获取融合bean定义mbd：getMergedLocalBeanDefinition()
+																																					#如果mbd.targetType不是null且不是 “用户类”：这个用户类的获取需要专门方法@ClassUtils.getUserClass(),因为这个实例可能是cglib的代理类---而不是用户定义的类：
+																																						-@转发给ClassUtils.getUserClass(): 判定是否是cglib代理类：看className是否包含"$$"分隔符，包含则是代理类，需要返回它的父类；
+																																						#如果bean不是解析类的实例：返回false 
+																																						#如果目标类型可以赋值给解析类：返回true 
+																																					>此时先后从mbd.targetType/factoryMethodReturnType获取解析类：来判定是否可以赋值给入参解析类：如果可以返回true,否则false
+																																		>此时就直接返回false了。
+																																	#否则如果包含单例，但是不包含定义：那么不正常，返回false 
+																																	-此时已经明确没有实例：开始一般的处理，还进行各种尝试。
+																																	#如果父工厂bean不是null调用他来匹配：parentBeanFactory.isTypeMatch() 入参为复原的带&的beanName。。结果直接返回。 
+																																	>再次获取融合bean: 尝试从装饰bean定义来获取到匹配是否的信息
+																																	#获取装饰定义holder: 如果不是null且name不是&开头： 
+																																		>获取融合bean: 
+																																		>猜测装饰hodler的class类型：@predictBeanType()
+																																			#如果这个猜测类型不是null且 类型不能赋值给FactoryBean：那么直接只看入参解析类型是否可以接受这个猜测类型ResolvableType.isAssignableFrom() 并且结果直接返回。
+																																	#开始获取权威名的预测类型：@predictBeanType() 为null则返回false 
+																																	#否则不是null,那么判断是否可以赋值给FactoryBean类型：
+																																		#进一步不是&开头，获取的实例为null:
+																																			>获取工厂bean创建的bean的类型：@getTypeForFactoryBean()
+																																			#如果这个类型为null:则不匹配返回。
+																																	#否则如果权威名&开头： 
+																																		>猜测beanName的类型：类型不存在或者不可以赋值给FactoryBean：那么也返回false
+																																	>最后尝试顺序：targetType/factoryMethodReturnType属性当做解析类，
+																																		#如果不是null:那么看是否可以赋值给入参解析类，是否值直接返回。
+																																	>最后就是一般的赋值可否的检查：入参解析类.isAssignableFrom(预测类型)，结果直接返回。
+																																
 																																#如果不匹配且是工厂bean类型：需要重新判断是否匹配。				
 																																	>先beanName恢复：加前缀&		
 																																	>赋值是否匹配：也是以类匹配为主：@isTypeMatch(beanName, type)		
@@ -673,3 +742,4 @@
 		>定时任务框架Quatz核心概念-世界观：主方法-cron表达式调度一个任务：Scheduler.scheduleJob(JobDetail, CronTrigger)，(其中JobDetail由Job类创建) 此外，可以删除和暂停job: deleteJob(JobKey)和pauseJob(JobKey) ，另外，可以立即激活triggerJob(JobKey jobKey, JobDataMap data)
 			>根据上述世界观-四个调度方法(排-删-停-起)：完全可以构造出一个任务调度系统
 	>公共的方法：其实合并了逻辑：合并了多个业务在这里的逻辑，导致看不出分别的逻辑，是逻辑的合成和兼容。
+	>不要仅仅罗列动作：而不看功能和目的。
