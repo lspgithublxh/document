@@ -144,7 +144,7 @@
 											#当上一步返回的编织结果不为null:则直接返回这个编织结果。
 											@否则没有编织：开始真正的实质的创建AbstractAutowireCapableBeanFactory.doCreateBean()。工作为：创建、处理器、两步初始化、各种key缓存、注册
 												>事情1：创建BeanWrapper包装类
-													>mbd是单例模式，则先看缓存池里是否有bw: 工厂bean name到beanWrapper的映射缓存池factoryBeanInstanceCache中：没有则开始真正的创建createBeanInstance()
+													>mbd是单例模式，则先看缓存池里是否有bw: 工厂bean name到beanWrapper的映射缓存池factoryBeanInstanceCache中：没有则开始真正的创建@createBeanInstance()
 														#@：先解析beanClass, 如果mbd里有则直接返回，AbstractBeanFactory.resolveBeanClass()
 															#没有则或带安全框架进行真正的解析beanClass: AbstractBeanFactory.doResolveBeanClass()。过程分为几步：先必然要获取加载器
 																>获取beanClassLoader: AbstractBeanFactory.beanClassLoader属性，
@@ -160,7 +160,7 @@
 																		#否则是表达式名：其实也是一个类名cn, 此时优先使用前面获取到的cl来加载.loadClass(cn)--比较客户化, 没有才使用比较官方的ClassUtils.forName(className, dynamicLoader)来加载，然后返回。
 														#此时：已经解析 获取到Class对象，还要判断：Bean Class是否public和可以access, 不行的话抛出异常。
 														-准备创建实例：按照一个顺序从各种渠道工具来创建实例：instanceSupplier > factoryMethod > 手动
-														#如果实例提供器不为null: 用这个工具创建，三步走
+														#如果实例提供器不为null: 用这个工具创建，三步走，结果直接返回。
 															>设置线程局部变量-当前正在创建的Bean: AbstractAutowireCapableBeanFactory.currentlyCreatedBean为给定的beanName
 															>调用实例提供器的get()方法 
 															>恢复设置线程局部变量-当前正在创建的Bean：为设置之前的beanName
@@ -175,16 +175,16 @@
 																			#否则注册到：可能是map:PropertyEditorRegistrySupport.customEditors属性里。DataBinder也是。
 																			-上述map:都是key为资源类型如：File.class/URL.class/InputStream.class/Resource.class/Reader.class等，value则为对应的编辑器：FileEditor/ReaderEditor等
 															>返回这个bw
-														#@如果mbd的工厂BeanName不为null: 调用工厂方法进行创建：instantiateUsingFactoryMethod()
+														#@如果mbd的工厂BeanName不为null: 调用工厂方法进行创建：instantiateUsingFactoryMethod()结果直接返回。
 															@统一转发给ConstructorResolver.instantiateUsingFactoryMethod()实现：先给ConstructorResolver实例注入工厂引用本身AbstractAutowireCapableBeanFactory
 																>直接new BeanWrapperImpl()实例：bw
 																@调用工厂的初始化方法初始化bw: AbstractBeanFactory.initBeanWrapper() 同上方法。
 																#如果工厂beanName和beanName一样：则不正确，抛出异常。
 																#否则不一样：开始获取bean: 获取方式即递归最开始的方法：this.beanFactory.getBean(factoryBeanName)。AbstractBeanFactory.getBean(String name)
 																>开始创建前，要做存在性判断：入股mbd是单例模式，且单例池中已经存在该bean: singletonObjects.containsKey(beanName) 则抛出异常
-																#到此则说明单例池没有，该bean还没有创建：对构造参数explicitArgs开始判断
-																	#如果为null: 则从mbd中获取：构造方法获取：mbd.resolvedConstructorOrFactoryMethod； 和方法参数获取：mbd.resolvedConstructorArguments /没有则预备参数：mbd.preparedConstructorArguments; 
-																		#如果使用了预备参数：则需要进一步解析处理：解析获取参数：ConstructorResolver.resolvePreparedArguments()
+																#到此则说明单例池没有，该bean还没有创建：对构造参数explicitArgs开始判断，如果不是null:赋值给argsToUse变量备用。
+																	#如果mbd.resolvedConstructorOrFactoryMethod不为null 且constructorArgumentsResolved为true则 argsToUse赋值为mbd.resolvedConstructorArguments ，此值为null则将待解析参数argsToResolve赋值为预备参数：mbd.preparedConstructorArguments; 
+																		#如果待解析参数argsToResolve不是null: 使用了预备参数：则需要进一步解析处理：解析获取参数：ConstructorResolver.resolvePreparedArguments()
 																			-需要解析每个方法参数：类型和值，需要进行引用解析，因为可能是未解析类型，甚至需要重新beanFactory.getBean(name)、加入依赖表beanFactory.registerDependentBean(refName, beanName)
 																			>准备工作：构造一个值解析器BeanDefinitionValueResolver实例valueResolver
 																			#如果某个方法参数值类型为：BeanMetadataElement
@@ -397,8 +397,8 @@
 																					#初始化方法参数名发现器：parameterNameDiscoverer   @DependencyDescriptor.initParameterNameDiscovery()
 																					#如果依赖类型是Optional：统一调用依赖创建@createOptionalDependency()
 																						#构造一个NestedDependencyDescriptor对象---覆盖某些方法。
-																						@统一调用解析依赖接口@doResolveDependency()
-																							>先设置注入点线程局部变量：@ConstructorResolver.setCurrentInjectionPoint()	,内容就是设置到ConstructorResolver.currentInjectionPoint属性里。		
+																						@统一调用解析依赖接口@doResolveDependency() 结果放到Optional返回。
+																							>先设置注入点线程局部变量：@ConstructorResolver.setCurrentInjectionPoint()	,内容就是描述符设置到ConstructorResolver.currentInjectionPoint属性里。		
 																							>解析shortcut捷径:@ShortcutDependencyDescriptor.resolveShortcut(BeanFactory beanFactory) ，本质上就是调用beanFactory.getBean()获取。
 																							#如果shortcut不为null: 那么可以返回它。
 																							-否则此时需要专门处理。
@@ -651,40 +651,398 @@
 																																	>先beanName恢复：加前缀&		
 																																	>赋值是否匹配：也是以类匹配为主：@isTypeMatch(beanName, type)		
 																																#此时如果匹配了：则结果里加上这个beanName----作为候选的names之一。			
-																																			
-																																			
-																																			
-																																			
-																																			
-																																			
-																																			
-																																			
-																																			
-																																			
-																																			
-																																			
-																																			
-																																			
-																																			
-																																			
-																																			
-																																			
-																																			
-																																			
-																																			
-																																			
-																																			
-																																			
-
-
-
-
+																													>此时开始遍历检查人工注册的单例名集合：						
+																														>对每个beanName,如果是工厂bean:@isFactoryBean()	,专门做些处理：	
+																															#进一步如果是单例@isSingleton() 且匹配@isTypeMatch() 也加到结果集合里；继续循环。
+																															#否则beanName复原：加前缀&;继续下面一步。
+																														>再看能否类型匹配：@isTypeMatch(beanName, type)，能则要将这beanName加到结果集合里。					
+																													>此时结果集已经加完：转换为字符串数组：StringUtils.toStringArray(rs)返回。					
+																												>否则考虑从全局缓存属性allBeanNamesByType/singletonBeanNamesByType里查找，这个类型的解析名集合，有则返回。 						
+																												#否则没有，继续构造解析类ResolvableType.forRawClass(type)后调用实质解析@doGetBeanNamesForType()	获取解析名数组						
+																												#判断入参type是否是classLoader属性加载器加载的或其父加载器加载的@ClassUtils.isCacheSafe()							
+																													#如果是那么要将解析结果放到上述缓存属性里。
+																												>此时可以返回解析字符串数组结果了。
+																											#当入参中的bean工厂如果是垂直bean工厂HierarchicalBeanFactory，那么需要专门处理：								
+																												#进一步看父工厂是否是ListableBeanFactory类型
+																													#如果是：那么需要递归的解析@beanNamesForTypeIncludingAncestors()结果为父工厂 的解析结果，所以需要和本工厂的解析结果合并：@mergeNamesWithParent()--合并为去重式合并。
+																											>返回合并结果。								
+																										-此时已经得到了候选的解析后的beanNames数组：但是本方法的自动绑定候选结果map内容不止来此	：所以先								
+																										>从依赖解析map:DefaultListableBeanFactory.resolvableDependencies里解析一部分：遍历它：									
+																											#键为绑定类型，如果要求类型可以赋值给它：
+																												#获取值，值就是绑定值：将值解析为要求的类型：@AutowireUtils.resolveAutowiringValue()
+																													@如果值是ObjectFactory类型，且不是要求类型：需要处理。
+																														#如果值可序列化 而要求类是接口：
+																															>那么生成一个要求类的动态代理：@Proxy.newProxyInstance()，且handler类为：new ObjectFactoryDelegatingInvocationHandler(值)，返回这个动态代理。
+																														#否则：直接调用工厂方法返回：.getObject()返回。	
+																													#否则：直接返回值。
+																												>此时如果值是要求类型：
+																													>添加到结果map: key为：@ObjectUtils.identityToString(v)即类名@十六进制的hashcode, 值为v
+																										>此时开始遍历候选数组：对每个候选，检查是否循环引用、
+																											@是否循环引用：@isSelfReference()
+																												#只要候选和原名相同 或者 (beanDefinitionMap包含候选 且 候选融合@getMergedLocalBeanDefinition()之后的工厂beanName西鞥等于原名) 就认为是循环引用。							
+																											@是否自动绑定候选：@isAutowireCandidate()
+																												@获取候选解析器后统一转发给统一入参@isAutowireCandidate()
+																													#如果候选名的标准名 在定义map里：那么循环检查@isAutowireCandidate(),入参之二融合这个标准名的定义@getMergedLocalBeanDefinition()						
+																													#否则如果单例池包含候选名：也循环检查@isAutowireCandidate() 入参之二为新的构造mbd:new RootBeanDefinition(), 先获取候选名的Class对象：@getType()				
+																														@获取候选的Class是一个转门方法@AbstractBeanFactory.getType()					
+																															>获取权威名，再取对应单例池中的对象：如果单例不为null:且不是NullBean,需要以下处理
+																																#如果单例是FactoryBean且不以&开头：直接转发给@getTypeForFactoryBean()并结果返回。
+																																#否则直接返回单例的getClass()返回。			
+																															-否则为null: 进行父工厂尝试、装饰Class尝试、猜测BeanType尝试、
+																															#如果父工厂不为null 且不在定义map里：那么递归@parentBeanFactory.getType()	
+																															#否则获取融合bean mbd的装饰bean: BeanDefinitionHolder	如果装饰bean存在且原名不以&开头：进行一下处理并返回。			
+																																#再次融合@getMergedBeanDefinition()	,之后用来预测@predictBeanType()	:如果预测结果不为null且不可以赋值给FactoryBean，那么就可以返回它。
+																															#否则直接预测：@predictBeanType()		
+																																#如果此时预测结果可以赋值给FactoryBean：			
+																																	#如果不是&开头：专门转发获取@getTypeForFactoryBean()并返回： 		
+																																	#否则直接返回预测结果		
+																																#否则如果不是&开头：直接返回预测结果：否则返回null			
+																													#否则尝试父工厂：如果是DefaultListableBeanFactory类型：直接递归：@parent.isAutowireCandidate()
+																													#否则如果是ConfigurableListableBeanFactory类型：不带解析器递归：@parent.isAutowireCandidate()	
+																													#否则就返回true了。							
+																											#如果上述两个条件满足：不是循环引用、且是自动绑定：	那么需要增加这个候选entry:@addCandidateEntry()							
+																												#按描述符分：如果是MultiElementDescriptor类型：							
+																													#先从解析器解析：@resolveCandidate()认为就是从beanFactory.getBean()这样子。
+																														#只要结果不是NullBean：都放到候选map里。
+																												#否则如果不在单例池或(描述符是StreamDependencyDescriptor类型且有序)	：那么也直接解析@resolveCandidate()后放到候选map里。
+																												#否则直接获取type@getType()的Class后放到候选map里：	
+																										>此时直接看候选map是否为空：空则要兜底：									
+																											#是否多bean检测：@indicatesMultipleBeans()--即看是否是数组、集合、Map								
+																											#获取描述符的回滚依赖描述符：@forFallbackMatch()true返回。
+																											#再次遍历候选数组：对每个候选：	
+																												#如果非自引用 且 自动绑定 ：那么加入候选map:@addCandidateEntry()
+																												#如果不是多bean: 那么也要加入候选map:@addCandidateEntry()	
+																											#此时如果候选map还是空且不是多bean:								
+																												#再次遍历候选数组： 对每个候选： 
+																													#是自引用 且 ((描述符不是MultiElementDescriptor类型) 或候选bean不等于beanName）且自动绑定候选：则加入候选map:@addCandidateEntry()
+																										>此时就直接返回候选map:result了。
+																									>候选map的key直接加到候选name集合中：
+																									>但是返回的是流对象：通过上一步的候选map的key流转换而来：
+																										#先map()转换：@resolveCandidate()描述符解析：即直接从beanFactory.getBean()获取。
+																										#再filter()过滤掉NullBean类型：
+																										#如果描述符有序：那么这个流需要进一步处理：先构造一个比较器：@adaptOrderComparator() 流使用这个比较器：.sorted(cp) 然后就可以返回这个流。
+																											>取依赖比较器：dependencyComparator：无论是否是OrderComparator类型，都会转换为这种类型
+																											>取资源提供者：@createFactoryAwareOrderSourceProvider()
+																												>新建IdentityHashMap对象：加入new FactoryAwareOrderSourceProvider()对象，返回。
+																											>构造lamda比较器：@withSourceProvider() (o1, o2) -> doCompare(o1, o2, sourceProvider);
+																												@其中@OrderComparator.doCompare()比较就是order大小的比较。
+																										
+																								#如果类型是数组：											
+																									>先获取组件类型、描述符的解析类型@getResolvableType()										
+																										>直接取resolvableType属性：如果是null需要构造：
+																											#field不是null通过它来构造：@ResolvableType.forField()
+																												@转发给@forType()得到解析类后再次转换@ResolvableType.as(),对于后者：							
+																													#先查看解析resolve(),如果是null或者和入参type相等：返回本实例。
+																													#否则先获取所有的解析接口：@getInterfaces()
+																														#无解析则返回空：
+																														#否则看interfaces属性：当不为null则直接返回。否则一下处理
+																															@解析类获取一般接口@getGenericInterfaces(),遍历这个一般接口：对每个type进行转换@forType()之后设置到一个接口数组里。
+																														>然后将接口数组赋值给interfacs属性。
+																													#遍历每个解析类：对每个类递归解析处理@as()只要不为null就返回它。
+																													>此时获取解析类父类：@getSuperType()之后再次递归.as()后直接返回递归结果。
+																														#先属性superType， 不为null则返回 
+																														#为null则：调用解析类的getGenericSuperclass()再转换@forType()，结果设置到superType，返回它。
+																												@再次转发给@forType()：但是入参new FieldTypeProvider()		
+																												>再将结果获取它指定嵌套级别的解析类：@getNested()		
+																													>转发给统一的@getNested()	
+																														>从第二级嵌套开始往上：
+																															#如果当前解析类是数组：重新赋值为它的组元素类型@getComponentType()
+																															#否则：获取父类，直到没有一般类@hasGenerics()为止：然后获取最后一个解析类getGeneric(index)
+																														>最终的解析类则直接返回。
+																											#否则用方法参数来构造：methodParameter， @ResolvableType.forMethodParameter()			
+																												>统一转发给@forMethodParameter()		
+																													#先获取类型@forType()再as()的解析类	
+																													#再次@forType(),入参之二new MethodParameterTypeProvider()	
+																													#最后再次获取嵌套级别的解析类@getNested()	
+																									>获取此时的解析类：解析type:@resolve(), 如果结果和type不相等：那么获取解析类的成分类型的解析类
+																										#如果这个成分解析类为null:也返回null
+																									>利用成分获取自动绑定map:@findAutowireCandidates():如果结果为null则返回null了。否则要把结果key放到自动绑定names集合中。	
+																									>使用类型转换器：转换 上述绑定map的values:@convertIfNecessary(),转换结果不是Object[]则直接返回，否则需要比较器排序后返回：
+																										@获取比较器@adaptDependencyComparator()
+																											>取依赖转换器dependencyComparator:如果不是OrderComparator类型：直接返回；否则填充资源提供者：@withSourceProvider()中调用@createFactoryAwareOrderSourceProvider()
+																										>进一步利用比较器来排序：@Arrays.sort()
+																									>直接返回转换结果。
+																								#如果是集合类型且是接口：
+																									>描述符获取解析类@getResolvableType()，转换为集合.as(Collection.class), 获取第一个元素解析类的Class:@resolveGeneric()
+																									#如果这个元素Class为null: 返回不处理。
+																									#否则不是null: 获取自动绑定候选map:@findAutowireCandidates(),为null也直接返回，否则也将key放到候选names里，在转换器按需转换@convertIfNecessary()
+																									#如果转换结果是List类型：
+																										>获取比较器@adaptDependencyComparator()后排序处理.sort()后直接返回。
+																									>直接返回转换结果。 
+																								#如果类型是Map类型：
+																									>描述符获取解析类@getResolvableType()，转换为Map.as(Map.class), 获取第一个元素解析类的Class:@resolveGeneric(0) 即key的类型
+																										#如果不是String类型：直接返回null
+																									#获取值类型：如果是null返回Null
+																									#否则不是null: 获取自动绑定候选map:@findAutowireCandidates(),为null也直接返回，否则key加入候选names集合。
+																									>返回获取的自动绑定候选map
+																								#其他所有情况返回null。至此多bean解析完成。
+																							>此时获取了多bean解析结果：如果不是null,直接返回。否则还有几条尝试。
+																							>获取候选map:@findAutowireCandidates()
+																								#如果map为空：看描述符是否要求@isRequired()	 如果true即强制要求 要有值：则抛出异常。否则返回null
+																									@转发给自动绑定候选解析器autowireCandidateResolver.isRequired()
+																										@转发给描述符的@DependencyDescriptor.isRequired() 
+																											#如果required顺序为false:则一定是false
+																											#否则要继续判断：
+																												#如果field属性为null: 看方法参数methodParameter属性是否可选的@isOptional()
+																													#参数类型是Optional类型@getParameterType() | 方法参数有可为null注解@hasNullableAnnotation()---获取参数注解列表@getParameterAnnotations() | KotlinDetector之类的检测 $$
+																												#否则 看: field的类型是Optional, 方法参数有空注解、Kotlin类型判断 ; 有一个满足都返回“不要求”(不强制有值) $$
+																							>如果候选map大小>1: 
+																								>获取其中自动绑定的beanName:@determineAutowireCandidate()					
+																									>获取描述符的依赖类型：@getDependencyType()	
+																										#如果field属性为null: 取方法参数methodParameter后获取嵌套参数类型@getNestedParameterType()
+																											#如果嵌套级别>1: 
+																												#获取一般方法参数类型@getGenericParameterType() $$	
+																												>从2开始递增嵌套级别：如果当前type是ParameterizedType类型：获取真实参数类@getActualTypeArguments(), 获取当前嵌套级别index的Type
+																												#如果这个type是Class类型：直接返回。
+																												#否则如果是ParameterizedType类型：获取声明类型@getRawType()如果它是Class直接返回。否则就返回Object.class
+																													
+																											#否则直接按index获取方法参数类型：@getParameterType()
+																										#否则不是null:如果嵌套级别<=1:那么直接返回field.getType()声明类
+																										#否则嵌套级别>1: 获取field的一般type:@getGenericType()(泛型的参数类型),后面的处理和上述嵌套级别>1的一样。
+																									>查询候选中的基础候选：@determinePrimaryCandidate()	
+																										-遍历候选的每个：对每个候选：判定是否是基本类型@isPrimary() 
+																											>定义map:beanDefinitionMap里包含则：融合后@getMergedLocalBeanDefinition()看primary属性。是则是。
+																											#否则看父类bean工厂：如果是DefaultListableBeanFactory类型，且递归@isPrimary()找到是：则是。
+																										>如果是基本类型：先将候选设置给基本类型beanName, 后面不断覆盖：其实只会出现一个在定义map里：否则超过一个要抛出异常new NoUniqueBeanDefinitionException()。	
+																									#基础候选不为null:直接返回这个基础候选。	
+																									#否则查看最高优先级候选：@determineHighestPriorityCandidate()
+																										-遍历候选的每个：对每个候选的key-val: 看val这个bean实例的优先级@getPriority()
+																											>先获取依赖比较器：@getDependencyComparator()如果是OrderComparator类型，那么就可以有序：@AnnotationAwareOrderComparator.getPriority(Object obj)
+																												#如果是Class类型：@OrderUtils.getPriority() 使用了缓存模式
+																													>获取优先级注解：@AnnotationUtils.findAnnotation() 这个注解类为："javax.annotation.Priority"
+																													>从这个注解里获取注解属性值--value属性的值：@AnnotationUtils.getValue() 这个就是优先级，缓存后可以返回了。
+																												#否则用obj的Class来获取优先级:@OrderUtils.getPriority()
+																												#如果优先级还是为null: 则看能否用装饰类来解决：要求是DecoratingProxy类型，然后才能获取装饰类getDecoratedClass(),然后来获取优先级@OrderUtils.getPriority()			
+																										>如果优先级不是null: 同样如果发现两个优先级相等，那么抛出异常NoUniqueBeanDefinitionException() 否则找出最小值的优先级对应的bean：即最高优先级。
+																									#优先级候选不是null:返回它 
+																									#回落措施：遍历每个候选，进行以下处理：
+																										#如果解析依赖map:resolvableDependencies包含, 且候选的别称集合包含描述符的依赖name:@matchesBeanName() ::则直接返回这个候选。
+																									>此时就只有返回null
+																								>如果寻找的这个候选不为null:那么直接用name从候选map:里查出来即可 就是候选实例。						
+																								#否则考虑直接返回：先进行一些处理：
+																									#如果要求有值@isRequired() 或者 类型不是多bean: @indicatesMultipleBeans()
+																										>那么使用描述符解析：@DependencyDescriptor.resolveNotUnique() 内容为抛出异常new NoUniqueBeanDefinitionException()
+																									#否则返回null
+																							#否则候选<=1: 直接获取候选k-v
+																							>自动绑定names集合增加：解析出来的自动装备beanName
+																							#如果候选是Class类型：							
+																								#使用描述器解析：@resolveCandidate()	得到候选。										
+																							#如果此时候选是NullBean类型：描述符要求有值，那么就抛出异常。其他都值设置为null
+																							#如果解析结果不能赋值给type:那么 抛出异常：new BeanNotOfRequiredTypeException()	
+																							>最后finally一定会做的事情：将设置描述符之前的内容设置回去ConstructorResolver.setCurrentInjectionPoint()												
+																					#否则如果描述符的依赖类型是ObjectFactory 或者ObjectProvider： 那么直接返回一个实例:new DependencyObjectProvider()														
+																					#否则如果描述符的依赖类型是javax.inject.Provider类型：	那么间接new Jsr330Factory() 调用@createDependencyProvider()--内部new 一个Jsr330Provider()对象													
+																					#否则其他所有的情形：
+																						>先用自动装配解析器获取懒加载的代理：@getLazyResolutionProxyIfNecessary()
+																							@先看是否懒加载：@isLazy()如果是懒加载：那么执行懒加载获取代理。否则返回null。	
+																								#从所有注解中查看是否带有Lazy.class注解：有返回true 		
+																								#否则查看方法上的注解是否有Lazy.class注解：有返回true												
+																							@构建懒加载获取代理：@buildLazyResolutionProxy()	直接返回。												
+																								#构建一个资源：new TargetSource	()对象；
+																								#构建一个代理工厂ProxyFactory: 设置ts;描述符的依赖类型@getDependencyType() 如果是接口，也要设置到pf里；
+																								>创建代理：@.ProxyFactory.getProxy()
+																									@转发@createAopProxy()
+																										@激活@activate(): 设置属性active，也发送通知：调用所有的监听器：AdvisedSupportListener执行.activated()方法。
+																										>使用aop工厂创建代理：@DefaultAopProxyFactory.createAopProxy()	返回代理。
+																											#只要满足：充分使用、代理目标类、无用户提供代理接口：									
+																												#如果目标类是接口，或者已经是一个代理类(代理缓存中)：	返回jdk动态代理：new JdkDynamicAopProxy(config)							
+																												#其他情况：使用cglib来代理：new ObjenesisCglibAopProxy()								
+																											#否则都是用jdk动态代理：new JdkDynamicAopProxy()									
+																									@得到的代理获取代理实例：@getProxy():	JdkDynamicAopProxy/CglibAopProxy两类实现：										
+																							>如果此时得到的代理是null: 重新解析依赖@doResolveDependency()	
+																						>返回代理。	
+																			#如果参数值类型是String：直接bean工厂评估：@evaluateBeanDefinitionString()
+																			>用转换器按需转换：@convertIfNecessary()
+																			>转换结果设置到相应的结果参数位置。遍历完成，直接返回结果参数数组。							
+																>此时argsToUse基本不是null了，但是可以可能是null: 为了预备，要额外做些工作；同时如果mbd.resolvedConstructorOrFactoryMethod为null也要相同的一些工作：	来决定使用的工厂方法和方法参数。									
+																	>从工厂类Class中寻找满足方法参数的方法：工厂类首先需要获取到非cglib代理类：@ClassUtils.getUserClass(cls) 即如果name包含$$取它的父类。
+																		@从工厂类中获取候选方法数组：@getCandidateMethods()
+																			#待权限框架的判断：是否允许访问非公开构造方法：
+																				#如果是：那么反射方式获取工厂类及其父类的所有declare方法：@ReflectionUtils.getAllDeclaredMethods()
+																					@统一转发给标准入参方法@doWithMethods()
+																						#获取本类宣称方法和继承的接口方法合并起来：@getDeclaredMethods() 使用缓存模式。
+																						>遍历方法数组：并且用@doWith()过滤---设置到方法回调入参的注解和发现的方法。
+																						>遍历完成：开始两次递归。第一次：父类递归@doWithMethods() 第二次：如果cls是接口那么获取所有接口每个都递归@doWithMethods()
+																					>将获取的方法列表转数组返回：List<Method>.toArray(new Method[0])
+																				#否则不是：则反射方式获取工厂类的所有方法：getMethods()--包括继承的公开方法。
+																		>遍历这个方法数组：过滤查找：是静态方法且和mbd的工厂方法名同，那么加到候选方法列表里。								
+																		#如果这个候选列表长度为1：则再加些条件，就可以简单处理而返回了。额外条件为：explicitArgs==null且mbd无构造方法参数值
+																			#满足则取出这个候选：确认参数数量为0：开始设置设置方法：mbd.factoryMethodToIntrospect=这个候选方法；mbd.resolvedConstructorOrFactoryMethod=这个候选 ；额外的mbd.constructorArgumentsResolved = true;mbd.resolvedConstructorArguments = EMPTY_ARGS;
+																				>开始设置bw的bean实例：需要实例化：统一调用@ConstructorResolver.instantiate()
+																					@统一转发给bean工厂的初始化策略InstantiationStrategy的实例化方法：@instantiate()
+																						#先带权限框架的设置工厂方法可访问：
+																						#方法反射调用前：设置线程局部变量currentlyInvokedFactoryMethod.set(fm)为当前工厂方法	
+																						#方法反射执行：factoryMethod.invoke(factoryBean, args)	反射结果如果为null设置为NullBean()			
+																						#方法反射调用后：设置线程局部变量currentlyInvokedFactoryMethod.set(old)为之前的值 。				
+																					>设置到beanInstance()：额外的事：wrappedObject=rootObject=获取的初始化值。类型转换器typeConverterDelegate=new TypeConverterDelegate()而cachedIntrospectionResults设置=此值的Class					
+																				>设置完成就返回bw
+																		#此时考虑候选列表超过1：先列表排序：@AutowireUtils.sortFactoryMethods()按照：方法修饰公到私,方法参数多到少 二级排序。
+																			>设置最小参数量minNrOfArgs：一般是explicitArgs.length否则如果explicitArgs是null:需要专门处理：
+																				#如果mbd有构造方法参数值：调用@resolveConstructorArguments()来解析。结果赋值给minNrOfArgs
+																					>类型转换器的获取和设置到一个new BeanDefinitionValueResolver():入参加ConstructorArgumentValues一个参数值容器：
+																					>遍历构造方法索引参数值map:键是索引index即参数位置, 值是ConstructorArgumentValues.ValueHolder				
+																						#如果index大于	minNrOfArgs,那么这个minNrOfArgs要更新为index			
+																						#如果值已经转换：k-v加入 入参参数值容器索引参数值集合。					
+																						>否则没有转换：将值转换一下@ConstructorResolver.resolveValueIfNecessary(),也设置到入参参数值容器		
+																					>遍历构造方法一般参数值map：此时目的是增加到入参参数值容器。					
+																						#如果valueHolder已经转换过，则直接加入参数值容器一般参数值集合。
+																						#否则没有转换：按需转换@BeanDefinitionValueResolver.resolveValueIfNecessary(),转换之后再增加到 入参参数值容器。
+																				#否则没有构造参数值：直接赋值minNrOfArgs=0			
+																		>开始遍历排序后的候选方法列表：检错和 一些参数的确定。
+																			#获取方法参数类型列表：如果此列表>minNrOfArgs:那么满足要求需要处理：比如argsHolder的确定
+																				#如果explicitArgs不是null: 那么需要匹配，如果explicitArgs长度和方法参数列表长度不相等；直接continue;	
+																					#否则长度相等：直接 new ArgumentsHolder(explicitArgs)赋值给argsHolder。。。ACC_SYNTHETIC由编译器生成的方法的方法在反射中的标记。
+																				#否则需要解析构造参数：类型转换和必要的自动绑定；从测试环境获取参数名发现器DefaultParameterNameDiscoverer：注入discover: StandardReflectionParameterNameDiscoverer/LocalVariableTableParameterNameDiscoverer/KotlinReflectionParameterNameDiscoverer 。遍历每个discover:
+																					@统一获取方法参数名：@AnnotationParameterNameDiscoverer.getParameterNames(Method method)
+																						@先统一获取入参桥接方法的原来的方法：@BridgeMethodResolver.findBridgedMethod()
+																							#如果入参方法不是桥接方法：不处理。返回。
+																							-否则一定是桥接方法：
+																							>获取桥接方法的所在类的所有方法：@ReflectionUtils.getAllDeclaredMethods()			
+																							>遍历这个所有方法集合：先得到一个候选集合：@isBridgedCandidateFor()			
+																								#显然这个候选方法：不能还是桥接方法、名字必须相等于桥接方法名、方法参数个数一定相等		
+																									#满足上述条件，加入；否则忽略。
+																							-此时就得到了同名非桥接且同参数量的候选方法集合：
+																							#如果此候选集合大小为1：直接返回这个元素。
+																							#否则从候选集合里查找合适的：@searchCandidates()
+																								#遍历此集合：对每个候选处理：
+																									#@匹配检查@isBridgeMethodFor()
+																										@函数签名检测：@isResolvedTypeMatch()
+																											#参数类型检测：方法的参数列表对应的类型列表 个数比较，不同返回false，相同则遍历：
+																												#只要有一个参数类型不一致：就返回false
+																												#如果参数类型是数组：那么如果数组类型元素不一致也返回false;
+																											#此时则认为名、参数个数且类型都相同，返回true 
+																										#如果结果为true, 检查通过，返回true 
+																										#否则检测桥接方法的父类和所在类继承的接口的方法：认为也是相同的：所以查找所有的父/接口方法：@findGenericDeclaration()
+																											@从父类中寻找匹配候选的方法：@searchForMatch()
+																												#如果找到了同名同参数类型的非桥接方法：那么返回这个方法。
+																											>如果父类没有寻找到这个方法，那么递归父类的父类来寻找。直到Object.class
+																											#否则开始检测接口：获取所有接口：@ClassUtils.getAllInterfacesForClass() 然后在接口方法里搜索匹配@searchInterfaces()
+																												@接口方法里匹配：@searchForMatch()
+																												#如果没有匹配到：那么使用接口的接口来递归寻找：@searchInterfaces()
+																											>直接返回。 
+																										#返回结果。
+																							#返回结果 
+																						@再寻找方法的参数名数组：@lookupParameterNames()
+																							@各个参都可能有多个注解：所以先获取这些注解，统一转发给特定方法@ParameterNameFactory.findParameterAnnotations()
+																								>使用反射方式获取所有参数的所有注解：@getParameterAnnotations()		
+																								>遍历所有的参数：对每个参数的注解数组：@发现合适的参数名@findParameterName()		
+																									#合适的标准为：注解名在属性set:annotationClassesToUse中，则返回这个注解的“value”属性。
+																								>以此获取所有的参数名。返回参数名数组。 	
+																						#没有找到：则找所在类的接口某个匹配到的方法：进行@lookupParameterNames()	而返回。		
+																					@第二种：	StandardReflectionParameterNameDiscoverer.getParameterNames()				
+																						>最简单的通过反射获取参数列表@getParameters()：然后获取参数名getName()。			
+																					@第三种：	LocalVariableTableParameterNameDiscoverer.getParameterNames()	使用了缓存模式。		
+																						@获取桥接方法的原始方法：@BridgeMethodResolver.findBridgedMethod()			
+																						>按缓存有无：而获取/保存到缓存：获取方法所在类的log信息：@inspectClass()			
+																							>获取类名进一步类字节码输入流：@Class.getResourceAsStream() 没有输入流返回空map
+																							#否则封装输入流到ClassReader对象，调用@accept(new ParameterNameDiscoveringVisitor())入参就有map,结果就会放入这个map
+																								@统一转发给@accept()获取字节码的元素结构：从字节码的字节数组里获取：字节数组属性@b里取。
+																									>依次获取的信息：flags/本类名/父类名/接口名数组，所有的属性/EnclosingMethod/运行时可见的注解/嵌套属性/接口属性/一般的成员属性+方法  
+																										#内部有关于合成/桥接/静态方法的判断：通过标记常量如spring.asm中的Opcodes.ACC_SYNTHETIC
+																										#而在内部引用的new LocalVariableTableVisitor()类中：有存放到map的信息方法：@visitEnd()里面的key:Member获取：@resolveMember() 值就是参数名数组
+																											#如果方法名是构造方法：<init>那么返回这个类的构造方法@getDeclaredConstructor()
+																											#否则：一般方法：返回名称和参数类型数组都匹配的方法@getDeclaredMethod() 因为Method本身也实现了Member接口
+																							>返回map 		
+																						>按map的含义：就返回value:参数名数组。	
+																				>给参数持有者argsHolder	赋值：而调用@createArgumentArray() 即给构造方法/工厂方法的入参数组。同时传入的还有解析后的全部参数值ConstructorArgumentValues对象：前面通过@resolveConstructorArguments()方法已经获取并存入。 					
+																					>遍历参数类型数组：对每个参数类型:				
+																						>通过参数值对象 获取这个参数类型对应的参数值ConstructorArgumentValues.ValueHolder：@getArgumentValue()			
+																						#如果值为null: 那么补偿：如果非自动绑定，那么退一步从一般参数值数组里找到匹配的参数值：@getGenericArgumentValue() 其他参数使用过则忽略这个值。
+																						#此时如果值holder不是null:	
+																							#如果值已经转换：获取转换值，设置到属性preparedArguments[]里。	
+																							#否则手动转换：
+																								>先获取方法参数：@MethodParameter.forExecutable()	直接new MethodParameter()放入Method即可。	
+																								>调用转换器按需转换：@convertIfNecessary()得到转换值	
+																								>虽然没有转换，但是可以获取源持有者：如果它是ConstructorArgumentValues.ValueHolder类型：那么直接获取值getValue() 再设置到preparedArguments属性里。resolveNecessary = true
+																							>转换值再次设置到arguments属性，而原始值设置到rawArguments属性。		
+																						#否则值holder是null: 此时如果非自动绑定，则要抛出：new UnsatisfiedDependencyException()否则才下一步处理：
+																							>再次获取方法参数：@MethodParameter.forExecutable()
+																							>作为入参调用获取自动绑定的解析值：@resolveAutowiredArgument()	前面已经讲述过程。此值赋值给rawArguments/arguments, 而preparedArguments=new AutowiredArgumentMarker()新值。resolveNecessary=true	
+																					>在自动绑定参数解析的时候可能填充了自动绑定beans集合：此时需要对这些beanName注册依赖于入参beanName。@registerDependentBean() 第一个入参依赖第二个入参。		
+																					>返回各个参数值数组的容器：ArgumentsHolder
+																				>开始确定使用哪个工厂方法、参数值：
+																					#是否进行宽大的构造方法解析:而不是严格的模式。
+																						#是则进行@参数值.getTypeDifferenceWeight() 入参：参数类型
+																							>两个权重差决定：每个权重都由：@MethodInvoker.getTypeDifferenceWeight()决定，入参主要为arguments/rawArguments
+																								#权重高低决定：遍历参数类型数组：对每个参数类型： 
+																									#如果值不可以赋值给参数类型：直接返回最大整数。
+																									#参数值不为null: 寻找参数值的父类Class,如果和参数类型相等/可以赋值给参数类型，权重值+2；递进获取父类的父类，一直到相等位置获取null
+																									#如果参数值类型是接口，那么权重值还要+1。
+																								>可见权重值就是参数值和参数类型的类型相似层次最小的匹配程度。
+																							>返回更小的那个权重。
+																						#否则进行严格的计算模式：@getAssignabilityWeight()		
+																							>对arguments匹配：只要一个不能对应赋值，返回最大整数。
+																							>否则对rawArguments匹配：只要一个不能对应匹配，返回最大整数-512
+																							#否则返回最大整数-1024
+																				#只要权重不是最大整数：则使用之前计算的工厂/参数		
+																				#否则：进一步判断：如果参数类型和工厂方法参数类型不匹配、严格模式：那么就认为是工厂方法是含糊的：需要记录到ambiguousFactoryMethods变量。
+																		>退出循环，开始进一步的判断：判断待使用的工厂方法是否为null:如果是：那么进行以下处理：
+																			#如果在前面的参数名解析时报错了：那么需要在这里：增加异常到bean工厂：onSuppressedException().并进一步抛出异常。
+																			#只要explicitArgs不是null:封装参数类型名列表：从explicitArgs					
+																			#否则如果是null:进一步如果解析值resolvedValues不是null：继续封装参数类型列表：从它的索引参数值列表+一般参数值列表 遍历中获取。					
+																			>转换上述参数集合为逗号分隔字符串：封装抛出错误：new BeanCreationException()					
+																		#否则如果待用工厂方法返回值是void.class类型：也抛错误:new BeanCreationException()
+																		#否则如果含糊工厂方法名集合ambiguousFactoryMethods不是null: 也要抛出错误：new BeanCreationException()
+																		>此时：都正常了。则只要explicitArgs == null && argsHolderToUse != null：那么设置mbd.factoryMethodToIntrospect = factoryMethodToUse 同时参数值holder要缓存一下@storeCache()--将对mbd里各值调整、转移。
+																			>调整为：resolvedConstructorOrFactoryMethod=入参值， 已经解析constructorArgumentsResolved=true, 如果需要解析resolveNecessary=true:则preparedConstructorArguments=preparedArguments；否则resolvedConstructorArguments=arguments
+																>此时如果argsToUse还是null，就要抛出状态错误：new IllegalStateException()工厂方法参数未解析。								
+																>否则此时：就可以开始实例化并设置了：工厂方法方式实例化@instantiate()，然后设置到bw里：@setBeanInstance()							
+															>到此：终于完成了工厂方法的实例化，直接返回到：@createBeanInstance()										
+														-此时则既没有实例提供者、也没有工厂方法：但是mbd中的某些属性可能可以利用来实例化：
+														#如果mbd.resolvedConstructorOrFactoryMethod	不是null: 那么考虑用它来实例化：进一步区分：
+															#如果参数已经解析：constructorArgumentsResolved=true:则认为可以使用自动绑定构造方法来实例化：统一调用@autowireConstructor()
+																@转发统一调用@new ConstructorResolver(this).autowireConstructor() 此方法非常类似@instantiateUsingFactoryMethod()
+																	#用bean工厂对bw进行初始化：如注册一些属性编辑器：@initBeanWrapper()								
+																	#由于上述两个mbd参数值:所以这里获取待使用的参数值：赋值给argsToUse=mbd.resolvedConstructorArguments如果为null 则argsToUse需要重新赋值：用一个未解析的参数数组，所以需要先解析：调用@resolvePreparedArguments()入参为mbd.preparedConstructorArguments 结果就是解析了的：赋值给argsToUse
+																	#此时如果argsToUse还是null(根据入参，是可能的): 
+																		#由于入参中：候选的构造方法是null:所以需要重新设置：直接反射的方式从mbd.getBeanClass()获取getDeclaredConstructors()--允许访问私有方法，或者getConstructors()						
+																		#此时如果经过设置候选构造方法一定不是null了：如果长度为1，(大概率走这里) 且mbd没有构造方法参数：那么可以考虑直接用无参构造方法实例化：同样也是设置resolvedConstructorOrFactoryMethod=候选,constructorArgumentsResolved=true属性后，新设置resolvedConstructorArguments=空数组，开始实例化和设置：@instantiate()之后mbd.setBeanInstance()就可以直接返回了。
+																		#否则候选构造方法多于1：考虑解析构造方法：同样也是解析构造方法参数值设置到ConstructorArgumentValues对象，@resolveConstructorArguments()	
+																		>进一步排序候选：@AutowireUtils.sortConstructors()	公共方法前面/都公共时参数多前面
+																		>开始遍历候选：对每一个候选：
+																			#过滤参数长度不匹配的：
+																			#如果解析值不是null: 
+																				>获取注解的方式获取参数名数组：@ConstructorPropertiesChecker.evaluate()
+																					>即获取ConstructorProperties注解，然后取注解的value值，为一个字符串数组，自然要比较长度。长度不匹配抛状态异常：new IllegalStateException()。					
+																				>如果获取的参数名数组是null:补救措施：获取bean工厂的getParameterNameDiscoverer()参数名发现者，调用它的@getParameterNames()方法解析获取，同上。
+																				>类似的，再次构造参数值数组：@createArgumentArray()赋值给argsHolder; 入参之一为：@getUserDeclaredConstructor()---通过候选所在类--如果cblib代理则父类的反射方式获取参数类型匹配的构造方法即可。
+																			#否则解析值是null: 则直接argsHolder = new ArgumentsHolder(explicitArgs)新建赋值。后面类似继续寻找匹配的近似高的候选：有调用@getTypeDifferenceWeight()之类。没有相似则添加候选到ambiguousConstructors模糊集合。
+																		>看此时待使用的构造方法：如果是null:要抛异常new BeanCreationException()/UnsatisfiedDependencyException	
+																		#否则如果有模糊的构造方法 且 严格模式构造：那么抛异常：new BeanCreationException()
+																		>同理在explicitArgs == null && argsHolderToUse != null时 转存属性@storeCache()
 																			
-
-																					
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
 											>返回实质创建结果。
-															
-															
+											
+																
 															
 															
 															
@@ -743,3 +1101,4 @@
 			>根据上述世界观-四个调度方法(排-删-停-起)：完全可以构造出一个任务调度系统
 	>公共的方法：其实合并了逻辑：合并了多个业务在这里的逻辑，导致看不出分别的逻辑，是逻辑的合成和兼容。
 	>不要仅仅罗列动作：而不看功能和目的。
+	>不要被迷惑：一定是根本的原因而不是直接的原因才是本质：要到达根本，问到根本。比如：桥接方法生成的目的？为了1.5兼容？什么内容不兼容？(1.5之前没有泛型，所以为了兼容，1.5以后编译为字节码之后也要没有泛型---泛型要擦除；擦除的实现机制就是泛型接口中的泛型编译为Object而在子类生成桥接方法--继承实现这个Object方法：而且内容就是调用子类的具体化泛型的覆盖方法)
