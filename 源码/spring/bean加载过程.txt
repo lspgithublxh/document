@@ -1113,7 +1113,83 @@
 																		>取对应的Member
 																			#如果不是外部管理配置的：@mbd.externallyManagedConfigMembers():则注册：@registerExternallyManagedConfigMember() 加入externallyManagedConfigMembers属性; 并加入检查过的元素集合：set:checkedElements里。
 																>返回 		
-												>事情3：提前缓存单例：
+												>事情3：提前缓存单例：先判断是否允许暴露“提前单例”：mbd是单例 且 AbstractAutowireCapableBeanFactory.allowCircularReferences ==true 且 单例正在创建中@isSingletonCurrentlyInCreation()---即当前单例池中包含：DefaultSingletonBeanRegistry.singletonsCurrentlyInCreation
+													#如果上述判断结果是true: 一是打印日志。二是修改单例池相关：@addSingletonFactory()
+														#如果单例池singletonObjects没有包含：则加入单例工厂池singletonFactories：key=beanName, value=构造的一个工厂方法；提前单例对象池earlySingletonObjects要移除这个beanName; 已经注册的单例池registeredSingletons：添加。
+															#上述的单例工厂方法如下：是一个lamda表达式：()->获取提前bean引用@getEarlyBeanReference()
+																#只要mbd非合成 且 有 实例化感知 bean后置处理器：那么就要处理：遍历所有的bean后置处理器：对每个处理器，如果是SmartInstantiationAwareBeanPostProcessor类型： 则继续处理：调用它的提前bean应用接口@getEarlyBeanReference(), 对于AbstractAutoProxyCreator实现：
+																	>获取缓存key：Class或者原生beanName(FactoryBean类型要加&开头)
+																	>此key加入提前代理池earlyProxyReferences里：
+																	>有必要包装一下：@wrapIfNecessary()
+																		#beanName不是空 且 目标源beans池Set:targetSourcedBeans包含bn：那么没必要包装
+																		#或者通知beans Map:advisedBeans中取缓存key的值是true: 也没必要包装。
+																		#或者是不应该被代理的基础设施类：@isInfrastructureClass():Advice/Pointcut/Advisor/AopInfrastructureBean：那么通知beans Map存放这个类：值为false。同时返回不包装。
+																		#或者是应该忽略的类：即类名以.ORIGINAL结尾：@AutoProxyUtils.isOriginalInstance() 同上处理：
+																		#其他情况下的类需要包装：包装就是注入通知：@getAdvicesAndAdvisorsForBean(), 以spring aop框架下的BeanNameAutoProxyCreator为例：看实现
+																			#首先已经注入了一个需要代理的beanName的特征的集合list：beanNames, 遍历这个集合，对每个匹配模式，看是否和准备代理的beanName/class匹配，然后才代理：
+																				#如果待代理类是FactoryBean类型：但模式name不是以&开头：继续循环。否则是&开头：则取&后面的模式为新的模式
+																				>对此时的模式name和beanName进行匹配：@isMatch() 如果匹配到了，那么返回空数组：认为没有额外的拦截器，返回无需拦截器的代理标记。
+																					>内容就是看beanName是否包含模式：@PatternMatchUtils.simpleMatch()包含则匹配。
+																				#否则此时没有匹配：查bean工厂：查出beanName的别名数组：遍历别名数组：对每个别名，也看是否和模式匹配：@isMatch()，如果匹配那么也同样返回空数组：认为无需拦截器的代理。
+																			>到此：则认为无需代理：返回null 
+																		#如果结果是无需代理：那么什么也不做：
+																		#否则要代理：首先advisedBeans通知beans要增加：key=cacheKey,value=true ;然后创建代理@createProxy(), 创建的代理存入map:proxyTypes属性：key=cacheKey,value=代理实例的Class。返回这个代理。
+																			#如果beanFactory是ConfigurableListableBeanFactory类型：那么需要在beanDefinition里增加一个属性kv: 具体调用@AutoProxyUtils.exposeTargetClass()
+																				#如果beanFactory包含这个beanName：那么需要在合并定义@beanFactory.getMergedBeanDefinition()之后增加一个属性：key="AutoProxyUtils.originalTargetClass", v=targetClass
+																			#开始真正的代理：创建代理工厂：new ProxyFactory() 先获取一些配置信息@copyFrom(this)就从当前配置类
+																			#如果不是代理目标类：@isProxyTargetClass()--默认为false: 	
+																				#判断是用bean的目标类进行代理还是用bean的接口：@shouldProxyTargetClass()
+																					#beanFactory是ConfigurableListableBeanFactory类型 且转发确认 @AutoProxyUtils.shouldProxyTargetClass() 返回true
+																						#返回应该的条件：beanFactory包含这个bean定义 且 定义里的属性"AutoProxyUtils.preserveTargetClass"=true 
+																					#其他情况返回false
+																				#如果是用目标类：直接代理工厂设置属性：proxyFactory.setProxyTargetClass(true);
+																				#否则评估代理接口：@evaluateProxyInterfaces()
+																					#获取bean类的所有接口：遍历：对每个接口类：
+																						#看是否是一个合理的代理接口：@isConfigurationCallbackInterface() 容器配置回调则不是合理的。不合理的包括：InitializingBean/AutoCloseable/DisposableBean/Closeable/接口里有Aware：@ObjectUtils.containsElement() 
+																						#看是否是一个内部语言接口：@isInternalLanguageInterface() 是内部语言接口那么是不能代理的。这些接口类包括：name: 相等于groovy.lang.GroovyObject， 结尾与.cglib.proxy.Factory，结尾于.bytebuddy.MockAccess
+																						>如果上述两个条件都表明：这是一个可以的代理接口，那么直接退出循环。认为合理。
+																					#如果认为合理：那么开始代理接口：即把接口加入代理工厂：proxyFactory.addInterface()
+																					#否则不合理：仅仅设置为代理类：setProxyTargetClass()
+																			>开始构建加入通知和拦截器：@buildAdvisors()	共同拦截器和具体拦截器都加入。
+																				#先解析具体拦截器：@resolveInterceptorNames()
+																					#遍历拦截器名数组：AbstractAutoProxyCreator.interceptorNames
+																						#如果bf不是ConfigurableBeanFactory类型 或者 bf表明beanName当前不在创建中,那么如果bf为null要抛状态异常，bf获取这个拦截器名对应的实例.getBean()然后经过@advisorAdapterRegistry.wrap()包装就可以加入通知数组了：
+																							@isCurrentlyInCreation() 以DefaultSingletonBeanRegistry的实现为例：
+																								#不在当前创建中的条件为：set:inCreationCheckExclusions不包含 且 singletonsCurrentlyInCreation包含： 
+																							@advisorAdapterRegistry.wrap():以DefaultAdvisorAdapterRegistry实现为例：
+																								#Advisor类型直接返回
+																								#不是Advice类型直接抛出异常。UnknownAdviceTypeException
+																								#MethodInterceptor类型：直接封装到new DefaultPointcutAdvisor()注入Pointcut.TRUE属性 而返回。
+																								#此时开始遍历三大适配器：MethodBeforeAdviceAdapter/AfterReturningAdviceAdapter/ThrowsAdviceAdapter
+																									#如果有一个适配器支持；@supportsAdvice()那么就直接封装返回new DefaultPointcutAdvisor()，也注入Pointcut.TRUE属性。
+																									-MethodBeforeAdviceAdapter类型：advice是MethodBeforeAdvice就支持。
+																									-AfterReturningAdviceAdapter类型：advice是AfterReturningAdvice类型就支持。
+																									-ThrowsAdviceAdapter类型：advice是ThrowsAdvice就支持。
+																								#到此时，则说明不支持了，直接抛出异常：@UnknownAdviceTypeException()
+																					>通知列表可以转换为通知数组返回了。
+																				#此时相当于获取了共同拦截器：入参才是具体拦截器。
+																				#如果入参拦截器不是null: 那么加入一个全部拦截器list里：如果applyCommonInterceptorsFirst==true那么接着把共同拦截器加到 全部拦截器前面， 否则在后面。
+																				-打点日志
+																				>遍历全部拦截器：对每个拦截器都再次包装一下：@.advisorAdapterRegistry.wrap()尽管名为全局通知适配注册中心：但是依然是和上述的包装过程一样：略。 
+																				>返回这些拦截器：即通知器数组：Advisor[]
+																			>将构建出的拦截器数组加入代理工厂：@proxyFactory.addAdvisors()
+																				@统一转发给@addAdvisors()
+																					#如果代理配置表明已经冻结：ProxyConfig.frozen=true :抛出异常new AopConfigException()
+																					#遍历所有的通知器：
+																						#如果是IntroductionAdvisor类型：需要先验证：@validateIntroductionAdvisor()
+																							#验证接口：看有没有实现所有的接口：以DefaultIntroductionAdvisor实现为例：
+																								#遍历注入的所有接口：如果通知是DynamicIntroductionAdvice类型 且没有实现这个接口：那么要抛出不合法的参数异常：new IllegalArgumentException()
+																							>获取通知器的所有接口：遍历：将接口增加到interfaces属性里：@addInterface()
+																								#增加还不够，还要清空methodCache:map属性。
+																							-验证完毕返回。
+																						>然后通知器加入advisors列表属性。
+																					>通知器列表转数组：@updateAdvisorArray()放到advisorArray属性。
+																					>再次通知改变：@adviceChanged()
+																			>定制代理工厂：比如可能改变暴露的接口：@customizeProxyFactory() 都没有实现。什么也没做。
+																			>设置冻结状态：false默认。来自freezeProxy属性。
+																			>是否先于过滤器：@advisorsPreFiltered()默认false 
+																			>开始实质创建代理：@getProxy() 前述已闭。
+																		#否则就是无需代理：直接advisedBeans.put(cacheKey, Boolean.FALSE)而返回入参bean。
 												>事情4：添加数据和初始化：@populateBean()@initializeBean()：									
 												>事情5：提前暴露模式的缓存处理：
 												>事情6：一次性注册bean: @registerDisposableBeanIfNecessary()
