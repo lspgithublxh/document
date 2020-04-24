@@ -1117,7 +1117,7 @@
 													#如果上述判断结果是true: 一是打印日志。二是修改单例池相关：@addSingletonFactory()
 														#如果单例池singletonObjects没有包含：则加入单例工厂池singletonFactories：key=beanName, value=构造的一个工厂方法；提前单例对象池earlySingletonObjects要移除这个beanName; 已经注册的单例池registeredSingletons：添加。
 															#上述的单例工厂方法如下：是一个lamda表达式：()->获取提前bean引用@getEarlyBeanReference()
-																#只要mbd非合成 且 有 实例化感知 bean后置处理器：那么就要处理：遍历所有的bean后置处理器：对每个处理器，如果是SmartInstantiationAwareBeanPostProcessor类型： 则继续处理：调用它的提前bean应用接口@getEarlyBeanReference(), 对于AbstractAutoProxyCreator实现：
+																#只要mbd非合成 且 有 实例化感知 bean后置处理器：那么就要处理：遍历所有的bean后置处理器：对每个处理器，如果是SmartInstantiationAwareBeanPostProcessor类型： 则继续处理：调用它的提前bean应用接口@getEarlyBeanReference() 应用的结果就是下一次的入参--继续代理：相等于层层代理, 对于AbstractAutoProxyCreator实现：
 																	>获取缓存key：Class或者原生beanName(FactoryBean类型要加&开头)
 																	>此key加入提前代理池earlyProxyReferences里：
 																	>有必要包装一下：@wrapIfNecessary()
@@ -1190,7 +1190,48 @@
 																			>是否先于过滤器：@advisorsPreFiltered()默认false 
 																			>开始实质创建代理：@getProxy() 前述已闭。
 																		#否则就是无需代理：直接advisedBeans.put(cacheKey, Boolean.FALSE)而返回入参bean。
-												>事情4：添加数据和初始化：@populateBean()@initializeBean()：									
+																	
+												>事情4：添加数据和初始化：@populateBean()@initializeBean()：
+													>先填充属性值：@populateBean()
+														#如果bw是null: 则没有实例，是有问题的：要么抛异常，要么返回。
+															#mbd有属性值hasPropertyValues()则抛异常：new BeanCreationException()
+															#直接返回。无法属性填充。
+														-此时则不是null: 则属性填充前需要 实例化感知bean后置处理器InstantiationAwareBeanPostProcessor 调用 实例化后方法postProcessAfterInstantiation 处理一下
+														>后置处理的要求是mbd是非合成的：直接获取所有的bean后置处理器beanPostProcessors，遍历：对每个处理器：
+															#如果是InstantiationAwareBeanPostProcessor类型：则进一步处理：
+																#调用处理器的实例化后 处理方法@postProcessAfterInstantiation() 当然入参为bw的解包装@ObjectUtils.unwrapOptional()即是Optional.get()后的内容。
+																	#很多具体实现都是true直接返回。尽管此方法可能具有支持field注入的功能---作者说的。但是从继承体系看确实一个实现也没有找到。
+														#如果上述处理器有处理：且返回false:那么就直接返回了。但从实际看，都是true，所以继续下一步：
+														>获取mbd中的属性值：PropertyValues
+														#如果mbd表明自动绑定模式是 按名称/按类型：@getResolvedAutowireMode()那么都要重新包装一下属性值。
+															#模式是AUTOWIRE_AUTODETECT时：构造方法有无参的: 按类型。否则按构造方法。
+															#其他情况按其他情况。
+														#如果上述成立：
+															>先封装到new MutablePropertyValues() ---是一个属性值数组转换为列表的过程。
+															#如果是按名称绑定模式：@autowireByName()
+																>获取未填充的非基本类型属性：@unsatisfiedNonSimpleProperties()不包括基本类型和String
+																	#遍历属性描述符数组：
+																		#有写方法 
+																		#且 在依赖检查之外@isExcludedFromDependencyCheck()
+																			#普通依赖检查之外：@AutowireUtils.isExcludedFromDependencyCheck()
+																				#无写方法/
+																				#否则类名不含有$$/
+																				#否则这个cglib代理的父类有属性描述代表的方法@ClassUtils.hasMethod()
+																				-上述条件就是返回false 
+																			#忽视依赖类型包含描述符类型：ignoredDependencyTypes.contains()
+																			#属性是否有写方法：@isSetterDefinedInInterface()
+																				#有 且 有一个接口有这个写方法
+																			-三个条件有一个满足返回true
+																		#属性值不包含属性描述符名
+																		#不是简单属性类型：@BeanUtils.isSimpleProperty()
+																		-以上条件都满足：那么这个描述符加到结果集合里。
+																	#结果列表转换为数组退出。
+																-此时得到了属性名:开始遍历；对每个属性名：
+																	
+																	
+																
+															#如果是按照类型绑定模式：@autowireByType()
+														
 												>事情5：提前暴露模式的缓存处理：
 												>事情6：一次性注册bean: @registerDisposableBeanIfNecessary()
 																					
