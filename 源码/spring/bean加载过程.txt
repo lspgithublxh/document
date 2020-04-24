@@ -464,7 +464,7 @@
 																														#如果注解类型不在java注解包/spring语言包下：直接递归标准的入参最多的最后一层的@searchWithGetSemantics()，得到搜索结果。
 																															#如果这个搜索结果不为null: 
 																																@进行处理器的后置处理@MergedAnnotationAttributesProcessor.postProcess()。
-																																	>获取注解同步结果：@AnnotationUtils.synthesizeAnnotation()
+																																	>获取注解合成结果：@AnnotationUtils.synthesizeAnnotation()
 																																	>遍历参数注解的所有方法：使用了缓存机制获取所有的方法。	对每个方法： 
 																																		>获取本身的名字和覆盖的名字----覆盖的名字的作用：过滤器容器的作用：一旦某个属性覆盖了，那么其他属性如果还覆盖，那么不做处理直接退出。
 																																		>如果覆盖属性不为null:
@@ -1010,28 +1010,124 @@
 																		>看此时待使用的构造方法：如果是null:要抛异常new BeanCreationException()/UnsatisfiedDependencyException	
 																		#否则如果有模糊的构造方法 且 严格模式构造：那么抛异常：new BeanCreationException()
 																		>同理在explicitArgs == null && argsHolderToUse != null时 转存属性@storeCache()
-																			
-																			
-																			
-																			
-																			
-																			
-																			
-																			
-																			
-																			
-																			
-																			
-																			
-																			
-																			
-																			
-																			
-																			
-																			
-																			
-																			
-																			
+																	>此时如果argsToUse还是null：状态异常抛出。new IllegalStateException()
+																	>否则此时：就可以开始实例化并设置了：工厂方法方式实例化@instantiate()，然后设置到bw里：@setBeanInstance()			
+															#否则构造方法参数值没有解析：constructorArgumentsResolved=false 则用默认构造方法实例化：@instantiateBean()				
+																>带安全框架的执行：@getInstantiationStrategy().instantiate()来实例化。此时考虑@SimpleInstantiationStrategy.instantiate()实例化方法：
+																	#如果没有覆盖方法：
+																		#是接口要抛异常：new BeanInstantiationException()
+																		#否则带安全框架的反射获取构造方法：@.getDeclaredConstructor()	赋值给解析构造方法mbd.resolvedConstructorOrFactoryMethod属性。
+																		>统一的实例化接口@BeanUtils.instantiateClass()调用后直接返回。
+																	#否则有覆盖方法：则方法注入后实例化：需要使用字节码工具，借助cglib封装的asm，于是调用@instantiateWithMethodInjection()方法完成实例化，直接返回。 
+																		@统一转发给CglibSubclassingInstantiationStrategy.instantiateWithMethodInjection()
+																			>统一转发给：@new CglibSubclassCreator(bd, owner).instantiate()
+																				#创建mbd的增强子类：@createEnhancedSubclass()
+																					>新建new Enhancer()；@setSuperclass(mbd.getBeanClass())
+																					>设置命名策略：SpringNamingPolicy.INSTANCE
+																					>如果bean工厂是ConfigurableBeanFactory类型：设置策略：new ClassLoaderAwareGeneratorStrategy()
+																					>设置回调过滤器：setCallbackFilter(new MethodOverrideCallbackFilter()---过滤覆盖方法类型)	
+																					>设置方法拦截类：setCallbackTypes() LookupOverrideMethodInterceptor---拦截目的：bean工厂获取mbd获取的LookupOverride类型的方法的beanName对应的bean；。ReplaceOverrideMethodInterceptor---拦截目的：mbd中获取ReplaceOverride类型方法，从bean工厂获取MethodReplacer为要求类型的同名的bean
+																					>创建类：createClass()	并返回			
+																				#此时获取到了cblig创建的子类：如果入参构造方法为null: 则直接@BeanUtils.instantiateClass()统一实例化
+																				#否则构造方法不是null:反射获取参数类型匹配的构造方法@getConstructor().newInstance()实现构造。
+																				>在这个实例上设置增加回调：而不是在增加类上设置：为了避免内存泄漏：先强转实例为Factory类型：然后设置3个回调：setCallbacks():NoOp.INSTANCE/new LookupOverrideMethodInterceptor/new ReplaceOverrideMethodInterceptor
+																				>如此之后，才返回实例。
+																>此时有了实例：则构造bw包装：new BeanWrapperImpl() 然后初始化即可：@AbstractBeanFactory.initBeanWrapper() 内容也是注册转换服务和用户定制属性编辑器。
+														>剩下的工作：有可能还有 候选构造方法自动绑定：所以先确定构造方法：@determineConstructorsFromBeanPostProcessors()		
+															#查出所有的实例化感知后置bean处理器：遍历它：对每个：bean后置处理器：				
+																#如果是SmartInstantiationAwareBeanPostProcessor类型：
+																	@转发决定：@determineCandidateConstructors()
+																		>检查lookup方法-使用缓存方式：@ReflectionUtils.doWithMethods():即对该Class的所有方法在匹配情况下进行回调：回调执行：	
+																			>查询方法上的Lookup.class注解：一旦找到：那么封装到new LookupOverride()里并设置到mbd.getMethodOverrides().addOverride()里。
+																		>继续采用缓存方式寻找候选构造方法：缓存为candidateConstructorsCache：key为class	
+																			>预备候选为：kotlin class的构造方法：@BeanUtils.findPrimaryConstructor()
+																				>只有一个KotlinDelegate.findPrimaryConstructor()
+																					>首先：KClasses.getPrimaryConstructor(JvmClassMappingKt.getKotlinClass(clazz))有返回
+																					#没有则：ReflectJvmMapping.getJavaConstructor(primaryCtor) 有返回																		
+																			>首先候选为：反射获取getDeclaredConstructors() 多个：遍历：对每个候选：
+																				>统计非合成方法数：
+																				#否则是合成方法：进一步如果基础构造方法不是null,如下，那么continue;
+																				>获取候选构造方法的注解属性：@findAutowiredAnnotation()
+																					>遍历属性autowiredAnnotationTypes，对每个自动绑定注解类，获取融合的注解：@AnnotatedElementUtils.getMergedAnnotationAttributes() 得到注解属性AnnotationAttributes，如果不是null,立即返回。
+																				#如果注解属性为null:重新赋值：尝试用用户定义类ClassUtils.getUserClass()来获取：获取匹配参数类型的构造方法@getDeclaredConstructor()后也@findAutowiredAnnotation()来获取注解属性 
+																				#如果此时注解属性不是null: 考虑加入结果候选：
+																					#但如果要求构造requiredConstructor不是null,要抛异常：	new BeanCreationException()
+																					#如果注解不包含required属性或者required==true:即等同于@determineRequiredStatus()那么就有可能抛异常：
+																						#再检查结果候选列表不是null:那么抛出异常：new BeanCreationException()
+																						#否则设置requiredConstructor为这个候选。
+																					>候选加入结果候选列表。
+																				#否则注解属性是null: 则进一步看参数个数是0？是则设置defaultConstructor=这个候选。
+																			>退出循环：如果候选不是空：
+																				#要求构造为null：
+																					#defaultConstructor!=null: 那么直接加入候选。	
+																					#否则打些日志
+																				#候选列表转数组---将要返回的。
+																			#否则如果候选rawCandidates长度为1：且第一个元素的参数个数>0, 则赋值给candidateConstructors = new Constructor<?>[] {rawCandidates[0]}
+																			#否则如果非合成方法数统计为2：基础构造和默认构造都非空且不相等：那么两个都赋值给candidateConstructors = new Constructor<?>[] {primaryConstructor, defaultConstructor};
+																			#否则如果非合成方法数统计为1：基础构造非空：那么拿他赋值：candidateConstructors = new Constructor<?>[] {primaryConstructor}
+																			#否则只能赋值为空：candidateConstructors = new Constructor<?>[0]
+																			>缓存到candidateConstructorsCache
+																		>返回这个候选构造数组：candidateConstructors
+																	>结果不是空：直接返回这个构造方法数组。
+															>到这里就只能直接返回null了。															
+														>此时如果得到的构造方法数组不是null: 或者mbd解析模式是自动绑定构造方法 或 入参args非空 或者 mbd有构造方法参数值：都可以考虑 补救：调用@autowireConstructor()	结果直接返回。						
+														#否则：继续补救：看mbd.getPreferredConstructors()偏好构造方法：如果不是null,那么也用来自动构造：@autowireConstructor()结果直接返回。							
+														#否则：考虑直接实例化了；@AbstractAutowireCapableBeanFactory.instantiateBean()	有述，略。返回@AbstractAutowireCapableBeanFactory.createBeanInstance()
+												>事情2：应用 对合并后的bean定义 修改的 所有后置处理器：mbd.postProcessed标记是否已经应用过了---因为只应用一次：@applyMergedBeanDefinitionPostProcessors()
+													>遍历bean后置处理器：AbstractBeanFactory.beanPostProcessors属性保存：对每个bean处理器：
+														#如果是MergedBeanDefinitionPostProcessor类型：则开始调用修改方法@postProcessMergedBeanDefinition()
+															#分不同的实现类：@AutowiredAnnotationBeanPostProcessor实现类的处理：
+																>获取自动绑定的元数据：@findAutowiringMetadata() 采用缓存模式，key=beanName 
+																	#如果需要刷新：即没有元数据或者目标类已经改变：需要重新构建元数据
+																		>首先就是清除元数据对象InjectionMetadata里的属性值PropertyValues对象：
+																		>然后构建并注入属性：@buildAutowiringMetadata() 主要是注入元素列表list:InjectionMetadata.InjectedElement
+																			>获取Class的所有宣称的Field属性并回调执行注入的lamda表达式的框架调用：@ReflectionUtils.doWithLocalFields()， 其中注入的lamda表达式：对field的处理为：
+																				>获取Field上的所有自动绑定注解(三个@Autowired/@Value/@javax.inject.Inject)：@findAutowiredAnnotation()
+																					#遍历这三个注解Class: 对每个都先获取融合注解属性：@getMergedAnnotationAttributes() 只要结果不是null，那么退出遍历循环，直接返回结果。 前面已经描述。 但有必要再次描述大略：
+																						#通过MergedAnnotationAttributesProcessor.postProcess()给AnnotationAttributes.put(attrName, value)注入属性键值对-转换后的值。
+																						#通过AnnotationUtils.postProcessAnnotationAttributes()再次给AnnotationAttributes.put(attrName, value)注入属性键值对-转换后的值。
+																				#如果注解属性不是null:那么需要处理：
+																					#如果是静态方法：忽略
+																					#否则再看注解属性中的"required"属性的值:new AutowiredFieldElement(field, required)来注入然后将对象加入一个列表。
+																			>获取Class所有宣称方法并遍历处理：回调注入的lamda表达式处理每个方法的处理框架：ReflectionUtils.doWithLocalMethods()	注入的lamda处理为：
+																				#获取桥接方法的原始方法：@BridgeMethodResolver.findBridgedMethod()
+																				>从参数类型是否一致来判定桥接方法和原始方法是否一致：BridgeMethodResolver.isVisibilityBridgeMethodPair()如果不一致，那么直接不处理。
+																				#否则一致：也开始寻找方法上的自动绑定注解@findAutowiredAnnotation()
+																					#如果不是null：则先获取目标类中同名/同方法参数类型的方法：@ClassUtils.getMostSpecificMethod(),然后和本方法比较--如果相等：需要处理：
+																						#同样：静态方法不处理：直接返回
+																						#0参数方法发出告警信息：继续处理 
+																					#获取注解的required值：获取桥接方法对应的属性描述：@BeanUtils.findPropertyForMethod();;认为这种方法就是get/set方法 
+																						#先以内省的方式从BeanInfo.getPropertyDescriptors()获取到属性描述数组PropertyDescriptor[]，然后遍历: 对每个元素，重新包装为GenericTypeAwarePropertyDescriptor类型--注入属性的读方法/写方法/编辑类
+																							#而BeanInfo的生成：是new Introspector().getBeanInfo()--里面基础信息获取后封装到new GenericBeanInfo()而直接生成的。内省机制Introspector.getBeanInfo(class)。$$$$
+																							>返回匹配到的属性描述PropertyDescriptor对象。
+																						>遍历这个属性描述数组：如果某个属性描述的读方法/写方法和入参方法相等：那么就直接返回这个属性描述。
+																						>否则就返回null
+																					#将属性描述封装到new AutowiredMethodElement()对象里，然后加入InjectedElement元素列表。
+																				>框架回调返回。
+																			>获取目标类的父类：继续循环：进行两次宣称回调；直到父类为null或者Object。并且每次的元素列表都防止最前面；
+																			>退出循环后：将元素列表封装到new InjectionMetadata()里，并返回
+																		>缓存这个元数据后：返回。 
+																	>返回。 
+																>调用元数据的检查方法：@checkConfigMembers()
+																	>使用元数据里的元素列表：遍历这个元素列表：对每个元素InjectedElement， 
+																		>取对应的Member
+																			#如果不是外部管理配置的：@mbd.externallyManagedConfigMembers():则注册：@registerExternallyManagedConfigMember() 加入externallyManagedConfigMembers属性; 并加入检查过的元素集合：set:checkedElements里。
+																>返回 		
+												>事情3：提前缓存单例：
+												>事情4：添加数据和初始化：@populateBean()@initializeBean()：									
+												>事情5：提前暴露模式的缓存处理：
+												>事情6：一次性注册bean: @registerDisposableBeanIfNecessary()
+																					
+																					
+																					
+																					
+																					
+																					
+																					
+																					
+																					
+																					
+																					
 																			
 																			
 																			
