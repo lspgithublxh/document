@@ -1281,6 +1281,7 @@
 																							>如果获取到属性handler:ph是null或者不可读：那么抛出异常：new NotReadablePropertyException()					
 																							#否则开始一系列的值转换：
 																								>先是获取值：pd.getValue()
+																								-如果tokens.keys是null 那么直接返回这个值。否则进行下述处理：
 																								#如果值是空：那么如果 不 自动生长的嵌套路径@isAutoGrowNestedPaths()那么直接抛出异常new NullValueInNestedPathException() 否则要重新赋值：构造一个new PropertyTokenHolder(tokens.actualName)对象，后开始设置@setDefaultValue()
 																									@通过token创建默认属性：@createDefaultPropertyValue()
 																										>获取属性类描述：@getPropertyTypeDescriptor()入参为tokens.canonicalName		
@@ -1335,7 +1336,7 @@
 																														>且老值就是：propValue的第key个元素值：Array.get()
 																													>对老值进行一次按需转换@convertIfNecessary():
 																														>直接转发给转换器代理来转换为要求的类型@typeConverterDelegate.convertIfNecessary()
-																													#如果key整数>=propValue的长度 且小于autoGrowCollectionLimit属性(默认最大整数)：那么propValue需要重新赋值：即先创建 长度扩展为key整数+1的数组，将propValue的元素复制过去，然后剩下的元素部分设置默认值：@AbstractNestablePropertyAccessor.setPropertyValue() 
+																													#如果key整数>=propValue的长度 且小于autoGrowCollectionLimit属性(默认最大整数)：那么propValue需要重新赋值：即先创建 长度扩展为key整数+1的数组，将propValue的元素复制过去，然后剩下的元素部分设置默认值：@AbstractNestablePropertyAccessor.setPropertyValue(String propertyName, @Nullable Object value) 
 																														>获取属性名对应的属性连接器：@getPropertyAccessorForPropertyPath()
 																														>获取属性名的最后一对[]的.后的内容：@getFinalPath()		
 																														>再次获取属性名的PropertyTokenHolder:tokens:@getPropertyNameTokens()	
@@ -1417,10 +1418,72 @@
 																									#如果获取的这个默认属性值为null:那么要抛出状态异常。
 																									#正常，则返回这个默认值。
 																								#否则值不是null:
-																									>构造一个actualName的字符串构造器：StringBuilder
+																									>构造一个actualName的字符串构造器：StringBuilder indexedPropertyName
 																									#开始遍历tokens.keys这个数组：即属性链。对每个key, 做些处理：
 																										#如果value(初值是ph的getValue())是null: 那么直接抛出异常new NullValueInNestedPathException() 否则按类型专门处理
 																										#如果value是数组类型：
+																											>需要按需要增长数组：@growArrayIfNecessary()
+																												#如果不是自动嵌套路径增长：@isAutoGrowNestedPaths() 那么不处理。
+																												>否则看数组的长度 和 key整数的大小：如果后者更大：那么需要重建数组：
+																													>根据原数组元素类型而新建扩容到key整数+1的数组： Array.newInstance(), 然后旧数组对应放置过去；System.arraycopy(); 剩下超出部分：设置为一个相同的值@newValue(componentType, null, 变动的actualName:indexedPropertyName)
+																														-相同值的构造：也看元素类型type。
+																														>如果是数组：那么再看元素的元素类型....之类。前面已经述闭。
+																													>设置属性名的值：@setPropertyValue(), 属性名就是当前indexedPropertyName的值
+																													>获取属性名的值：@getPropertyValue() 如果这个值是null，要抛出状态异常。否则返回这个值。
+																													#否则不用处理：直接返回数组。	
+																											>最后获取这个数组的这个key整数的位置的值：@Array.get()		
+																										#否则如果value是List类型：
+																											>按需增长集合：@growCollectionIfNecessary()
+																												#如果不是自动嵌套路径增长：@isAutoGrowNestedPaths() 那么不处理。
+																												>否则看集合的长度 和 key整数的大小：如果后者更大：那么需要增加元素：
+																													>根据嵌套深度解析该层元素的类型：@ph.getResolvableType().getNested(nestingLevel).asCollection().resolveGeneric()，深度就是key所在的index位置。
+																													>如果元素类型不是null: 那么按照超出部分增加对应个新值：@newValue()	
+																											>直接返回key整数对应的list中的元素。
+																										#如果value是Set类型：
+																											>直接迭代器方式获取key整数对应的Set元素。如果key整数超出 Set大小要抛异常
+																										#如果value是Map类型：
+																											>通过ph解析key层次的map的键的类型：@ph.getResolvableType().getNested(i + 1).asMap().resolveGeneric(0)
+																											#获取上述类的类描述：@TypeDescriptor.valueOf(mapKeyType)
+																											#按需转换key的值：@convertIfNecessary() 目标类型就是上述map的键的类型。	
+																											>此时就可以通过map.get(convertedMapKey)	获取这个值了。
+																										#其他类型：抛出异常：new InvalidPropertyException()		
+																										>此时已经处理完毕：需要对indexedPropertyName进行还原，以便装下一个key:即将当前key以"[key]"方式append加入indexedPropertyName字符串构造器			
+																									>遍历完毕：返回这个值，就是该层次深度下的属性值。			
+																						>如果取的值是null 或者是Optional类型而又无值：
+																							#进一步如果 是自动增长嵌套路径：@isAutoGrowNestedPaths
+																								>设置默认值：@setDefaultValue(tokens) 返回值覆盖value值
+																							#否则要抛出异常：new NullValueInNestedPathException()
+																						>从属性连接器map:nestedPropertyAccessors里获取这个简洁名tokens.canonicalName 作为key的值属性连接器。
+																						#如果这个属性连接器不是null 且它的包装类实例 不是 值的解包对象@ObjectUtils.unwrapOptional()	 : 解包就是取Optional.get() ,那么需要一下处理：
+																							>新建一个属性连接器来覆盖：@newNestedPropertyAccessor() ---就是直接new BeanWrapperImpl()
+																							>然后属性转移到新的属性连接器：
+																								>转移1：@copyDefaultEditorsTo()  编辑器转移如：defaultEditorsActive/defaultEditors/configValueEditorsActive/overriddenDefaultEditors
+																								>转移2：@copyCustomEditorsTo() 入参为新的属性连接器	PropertyEditorRegistry：target
+																									#获取属性名：actualPropertyName：@PropertyAccessorUtils.getPropertyName(nestedProperty) 即 第一个[]前面的内容
+																									#如果map:PropertyEditorRegistrySupport.customEditors不是null: 那么直接全部注册到新的属性连接器：@target.registerCustomEditor()
+																										#转发给@registerCustomEditor()
+																											>就是直接put到tartet的属性map:customEditors属性里。	
+																									#如果map:customEditorsForPath也是不是Null: 需要遍历map:对每个k-v:处理为：
+																										#如果嵌套值不是null
+																											#先获取k的首次嵌套分割符的位置：@PropertyAccessorUtils.getFirstNestedPropertySeparatorIndex()
+																											#如果这个值不是-1:分为两半：前一半为属性，后一半为路径。
+																												#如果属性等于入参nestedProperty 或者等于actualPropertyName，那么需要转移 而 注册：@target.registerCustomEditor()
+																										#否则：直接转移注册：@target.registerCustomEditor()	
+																								>存放这个新的属性处理器：@map:this.nestedPropertyAccessors.put(canonicalName, nestedPa)			
+																						#否则属性连接器是null:打个日志					
+																						>统一返回这个属性连接器。					
+																					>使用返回的属性连接器递归获取属性连接器：入参为上上一步得到后后一半路径：@getPropertyAccessorForPropertyPath() 结果直接返回。 
+																		>获取属性名的最后一对[]的.后的内容：@getFinalPath()															
+																		>使用新的属性连接器和finalPath获取属性描述：@nestedBw.getCachedIntrospectionResults().getPropertyDescriptor(finalPath)									
+																		#如果得到的描述是null: 要抛出异常：new InvalidPropertyException									
+																											
+																											
+																											
+																											
+																											
+																											
+																											
+																											
 																										
 																			
 																			
