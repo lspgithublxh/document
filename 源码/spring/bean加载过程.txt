@@ -1281,7 +1281,7 @@
 																							>如果获取到属性handler:ph是null或者不可读：那么抛出异常：new NotReadablePropertyException()					
 																							#否则开始一系列的值转换：
 																								>先是获取值：pd.getValue()
-																								#如果值是空：那么加入自动生长的嵌套路径@isAutoGrowNestedPaths()那么重新赋值：构造一个new PropertyTokenHolder(tokens.actualName)对象，后开始设置@setDefaultValue()
+																								#如果值是空：那么如果 不 自动生长的嵌套路径@isAutoGrowNestedPaths()那么直接抛出异常new NullValueInNestedPathException() 否则要重新赋值：构造一个new PropertyTokenHolder(tokens.actualName)对象，后开始设置@setDefaultValue()
 																									@通过token创建默认属性：@createDefaultPropertyValue()
 																										>获取属性类描述：@getPropertyTypeDescriptor()入参为tokens.canonicalName		
 																											>先获取属性路径的属性连接器：@getPropertyAccessorForPropertyPath()	
@@ -1296,16 +1296,132 @@
 																													>先构造属性：@property() 将pd的信息重新转移到new Property()里 ，少一个level
 																													>再封装到new TypeDescriptor.nested()里
 																											>此时返回null	
+																										>如果这个类描述为null: 抛出异常new NullValueInNestedPathException()
+																										#否则有类型：开始创建新的值@newValue()
+																											>如果值类型是数组：
+																												#取数组元素的类型：C
+																												>如果元素的类型也是数组：创建一个长度为1的元素类型为C的数组@Array.newInstance(), 然后设置该数组第一个元素为：Array.newInstance()---此时的数组的元素类型就是元素的元素类型D，长度为0。直接返回第一个数组即可。
+																												>否则只是一层数组：直接Array.newInstance(),长度为0，类型为C。返回这个数组。
+																											#如果值类型可以赋值给集合Collection:
+																												>获取类型描述的元素描述
+																												>工厂方式创建对应的集合类型：@CollectionFactory.createCollection() ArrayList/TreeSet/HashSet, 长度为16
+																													#如果不是接口类型：那么反射的方式创建这个类型实例也是可以的：获取构造方法再实例化.newInstance() @ReflectionUtils.accessibleConstructor().newInstance()
+																											#如果值类型可以赋值给Map:
+																												>获取类型描述的元素描述
+																												>工厂方式创建对应的Map类型：@CollectionFactory.createMap() LinkedHashMap/TreeMap/LinkedMultiValueMap
+																													#如果不是接口类型：那么反射的方式创建这个类型实例也是可以的：@ReflectionUtils.accessibleConstructor().newInstance()
+																											#否则其他类型：
+																												>先获取宣称的构造方法：如果是私有的：那么抛出异常new IllegalAccessException()
+																												#否则用工具开始实例化：@BeanUtils.instantiateClass()
+																											>返回构造的实例值 
+																										>将这个值设置到一个属性值里：new PropertyValue(tokens.canonicalName, defaultValue)。返回。
+																									-此时得到了pv:设置到PropertyTokenHolder:tokens里：@setPropertyValue()
+																										>如果tokens.key不是null: 调用@processKeyedProperty()专门设置 
+																											>获取tokens装载的值propValue：@getPropertyHoldingValue()
+																												>将tokens的三个值(canonicalName/actualName/keys)再次封装到一个同类里；new PropertyTokenHolder():getterTokens
+																												>然后递归式的从这个getterTokens里再次获取属性值：@AbstractNestablePropertyAccessor.getPropertyValue(getterTokens)
+																												#如果获取到的这个值是null:需要额外处理：
+																													>如果是自动增长的嵌套路径：@isAutoGrowNestedPaths()--这次直接返回属性autoGrowNestedPaths ，那么进行以下额外保底处理：
+																														>将getterTokens.canonicalName的值赋予为：tokens.canonicalName的最后一对[]前的字符串。
+																														>再次设置默认值：@AbstractNestablePropertyAccessor.setDefaultValue(getterTokens)
+																														>返回值直接返回。
+																													#否则返回嵌套路径上无值的异常：new NullValueInNestedPathException()	
+																											>获取本地属性值handler:handler:@getLocalPropertyHandler()	
+																											>如果获取的这个handler:ph为null:那么抛出异常new InvalidPropertyException()
+																											#否则对值的不同类型做不同的处理：
+																												#如果属性值propValue是数组类型：
+																													>取元素类型Class为目标类: 接着获取tokens.keys的最后一个key---此时认为就是整数数字，
+																													#如果要为编辑器提取老值@isExtractOldValueForEditor()即取extractOldValueForEditor属性值 且 最后这个key整数小于propValue数组的长度：要提取老值
+																														>且老值就是：propValue的第key个元素值：Array.get()
+																													>对老值进行一次按需转换@convertIfNecessary():
+																														>直接转发给转换器代理来转换为要求的类型@typeConverterDelegate.convertIfNecessary()
+																													#如果key整数>=propValue的长度 且小于autoGrowCollectionLimit属性(默认最大整数)：那么propValue需要重新赋值：即先创建 长度扩展为key整数+1的数组，将propValue的元素复制过去，然后剩下的元素部分设置默认值：@AbstractNestablePropertyAccessor.setPropertyValue() 
+																														>获取属性名对应的属性连接器：@getPropertyAccessorForPropertyPath()
+																														>获取属性名的最后一对[]的.后的内容：@getFinalPath()		
+																														>再次获取属性名的PropertyTokenHolder:tokens:@getPropertyNameTokens()	
+																														>再次构建一个new PropertyValue(proName, value)	这里的value就是欠骂构造的新数组newArray
+																														#调用属性连接器设置进去：@nestedPa.setPropertyValue(tokens, pv) 递归性质的	
+																													>取出属性值：@getPropertyValue(propertyName)
+																														>先通过属性名获取属性连接器：@getPropertyAccessorForPropertyPath()
+																														>获取属性名的最后一对[]的.后的内容：@getFinalPath()		
+																														>再次获取属性名的PropertyTokenHolder:tokens:@getPropertyNameTokens()
+																														>再转发到用属性连接器获取属性值：@AbstractNestablePropertyAccessor.getPropertyValue()
+																														#结果直接返回 
+																													>将这个属性值设置到新的propValue的key整数那个位置。
+																												#如果属性值是List类型：
+																													>获取keys的最后一级对应的嵌套集合类型：@ph.getCollectionType(tokens.keys.length)
+																														>获取解析类：@getResolvableType()
+																															>通过方法获取解析类@ResolvableType.forMethodReturnType()	
+																																#通过封装到方法参数调用：@forMethodParameter(new MethodParameter(method, -1))
+																																	#统一转发给@forMethodParameter()
+																																		#通过方法参数的容器类 获取type:@forType()再.as(方法参数的声明类)
+																																		>再次@forType()后.getNested()得到：其中@ResolvableType.getNested()
+																																			#看嵌套级别返回元素类型：getComponentType() 
+																																			#或者：@getGeneric()一般类型。 而关键是用ResolvableType[] generics属性。但是这个属性来源为：
+																																				>type是Class类型：构造出来的：new ResolvableType[((Class)this.type).getTypeParameters().length] 其中使用了反射方法。类变量数组。
+																																				>type是ParameterizedType类型：构造：new ResolvableType[((ParameterizedType)this.type).getActualTypeArguments().length];
+																														>再次调用解析类的嵌套级别的解析类：@ResolvableType.getNested(tokens.keys.length)	
+																														>类型转换为Map:@.asCollection()
+																															>直接as(Collection.class)
+																																#最后还是返回的@.resolve() 即this.resolved属性。
+																														>然后解析generic的元素：@resolveGeneric()	
+																															>从generics数组里获取解析：@this.getGeneric(indexes).resolve()
+																													-此时就获取了目标类Class		
+																													>同样的取老值和按需转换：@isExtractOldValueForEditor() @convertIfNecessary()		
+																													#如果最后一个key整数大于propValue列表的大小 且 小于自动增长集合大小限制autoGrowCollectionLimit--最大整数：
+																														>那么list的size到key整数之间：增加null元素
+																														>最后将转换值加入list:convertedValue
+																													#否则直接将key整数位置的list元素设置为转换值：list.set(index, convertedValue)
+																												#如果属性值是Map类型：
+																													>从ph获取对应嵌套层次的键类型：@ph.getMapKeyType(tokens.keys.length)
+																														>类似取嵌套深度的key类型：但是最后一个方法有入参0：@getResolvableType().getNested(nestingLevel).asMap().resolveGeneric(0)	
+																													>从ph获取对应嵌套层次的值类型：@ph.getMapValueType(tokens.keys.length)		
+																														>类似取嵌套深度的key类型：但是最后一个方法有入参1：getResolvableType().getNested(nestingLevel).asMap().resolveGeneric(1)
+																													>通过上述键类型获取类描述符：@TypeDescriptor.valueOf()
+																														>直接构造：new TypeDescriptor(ResolvableType.forClass(type), null, null))
+																															>其中涉及的：@ResolvableType.forClass(type)。内容为简单的构造：new ResolvableType(clazz)
+																													>按需转换这个map.key键：@convertIfNecessary()
+																													>如果@isExtractOldValueForEditor()即要获取老值：通过这个转换key获取：@map.get(convertedMapKey)
+																													>这个key对应的map的值需要进一步的转换：@convertIfNecessary()			
+																													>转换之后再放到map里：@map.put(convertedMapKey, convertedMapValue)	
+																												#如果是其他类型：那么就要抛出异常：new InvalidPropertyException()
+																										#否则tokens.keys是null: 采用简化一点的处理@processLocalProperty()
+																											>通过actualName获取ph：@getLocalPropertyHandler()
+																											#如果属性handler是null或者不可写：	都不处理，可能要抛异常。
+																												#如果属性值pv是选项值：那么直接返回。
+																												#否则抛出异常：new NotWritablePropertyException() 但是抛出前：需要计算一个属性匹配对象PropertyMatches来构建异常信息：@PropertyMatches.forProperty()
+																													#转发给@new BeanPropertyMatches()
+																														#再次转发给父类super()但是入参：需要计算匹配数组：@calculateMatches() 这个方法的入参包含：@BeanUtils.getPropertyDescriptors()获取这个beanClass的所有属性描述符。计算过程为：
+																															>遍历属性描述数组：对每个描述：
+																																#如果写方法不是null: 获取描述符的名字：
+																																	#计算描述符名字和属性名之间的距离：@PropertyMatches.calculateStringDistance() 使用Levenshtein 算法。即寻找edit/delete/add操作 下的最少操作
+																																		-算法的大略实现：只需要一个建立一个二维数组：用类似动态规划的方式计算出一层层依赖的值：正方形形状的四个位置的值：右下角=min(左上角+cost, 其他两个角上的值分别+1)， 其中cost=s1[i-1] == s2[j-1] ? 0 : 1 。。。最后的代价就是d[s1.length][s2.length]的值
+																																		-算法的关键：就是意识到：假设两个字符串都从一个字符开始：显然编辑距离最大为1， 然后一个字符串增加1个字符：....
+																																			>如果已经知道了d[n,m]的编辑距离：即一个s=n长，s2=m长。那么一个字符串再增加1，即计算d[n,m+1] 那么，从视觉上看，显然要重新计算d[1,m+1],d[2,m+1]...因为这些都变了，
+																																	#如果这个距离<=2: 那么这个描述的名字加入一个列表。
+																															>生成的描述名列表：排序一下，转换为字符串数组。返回。Collections.sort(),StringUtils.toStringArray()
+																											#否则ph有值：那么开始获取值和转换：
+																												#从pv里获取属性值：@getValue()
+																												#如果转换属性为true:pv.conversionNecessary 则开始转换。
+																													>如果已经转换：则获取转换@pv.getConvertedValue()
+																													#否则没有转换：开始转换
+																														#要提取老值 且ph可读：@isExtractOldValueForEditor()
+																															>从ph里获取老值：ph.getValue()
+																															>开始为属性值转换：目标类型为 类描述里的getType()：@convertForProperty()
+																																>开始按需转换：@convertIfNecessary()
+																															>获取原始值来@getOriginalPropertyValue()设置是否需要转换属性：conversionNecessary= pv里的值!=上一步转换后的值，，，即不相等 就需要转换。
+																																#只要pv的source属性是PropertyValue类型且和pv当前this不相等，就层层的source的source的找。最后找到了返回。
+																												#否则无需转换：直接将这个属性值设置到ph里：setValue()
+																										>无更多操作
+																									-从tokens里获取属性值：@getPropertyValue(tokens);		
+																									#如果获取的这个默认属性值为null:那么要抛出状态异常。
+																									#正常，则返回这个默认值。
+																								#否则值不是null:
+																									>构造一个actualName的字符串构造器：StringBuilder
+																									#开始遍历tokens.keys这个数组：即属性链。对每个key, 做些处理：
+																										#如果value(初值是ph的getValue())是null: 那么直接抛出异常new NullValueInNestedPathException() 否则按类型专门处理
+																										#如果value是数组类型：
 																										
-																			
-																			
-																			
-																			
-																			
-																			
-																			
-																			
-																			
 																			
 																			
 																			
