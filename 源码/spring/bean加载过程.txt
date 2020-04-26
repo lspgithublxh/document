@@ -1227,11 +1227,91 @@
 																		-以上条件都满足：那么这个描述符加到结果集合里。
 																	#结果列表转换为数组退出。
 																-此时得到了属性名:开始遍历；对每个属性名：
-																	
-																	
-																
-															#如果是按照类型绑定模式：@autowireByType()
-														
+																	#调用层层的beanFacotry看是否已经包含(单例池中或者bean定义map中):@containsBean()
+																		#如果不包含：那么打打日志就结束。
+																		#否则包含：则显然认为是一个对象类型，那么要考虑创建，
+																			>所以直接递归获取@getBean()
+																			>然后加到MutablePropertyValues多属性对值里
+																			>然后注册依赖：@registerDependentBean()，其中dependentBeanMap：beanName---依赖它的引用它的所有BeanName; dependenciesForBeanMap: beanName--它的全部依赖-对象属性/方法中的对象属性
+																			>记录一下日志：返回。 
+															#如果是按照类型绑定模式：@autowireByType() 
+																>需要使用到转换器：@getCustomTypeConverter()即typeConverter属性。如果这个转换器为null,那么还可以用bw来赋值(局部变量)。
+																>同理查找未填充的非基本属性名数组：@unsatisfiedNonSimpleProperties()。遍历属性名数组：对每个属性名： 
+																	>查属性的属性描述：@bw.getPropertyDescriptor()
+																		>获取属性连接器：@getPropertyAccessorForPropertyPath()
+																			>获取属性路径的第一个属性分割符的位置：@PropertyAccessorUtils.getFirstNestedPropertySeparatorIndex()
+																				@直接转发调用通用方法：@getNestedPropertySeparatorIndex() 其实是一个字符串处理方法
+																					>从左到右一个个字符的遍历：对于遇到属性前缀后缀符[] 那么标记符翻转，继续遍历；对于遇到嵌套属性分割符.那么显然就可以退出了--且刚好经历了偶数次翻转：那么返回这个.所在的索引位置。没找到.就返回-1
+																			#如果得到的.索引位置为-1：那么直接返回当前处理器this:AbstractNestablePropertyAccessor
+																			#否则需要递归处理：
+																				>先从.处将属性路径分为两半：第一部分显然是“对象”--找到后半部分属性的对象，第二部分显然是显然是新的嵌套路径。那么显然要通过第一部分确定的对象对第二部分路径进行递归的查找：@part1.getPropertyAccessorForPropertyPath(part2), 但是第一部分目前仅仅得到了字符形式的结构：所以需要通过这个字符串获取到对象：@getNestedPropertyAccessor()
+																					>从对象字符串到对象的获取过程：@getNestedPropertyAccessor()
+																						@获取层层属性的指定链：@getPropertyNameTokens()
+																							#如果字符串没有[，那么直接进入下一环节。
+																							#否则有[,则寻找]: 两个的位置：显然就可以确定0-[位置的真正名-actualName-只赋值一次，[]之间的key名, 如果key是双引号或引号包起来的，需要取出被包的内容--放入list:keys, 然后继续寻找下一个[]，直到找完。
+																							-此时则找到了属性链：list:keys  则尝试从这个属性链找到最深层的对象。
+																							>将actualName属性名封装到一个新建对象new PropertyTokenHolder()里，那么还有keys需要封装设置：
+																								>设置canonicalName属性：将keys复原为字符串[key1][key2][key3]这种形式
+																								>设置keys属性：直接将list:keys转换为字符串数组。
+																							>返回这个PropertyTokenHolder对象：tokens
+																						>取出tokens的canonicalName属性，再获取tokens的属性值：@getPropertyValue() 即通过canonicalName获取到那个最深层的对象：
+																							>获取属性handler: 通过actualName获取：@getLocalPropertyHandler()
+																								@获取bw包装类的缓存的内省结构：@getCachedIntrospectionResults()
+																									@直接调用CachedIntrospectionResults.forClass()获取：输入就是bw的包装类对象。
+																										#先后从强引用类缓存和软引用类缓存里查询：strongClassCache/softClassCache 缓存安全
+																										#没找到那么直接构造 缓存内省结构：new CachedIntrospectionResults()		
+																										>如果入参类缓存安全@ClassUtils.isCacheSafe() 且类加载器可访问@isClassLoaderAccepted()
+																											>那么将beanClass-缓存内省结构 放入强引用类缓存strongClassCache中。
+																											#否则放入软引用类缓存softClassCache中。
+																											-对两个方法的说明：
+																												@给定类和类加载器@isCacheSafe():
+																													#如果类的加载器 和入参加载器/或者其某级父加载器相等：那么缓存安全。
+																													#如果类的加载器的某级父加载器和入参加载器相等：那么缓存不安全。
+																													其他情况：如果入参记载器 加载 入参类的结果和入参类相等@isLoadable() 那么认为是缓存安全的。
+																												@内省结构是否能接受某个classLoader:@isClassLoaderAccepted()
+																													#内省结构可以接受的类加载器Set为CachedIntrospectionResults.acceptedClassLoaders: 遍历，对每个加载器：
+																														#如果入参类加载器的某级父加载器 相等于 类型结构的某个类加载器：@isUnderneathClassLoader() 那么返回true
+																													>遍历完也没有匹配：那么返回false 不能接受		
+																										>返回这个 缓存内省结构。
+																								@调用内省结构的获取属性描述：@getPropertyDescriptor()				
+																									#从map:propertyDescriptorCache里获取：如果没有，则将name首字符小写再次从这个map里获取@StringUtils.uncapitalize(name)， 没有则首字符大写里再次获取StringUtils.uncapitalize(name)
+																									#如果获取到的属性描述符pd是null或者GenericTypeAwarePropertyDescriptor类型：那么直接返回。
+																									#否则其他类型：需要重新属性转移封装@buildGenericTypeAwarePropertyDescriptor()到new 一个GenericTypeAwarePropertyDescriptor()对象里。
+																								>如果此时得到的属性描述pd不是null:则封装到new BeanPropertyHandler(pd)里返回：否则返回null				
+																							>如果获取到属性handler:ph是null或者不可读：那么抛出异常：new NotReadablePropertyException()					
+																							#否则开始一系列的值转换：
+																								>先是获取值：pd.getValue()
+																								#如果值是空：那么加入自动生长的嵌套路径@isAutoGrowNestedPaths()那么重新赋值：构造一个new PropertyTokenHolder(tokens.actualName)对象，后开始设置@setDefaultValue()
+																									@通过token创建默认属性：@createDefaultPropertyValue()
+																										>获取属性类描述：@getPropertyTypeDescriptor()入参为tokens.canonicalName		
+																											>先获取属性路径的属性连接器：@getPropertyAccessorForPropertyPath()	
+																											>获取属性名的最后一对[]的.后的内容：@getFinalPath()	
+																											>获取属性链tokens：@getPropertyNameTokens()	
+																											>调用属性连接器获取属性handler:ph:@getLocalPropertyHandler()	
+																											>如果ph不是null：
+																												>如果tokens.keys不是null: 且ph可读或者可写：那么需要嵌套处理：@ph.nested() 结果直接返回。
+																													>先构造属性：@property() 将pd的信息重新转移到new Property()里, level=tokens.keys.length
+																													>再封装到new TypeDescriptor.nested()里
+																												>否则如果ph可读或可写：直接@ph.toTypeDescriptor()返回
+																													>先构造属性：@property() 将pd的信息重新转移到new Property()里 ，少一个level
+																													>再封装到new TypeDescriptor.nested()里
+																											>此时返回null	
+																										
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
+																			
 												>事情5：提前暴露模式的缓存处理：
 												>事情6：一次性注册bean: @registerDisposableBeanIfNecessary()
 																					
