@@ -9,6 +9,7 @@
 //阅读文档达到直接可以看出思路编写程序的清晰逻辑的地步。
 //一个大函数功能直接看懂而描述。
 //从网上找答案变为从源码中找答案。
+//功能组织体系，而不是动作实现体系。是目标，是事情，而不是精细到实现方案的动作。
 
 >加载bean: 
  >AbstractApplicationContext.getBean(String name)开始的：
@@ -1476,13 +1477,67 @@
 																		>获取属性名的最后一对[]的.后的内容：@getFinalPath()															
 																		>使用新的属性连接器和finalPath获取属性描述：@nestedBw.getCachedIntrospectionResults().getPropertyDescriptor(finalPath)									
 																		#如果得到的描述是null: 要抛出异常：new InvalidPropertyException									
-																											
-																											
-																											
-																											
-																											
-																											
-																											
+																	#如果获取的属性描述类型不是Object:
+																		>利用属性描述构建写方法的方法参数：@BeanUtils.getWriteMethodParameter()
+																			#如果属性描述是GenericTypeAwarePropertyDescriptor类型：获取GenericTypeAwarePropertyDescriptor.writeMethodParameter属性, 封装到一个new MethodParameter()属性里。 
+																			#否则其他类型：获取描述符的写方法：@PropertyDescriptor.getWriteMethod() 即用来写属性的。即setProxxx(T x)方法，通过内省机制从一个Class里获取匹配这个名称+参数类型的Method:@Introspector.findMethod()
+																			#如果这个写方法是null: 那么抛出异常：写方法不可用 
+																			#否则存在：而设置到new MethodParameter(writeMethod, 0)里返回。
+																		#判断bw的包装实例是否是PriorityOrdered类型：和方法参数一起封装到new AutowireByTypeDependencyDescriptor()对象里。作为依赖描述符 
+																		>解析方法参数中的依赖描述 的值：@resolveDependency() 如果解析的值不是null:那么添加到属性值pvs里。而同时的，这个解析依赖方法会同时会把依赖的参数类型名(完整包路径类名@16进制hashcode)放到一个注入的集合Set:autowiredBeanNames中。接下来要处理：
+																		>对上述过程获取的依赖名列表：遍历，对每个依赖名：注册依赖@registerDependentBean() ：即整个依赖名都是当前beanName的依赖集合中的一员，而依赖名被依赖的主体集合要加入beanName
+																		>最后要清空这个autowiredBeanNames集合，以方便对下一轮属性参数进行添加依赖。
+																>遍历完成，直接返回。												
+															>此时，将新建的自动绑定设置多值MutablePropertyValues后的对象赋值给旧的变量pvs, 下一步使用。 
+														-先得到两个基本判断：是否有实例化感知beanPost处理器：hasInstantiationAwareBeanPostProcessors属性，是否需要依赖检查dependencyCheck属性。
+														>如果上一步得知有该感知处理器：需要调用应用处理器相关方法。
+															#如果pvs还是空：那么赋值mbd的属性值。
+															>遍历全部bean后置处理器：对每个处理器，如果是InstantiationAwareBeanPostProcessor类型：
+																>直接它的应用@postProcessProperties()方法，入参包括属性值pvs, bw的包装实例，beanName 。得到一个新的属性值pvsToUse 
+																	-查看CommonAnnotationBeanPostProcessor对这个方法的实现：基本是先查找资源元数据，然后开始注入。
+																		>先查找：@findResourceMetadata() 缓存模式，先从injectionMetadataCache这个map里找，没有则实际找--即便有但是它的targetClass和bw的包装类实例类不同也要实际找，找到了设置进去。
+																			>根据包装实例类来构建：@buildResourceMetadata() 从cls层层往上，每轮都调用@ReflectionUtils.doWithLocalFields() 和@ReflectionUtils.doWithLocalMethods(),来把元素结果加到List<InjectionMetadata.InjectedElement>:elements里，封装到new InjectionMetadata()返回。
+																				-两个框架功能前面已经述：回调内容则不同：
+																					@ReflectionUtils.doWithLocalFields()的回调：
+																						#如果field有webServiceRefClass注解：field是静态则抛异常new IllegalStateException(),否则封装field到new WebServiceRefElement(field, field, null)对象再加入局部列表currElements里，这个列表最终加入 elements的首位置开始里。
+																						#如果field有ejbRefClass注解：同上操作，仅仅封装对象new EjbRefElement()不同 
+																						#如果field有Resource注解：同上操作，但封装对象前：要判断是否ignoredResourceTypes属性已经忽略了：没有略才封装加入：new ResourceElement(field, field, null)
+																					@ReflectionUtils.doWithLocalMethods()的回调： 
+																						>获取桥接方法的原方法：@BridgeMethodResolver.findBridgedMethod() 
+																						>判断桥与原是否相等：@BridgeMethodResolver.isVisibilityBridgeMethodPair()如果不相等不处理，如果相等要处理
+																						>判断用入参class来找的同名同参类型的方法是否和原方法相同：@ClassUtils.getMostSpecificMethod()同则要处理：
+																							#如果method有webServiceRefClass注解：method是静态则抛异常new IllegalStateException(),方法参数个数不是1也抛new IllegalStateException(),再获取原方法对入参类的属性：@BeanUtils.findPropertyForMethod(), 将属性值封装到new WebServiceRefElement(method, bridgedMethod, pd)加入currElements...
+																							#如果method有ejbRefClass注解: 操作同上，仅仅构造new EjbRefElement()不同。
+																							#如果method有Resource注解：参数个数判断后，看ignoredResourceTypes是否包含参数名：不包含则处理：也是取属性描述，封装到new ResourceElement()...
+																		>然后注入调用：@metadata.inject(bean, beanName, pvs);之后直接返回pvs.
+																			#先checkedElements/备injectedElements判空，只要不为空:开始遍历，对每个InjectedElement元素：调用注入@element.inject(target, beanName, pvs)
+																				#分类型注入：
+																					>如果InjectedElement是field类型：反射注入field.set(),但值需要转换@getResourceToInject()，以ResourceElement实现为例：
+																						>如果是懒查询lazyLookup：则懒构造@buildLazyResourceProxy()
+																							>构造一个new TargetSource() 其中的方法getTarget()依然是调用通用的@getResource()
+																							>构造代理工厂ProxyFactory：添加的接口就是element.lookupType；目标资源就是上述，
+																							>然后统一获取代理：@pf.getProxy(classLoader)
+																						#否则获取注入值：@getResource()
+																							#如果element.mappedName有值：使用jndi获取bean:this.jndiFactory.getBean(element.mappedName, element.lookupType)返回
+																							#否则如果总是使用jndi查找alwaysUseJndiLookup: 则this.jndiFactory.getBean(element.name, element.lookupType)获取返回。
+																							#否则如果resourceFactory就要抛异常：new NoSuchBeanDefinitionException()
+																							#其他情形，则用resourceFactory来绑定资源：@autowireResource()
+																								#如果fallbackToDefaultTypeMatch && element.isDefaultName &&resourceFactory是AutowireCapableBeanFactory类型 && rf不包含这个element.name: 调用工厂解析依赖：@resolveDependency(), 如果结果==null那么抛new NoSuchBeanDefinitionException()
+																								#否则：直接取@factory.getBean(name, element.lookupType)返回结果就是结果。需要额外的处理：
+																									#如果工厂是ConfigurableBeanFactory类型：如果工厂包含element.name 且 入参beanName不是null : 那么需要注册依赖：@beanFactory.registerDependentBean(String beanName, String dependentBeanName) 后者依赖前者：即后者为类，前者为类的类属性。dependenciesForBeanMap集合的key就是第二个元素。	
+																						>返回 
+																					>否则应该是方法类型：
+																						>属性值是否需要忽略@checkPropertySkipping() 需要则直接返回。
+																							#直接看skip属性：有则直接返回这个值。
+																							#如果pvs为null:返回false
+																							#如果pvs包含pd.getName()返回true
+																							#否则如果pvs是MutablePropertyValues类型：先注册@registerProcessedProperty()--就是processedProperties添加pd.name 
+																							
+																						#否则继续：反射调用this.member.invoke() , 值同样@getResourceToInject()处理过。
+																						>返回。
+																#如果这个属性值不是null:赋值给pvs, 否则需要进一步处理：	
+																	#有条件的 调用@是否需要过滤属性描述符：@filterPropertyDescriptorsForDependencyCheck()这个返回值再次覆盖“条件”，这个条件是一个属性描述符数组。										
+																	>应用后置属性值处理方法：@postProcessPropertyValues(),赋值给pvsToUse，如果还是null,直接退出返回了。										
 																											
 																										
 																			
