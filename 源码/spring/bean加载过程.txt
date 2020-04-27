@@ -10,6 +10,10 @@
 //一个大函数功能直接看懂而描述。
 //从网上找答案变为从源码中找答案。
 //功能组织体系，而不是动作实现体系。是目标，是事情，而不是精细到实现方案的动作。
+//数据源-数据结果模式：而不是全部动作过程。
+//能够主动猜某个方法的功能和猜测它的实现。
+
+
 
 >加载bean: 
  >AbstractApplicationContext.getBean(String name)开始的：
@@ -1532,21 +1536,173 @@
 																							#如果pvs为null:返回false
 																							#如果pvs包含pd.getName()返回true
 																							#否则如果pvs是MutablePropertyValues类型：先注册@registerProcessedProperty()--就是processedProperties添加pd.name 
-																							
+																							-其他情况直接返回false
 																						#否则继续：反射调用this.member.invoke() , 值同样@getResourceToInject()处理过。
 																						>返回。
 																#如果这个属性值不是null:赋值给pvs, 否则需要进一步处理：	
-																	#有条件的 调用@是否需要过滤属性描述符：@filterPropertyDescriptorsForDependencyCheck()这个返回值再次覆盖“条件”，这个条件是一个属性描述符数组。										
+																	#有条件的 调用@是否需要过滤属性描述符：@filterPropertyDescriptorsForDependencyCheck()这个返回值再次覆盖“条件”，这个条件是一个属性描述符数组。
+																		-本方法采用缓存模式，filteredPropertyDescriptorsCache：map:key=包装类Class,value=属性描述符数组
+																		>获取描述符数组方法：@filterPropertyDescriptorsForDependencyCheck()
+																			#直接调用bw.getPropertyDescriptors()获取得到属性描述符列表。
+																			>移除满足预测的描述符：@isExcludedFromDependencyCheck() 前述已闭
+																			>转为描述符数组返回。	
 																	>应用后置属性值处理方法：@postProcessPropertyValues(),赋值给pvsToUse，如果还是null,直接退出返回了。										
-																											
-																										
+																		-以CommonAnnotationBeanPostProcessor实现为例：
+																		>直接转发给@postProcessProperties()---忽略了上一步获取的描述符数组。
+																		-以InstantiationAwareBeanPostProcessorAdapter实现为例：直接返回pvs								
+																		-AutowiredAnnotationBeanPostProcessor实现：也是直接转发给@postProcessProperties()忽略了pds	
+																		-MockitoPostProcessor实现：是springboot里的一个测试框架下的类	
+																			>直接使用@ReflectionUtils.doWithFields()框架执行，也忽略了pds，之后直接返回pvs。框架注入的为：
+																				>处理field:@postProcessField()
+																					#如果属性map:fieldRegistry里有Field:取出对应的值beanName,如果有值：继续处理： @inject()
+																						-反射获取这个obj的这个field的值：@ReflectionUtils.getField() 值不为null那么抛状态异常。
+																						>调用bean工厂获取这个beanName对应实例bean：@beanFactory.getBean(beanName, field.getType());
+																						>最后以反射的方式将获取的这个beanName实例设置到field: @ReflectionUtils.setField(field, target, bean)
+														#如果上一步得出需要依赖检查：
+															#如果上一步得出的描述符数组是null: 需要找个备用：@filterPropertyDescriptorsForDependencyCheck()
+															>才开始检查依赖-暴露的所有属性是否已经设置值了：利用上一步得出的描述符数组：@checkDependencies()				
+																>遍历所有的属性描述符：对每个属性描述符
+																	#如果写方法存在 且属性值不包含属性符的名(无此属性对应的值)：那么如果是基本类型有默认值，否则可能就有问题了。
+																		>检查属性类型是否简单类型：@BeanUtils.isSimpleProperty() 简单类型为：a primitive, a String or other CharSequence, a Number, a Date,a URI, a URL, a Locale, a Class, or a corresponding array
+																		>获取依赖检查码：@mbd.getDependencyCheck()
+																		-开始制定抛异常条件：检查码是AbstractBeanDefinition.DEPENDENCY_CHECK_ALL类型 或者 (检查码是AbstractBeanDefinition.DEPENDENCY_CHECK_SIMPLE 且上面得出是简单类型) 或者 (检查码是检查对象AbstractBeanDefinition.DEPENDENCY_CHECK_OBJECTS 且 上面得出 不是简单类型) 
+																		-上述条件满足：都要抛出异常：new UnsatisfiedDependencyException()
+														>最后，如果属性值体pvs不是空：需要应用@applyPropertyValues()
+															>带安全框架地设置安全上下文：@bw.setSecurityContext()
+															#如果pvs是MutablePropertyValues类型mpvs: 如果这个值mpvs已经转换过@isConverted() 那么直接设置到bw.setPropertyValues()里，就返回了。否则取出属性值列表：mpvs.getPropertyValueList()
+															#否则就是简单类型：直接放到一个列表赋值给“属性列表”:orginal
+															>获取定制类转换器：@getCustomTypeConverter() 如果是null则用bw覆盖。
+															>构造bean定义解析器：new BeanDefinitionValueResolver()
+															>开始遍历 属性列表：对每个属性PropertyValue:pv 
+																#如果pv已经转换过：@isConverted()那么加入 一个属性值列表list:deepCopy
+																#否则开始转换：直接获取名和值-原始值，开始转换：
+																	>先用值转换器按需转换：@valueResolver.resolveValueIfNecessary()
+																	>如果是可写属性@isWritableProperty() 且不是嵌套属性@!PropertyAccessorUtils.isNestedOrIndexedProperty()
+																		-是否可写属性：
+																			>先获取属性handler:@getPropertyHandler()
+																				>获取属性连接器：@getPropertyAccessorForPropertyPath()
+																				>再类似之前的：调用属性连接器的本地属性handler:@nestedPa.getLocalPropertyHandler(getFinalPath(nestedPa, propertyName))
+																			-如果属性handler不是null:用它来判定：ph.isWritable()
+																			#否则得先获取属性值：@getPropertyValue() 后直接返回true:
+																		-是否嵌套属性：
+																			#属性名是null: 不是嵌套 
+																			>否则逐个字符检查：如果包含.或者[则都认为是嵌套返回true。最后没有包含则返回false 
+																	-如果上述的判断为true: 则要为属性转换：@AbstractAutowireCapableBeanFactory.convertForProperty()			
+																		#如果类转换器是BeanWrapperImpl类型：则用bw的转换方法：@BeanWrapperImpl.convertForProperty()		
+																			>取出缓存的内省结果：@getCachedIntrospectionResults()	
+																			>从内省结果中获取属性的描述符：@cachedIntrospectionResults.getPropertyDescriptor(propertyName)	
+																			#如果属性描述符是null: 则抛异常new InvalidPropertyException()
+																			>再用内省结果获取类描述符：@cachedIntrospectionResults.getTypeDescriptor()	
+																			#如果类描述符是null: 则手动添加：@cachedIntrospectionResults.addTypeDescriptor() ，添加的内容：
+																				>先属性描述符封装：@property()	--内容为直接属性转移到new Property()
+																				>再将这个封装出的属性Property封装到@new TypeDescriptor()
+																					>获取属性的方法参数的解析类：@ResolvableType.forMethodParameter()
+																					>用这个解析类来解析属性的类：@resolvableType.resolve(property.getType())
+																					>注解的元素属性设置为：new AnnotatedElementAdapter(property.getAnnotations())
+																			>最后统一调用为标准的属性转换：@convertForProperty()	内部直接调用转发给@convertIfNecessary()这种。
+																		#否则统一三步处理：
+																			>bw获取属性描述符:@getPropertyDescriptor()	
+																			>获取写方法参数：@BeanUtils.getWriteMethodParameter()
+																			>调用类转换器按需转换：@convertIfNecessary()
+																	>接着可能要存储转换值到融合bean定义里，避免每个已建bean实例的重新转换：
+																		#如果转换值和原值相等：
+																			#如果上一步得出的判断convertible:true:
+																				>将转换值设置到pv里：@.setConvertedValue()
+																			>这个pv也要加入 属性值列表：deepCopy
+																		#否则如果可以转换convertible==true 且 原始值是TypedStringValue类型 且 原始值不是动态 且 (转换后的值既不是集合也不是数组)：
+																			>也要设置转换值到pv， 同时将pv加到属性值列表：deepCopy
+																		#否则只是标记：resolveNecessary=true需要解析 ， 同时封装属性到一个新的属性值对象new PropertyValue()里，加入 deepCopy	
+															>退出循环后：检查mpvs如果不是null 且无需解析resolveNecessary=false :  那么标记mpvs为已经转换：mpvs.converted=true					
+															>最后重新设置新封装的一个多属性值：封装使用得出的“转换后的”属性值列表：bw.setPropertyValues(new MutablePropertyValues(deepCopy))	
+														>到此，填充属性就完成了。
+													>开始初始化调用：@initializeBean()
+														>带安全框架得invoke感知方法：@invokeAwareMethods()
+															#如果bean实现了Aware接口：
+																#如果进一步实现了BeanNameAware接口：那么设置bean的name:bean.setBeanName()为入参beanName
+																#如果进一步实现了BeanClassLoaderAware接口：那么设置cl:bean.setBeanClassLoader()	获取的cl就是AbstractBeanFactory.beanClassLoader
+																#如果进一步实现了BeanFactoryAware接口:则设置：bean.setBeanFactory(AbstractAutowireCapableBeanFactory.this)
+														>开始准备调用初始化前的beanPost处理器：应用相关方法。条件：mbd==null或者mbd是合成的：@applyBeanPostProcessorsBeforeInitialization()
+															#获取全部beanPost处理器：遍历，
+																>对每个直接执行：@processor.postProcessBeforeInitialization()
+																	-对AdvisorAdapterRegistrationManager实现：直接返回待封装的对象。
+																	-对ApplicationContextAwareProcessor实现：需要对bean设置一些信息，但是不进一步封装代理之类。
+																		>直接带安全框架的转发给@invokeAwareInterfaces()
+																			#如果bean实现了Aware接口：
+																				#如果bean实现了EnvironmentAware接口：注入设置环境属性bean.setEnvironment(this.applicationContext.getEnvironment())
+																				#如果bean实现了EmbeddedValueResolverAware接口：注入设置嵌入值解析属性bean.setEmbeddedValueResolver(this.embeddedValueResolver)
+																				#如果bean实现了ResourceLoaderAware接口：注入设置资源加载属性bean.setResourceLoader(this.applicationContext)
+																				#如果bean实现了ApplicationEventPublisherAware接口：注入设置上下文事件发布者属性bean.setApplicationEventPublisher(this.applicationContext)
+																				#如果bean实现了MessageSourceAware接口：注入设置消息源属性bean.setMessageSource(this.applicationContext)
+																				#如果bean实现了ApplicationContextAware接口：注入设置应用上下文属性bean.setApplicationContext(this.applicationContext)
+																	-对BeanValidationPostProcessor实现：也有。内容为关于验证框架。$$$
+																	-对ConfigurationPropertiesBindingPostProcessor实现：也有：内容为关于springboot的对象绑定(首先就是获取ConfigurationProperties注解)：$$$$
+																	-对LoadTimeWeaverAwareProcessor实现：是注入loadtimeWeaver属性：
+																		#如果bean实现了LoadTimeWeaverAware接口：如果this.beanFactory是空，抛状态异常。否则： 
+																		#否则从bf里获取名为“loadTimeWeaver”而要求类型为LoadTimeWeaver的bean: @beanFactory.getBean() 获取的这个ltw就设置到@setLoadTimeWeaver(ltw)
+																	-对ObjectMapperConfigurer实现：springfox的spring.web下的类。	
+																		#如果bean是RequestMappingHandlerAdapter类型：需要设置消息转换器：@bean.setMessageConverters(), 将请求参数映射到方法的各个参数上的转换器，需要获取@configureMessageConverters()
+																			#从bean里获取消息转换器列表:并反向这个列表过滤出MappingJackson2HttpMessageConverter类型的转换器：---都是用google的迭代框架：如Iterables.size()
+																			#如果这个转换器列表是空：那么人为构造一个加入入参转化器列表@configuredMessageConverter()
+																				>新建对象：new MappingJackson2HttpMessageConverter() 设置一个.setObjectMapper(new ObjectMapper())
+																				>发布一个配置事件：@fireObjectMapperConfiguredEvent()如下面会述。
+																			>遍历这个MappingJackson2HttpMessageConverter类型的转换器列表：对每个转换器，获取它的ObjectMapper， 调用@fireObjectMapperConfiguredEvent()发布对象mapper配置事件。
+																				>直接调用属性来发布：applicationEventPublisher.publishEvent(new ObjectMapperConfigured(this, objectMapper))
+																					#统一转发给AbstractApplicationContext.publishEvent(Object event, @Nullable ResolvableType eventType)
+																						#如果事件不是ApplicationEvent类型：需要封装到new PayloadApplicationEvent()里
+																							#如果eventType又是null:那么需要解析，直接该事件@.getResolvableType()来解析
+																						-开始广播 
+																						#如果set:earlyApplicationEvents不是null:那么将事件加入 
+																						#否则获取applicationEventMulticaster属性调用@multicastEvent()广播该事件
+																							>获取默认的解析类：@resolveDefaultEventType()
+																								>直接转发给@ResolvableType.forInstance(event)
+																									>如果event是ResolvableTypeProvider类型，则调用@resolvableType()获取$$
+																									#否则直接@ResolvableType.forClass()类加载：
+																										>新建而返回new ResolvableType(clazz)
+																							>获取执行广播的taskExecutor：再获取应用监听器@getApplicationListeners()		
+																								#采用缓存模式：缓存ListenerRetriever对象，key=new ListenerCacheKey(eventType, event.getSource().getClass()):没有此对象则new ListenerRetriever(true)
+																								#得到了retriever对象则开始解析：@AbstractApplicationEventMulticaster.retrieveApplicationListeners()
+																									>获取支持该事件和源类型的应用监听器：监听器来源1：this.defaultRetriever.applicationListeners;;;来源2：this.defaultRetriever.applicationListenerBeans 将每个监听器名对应bean通过bean工厂找到。
+																							>遍历每个应用监听器：或使用excutor并行地激活监听器：@doInvokeListener()
+																								>执行listener.onApplicationEvent(event)即可。
+																						>最后调用parent属性来调用发布事件：@this.parent.publishEvent()
+																			>返回转换器列表。			
+																	-对ProtectPointcutPostProcessor实现：主要功能是看bean的类的方法中那些匹配了切点表达式的：@		
+																		#会在配置匹配的过程中：	将匹配的方法封装到new RegisteredMethod() 放到methodMap属性里：值为：切点表达式对应的List<ConfigAttribute>列表。
+																		#是否匹配的关键调用：@Pointcut.match(Shadow)  具体实现看不同的类型：如WithinPointcut类型实现	
+																	-对ServletContextAwareProcessor实现：简单的设置上下文：
+																		#如果bean实现了ServletContextAware：设置@setServletContext() 获取servletContext属性来设置。
+																		#如果bean实现了ServletConfigAware：设置@setServletConfig()	获取servletConfig属性来设置。
+																	-对ShiroFilterFactoryBean实现：	则是安全框架的要求：
+																		#如果bean是Filter类型：
+																			>先应用全局属性：@applyGlobalPropertiesIfNecessary()
+																				>应用登录url:@applyLoginUrlIfNecessary()
+																					#获取loginUrl属性 同时如果filter是AccessControlFilter类型：如果filter里的loginUrl是默认的“login.jsp”那么可以设置为新的这个loginUrl属性。filter.setLoginUrl(loginUrl)
+																				>应用成功url:@applySuccessUrlIfNecessary()
+																					#几乎同上道理：仅仅看filter是AuthenticationFilter类型：而旧值是"/" 就设置新的successUrl属性。
+																				>应用未授权url: @applyUnauthorizedUrlIfNecessary()
+																					#几乎同上：仅仅unauthorizedUrl属性，filter是否是AuthorizationFilter类型，但只要old是null就直接覆盖。@.setUnauthorizedUrl()
+																			>再加到过滤器链：filters.put(beanName, filter)
+																	-对WebServerFactoryCustomizerBeanPostProcessor实现：则是springboot 的 有许多根据不同server类型而定制化的处理内容：如@TomcatWebServerFactoryCustomizer.customize(ConfigurableTomcatWebServerFactory factory) 。全部是java1.8的开发代码。
+																		
 																			
 																			
 																			
-																			
-																			
-																			
+																#如果结果是null: 直接返回处理的结果。否则需要进一步层层封装---即将处理结果作为下一个处理器的入参之一。
+															#返回层层处理后的结果
+														
+																
+																
+																
+																
+																
+																
+																
+																
+																
+																
+																
 												>事情5：提前暴露模式的缓存处理：
+												
 												>事情6：一次性注册bean: @registerDisposableBeanIfNecessary()
 																					
 																					
