@@ -1683,26 +1683,51 @@
 																					#几乎同上：仅仅unauthorizedUrl属性，filter是否是AuthorizationFilter类型，但只要old是null就直接覆盖。@.setUnauthorizedUrl()
 																			>再加到过滤器链：filters.put(beanName, filter)
 																	-对WebServerFactoryCustomizerBeanPostProcessor实现：则是springboot 的 有许多根据不同server类型而定制化的处理内容：如@TomcatWebServerFactoryCustomizer.customize(ConfigurableTomcatWebServerFactory factory) 。全部是java1.8的开发代码。
-																		
-																			
-																			
-																			
 																#如果结果是null: 直接返回处理的结果。否则需要进一步层层封装---即将处理结果作为下一个处理器的入参之一。
 															#返回层层处理后的结果
-														
-																
-																
-																
-																
-																
-																
-																
-																
-																
-																
-																
+														>开始激活初始化方法：@invokeInitMethods()
+															#如果bean实现了InitializingBean接口 且 额外管理的初始化方法externallyManagedInitMethods不包含“afterPropertiesSet”方法：则要开始一系列处理：!mbd.isExternallyManagedInitMethod()
+																>其实就是带安全框架地执行bean.afterPropertiesSet()方法。
+																#然后如果mbd不是null 且 bean不是NullBean类：
+																	#获取mbd的初始化方法：mbd.getInitMethodName()如果不是“afterPropertiesSet” 或者 bean没有实现InitializingBean接口, 且externallyManagedInitMethods包含了“afterPropertiesSet” ：说明初始化方法是另外的一种：
+																		>直接转发给@invokeCustomInitMethod() 来执行初始化方法：
+																			>通过反射机制获取方法名的Method: 如果非公开方法可以访问：则用@BeanUtils.findMethod()方法获取，否则用@ClassUtils.getMethodIfAvailable()方法获取
+																			#如果获取的Method为null: 进一步如果mbd要求强制初始化方法：@isEnforceInitMethod()则要抛异常new BeanDefinitionValidationException() 。否则直接返回而已。
+																			#否则Method不是null: 直接带安全框架的执行：initMethod.invoke(bean)即可。返回。
+														>最后是后置处理器的后置处理：条件：这个mbd不是合成的：@applyBeanPostProcessorsAfterInitialization()		
+															#遍历所有的后置处理器：执行它的@postProcessAfterInitialization()方法，同样入参也包括bean，且结果就赋值给bean，从而层层经过处理器的迭代，将bean多次处理。	
+																-对AbstractAdvisingBeanPostProcessor实现：前处理没有，但是后处理有：
+																	#如果没有通知advisor 或者bean是AopInfrastructureBean类型：直接返回。
+																	#如果实现了Advised接口：要加通知。
+																		#如果bean没有冻结 且 bean的目标类@AopUtils.getTargetClass()---(分类型获取：如果是TargetClassAware类型直接返回.getTargetClass()如果是@isCglibProxy()代理(是SpringProxy实例且类名有$$)那么要取父类的class) 目标类合格：
+																			-使用缓存模式：eligibleBeans
+																			>合格检查：@opUtils.canApply(advisor, targetClass) 即看通知是否可以应用
+																				#统一转发给@canApply()
+																					#如果advisor是IntroductionAdvisor类型： 则取advisor的过滤器类，调用@matches()方法
+																						#只要class有注入的那个注解annotationType：@AnnotatedElementUtils.hasAnnotation()
+																					#否则如果advisor是PointcutAdvisor类型：直接转发@canApply()	
+																						#如果切点就不匹配：@.getClassFilter().matches(targetClass) 那么直接返回false 
+																						#如果切点的方法matcher是true：那么返回true 
+																						#建立一个Class list: 元素为：入参类--如果不是代理则寻找user类：@ClassUtils.getUserClass(); 然后是所有的接口@ClassUtils.getAllInterfacesForClassAsSet(targetClass)---如果tc是接口：只返回它自己，否则获取各层父类的接口
+																						>遍历这个class list: 对每个Class, 都获取它的所有宣称的方法：遍历--对每个方法：都用入参pc切点的方法@matcher.matches() 来匹配，只要匹配到了，直接返回。$
+																						>到此则返回false
+																					#否则返回true:即没有切点。
+																		-上述通过为true:则加通知到当前bean.addAdvisor(this.advisor)	 返回这个bean
+																	#此时直接判断是否合法：@isEligible()
+																	#如果合法：
+																		#那么先构造一个代理工厂：@prepareProxyFactory() 传递相应的属性。new ProxyFactory()
+																		#如果代理工厂表明要代理：开始评估代理接口：@evaluateProxyInterfaces()
+																		#代理工厂也要加通知：proxyFactory.addAdvisor(this.advisor)
+																		#开始定制代理工厂：@customizeProxyFactory()默认为不处理。
+																		#开始构造代理：@proxyFactory.getProxy(getProxyClassLoader())
+																		>返回代理。			
+																	>此时直接返回bean  这个后置处理就完成了。
+																-对AdvisorAdapterRegistrationManager实现： 如果bean是AdvisorAdapter类：需要注册到通知仓库：@advisorAdapterRegistry.registerAdvisorAdapter()
+																	#DefaultAdvisorAdapterRegistry.adapters.add(adapter)
+																-对ApplicationContextAwareProcessor实现：直接返回 
+																	
 												>事情5：提前暴露模式的缓存处理：
-												
+													
 												>事情6：一次性注册bean: @registerDisposableBeanIfNecessary()
 																					
 																					
