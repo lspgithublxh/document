@@ -12,8 +12,9 @@
 //功能组织体系，而不是动作实现体系。是目标，是事情，而不是精细到实现方案的动作。
 //数据源-数据结果模式：而不是全部动作过程。
 //能够主动猜某个方法的功能和猜测它的实现。
-
-
+//情况-通用处理。
+//情况-精细结构。
+//数据结构-与处理。
 
 >加载bean: 
  >AbstractApplicationContext.getBean(String name)开始的：
@@ -32,18 +33,19 @@
 							#当提前单例map:earlySingletonObjects包含时：取它 
 							#没有则当“允许提前引用”时：从单例工厂map:singletonFactories里取它的对象工厂
 							#当存在时：从工厂里获取.getObject(), 并保存在提前单例map里--以便并发获取时下一个线程直接从这里获取，并从单例工厂里移出name, 从而不会再调用.getObject()---保证了工厂创建只执行一次。
-				#3由于：第二步返回的instance可能满足：instance != null && args == null, 决定：专门处理
+				#3如果：第二步返回的instance满足：instance != null && args == null, 决定：专门处理
 					>允许打印日志：如果在创建中：singletonsCurrentlyInCreation中，打印日志。
+					-否则转发给专门方法获取实际的bean:@getObjectForBeanInstance()
 					#当name是&开头说明是FactoryBean：如果instance不是FactoryBean类型则要抛出错误。NullBean类型直接返回。否则继续。
 					#此时name可能：&开头的FactoryBean类型实例，不是&开头的任意类型。对于第一种，决定：直接返回。对于第二种：如果instance不是FactoryBean类型也直接返回。
 					#此时name可能：不是&开头的FactoryBean类型。后面的目的则为：要从factory里获取object，并且条件下执行处理器方法。
 						#由于： 效率考虑，工厂bean也进行缓存。决定：先从工厂bean缓存map:FactoryBeanRegistrySupport.factoryBeanObjectCache中取，有则直接返回它。
-						#此时如果缓存没有：决定：尝试通过instance这个FactoryBean获取。考虑到：bean工厂获取时如果这个bean是非合成类型，则有非合成bean需要postProcess事情，此时情况：instance强转Factory
-							@由于：判断bean是否合成类型是从它的RootBeanDefinition信息中判断，而RootBeanDefinition存在的条件是：DefaultListableBeanFactory.beanDefinitionMap包含name; 决定：看这个包含条件是否满足
-							@当条件满足：即包含这个name的定义--beanDefinitionMap中含有。获取bean的RootBeanDefinition信息mbd
+						#此时如果缓存factoryBeanObjectCache没有：决定：尝试通过instance这个FactoryBean获取。考虑到：bean工厂获取时如果这个bean是非合成类型，则有非合成bean需要postProcess事情，此时情况：instance强转Factory
+							@由于：判断bean是否合成类型是从它的RootBeanDefinition信息中判断，而RootBeanDefinition存在的条件是：DefaultListableBeanFactory.beanDefinitionMap包含name(@containsBeanDefinition()); 决定：看这个包含条件是否满足
+							@当条件满足：即包含这个name的定义--beanDefinitionMap中含有。获取bean的RootBeanDefinition信息mbd:@getMergedLocalBeanDefinition()
 								#当已融合的RootBeanDefinition map:mergedBeanDefinitions中包含时：取它，直接返回。
-								#没有则:先进行融合。融合的条件：BeanDefinition先找到。
-									@获取BeanDefinition：从map:DefaultListableBeanFactory.beanDefinitionMap里，没有则报错。
+								#没有则:先进行融合。融合的条件：BeanDefinition先找到。@getMergedBeanDefinition()
+									@获取BeanDefinition：从map:DefaultListableBeanFactory.beanDefinitionMap里，没有则抛异常new NoSuchBeanDefinitionException()。
 									@然后获取合并后的RootBeanDefinition(事情/任务)：考虑：到这种获取融合bean常见，决定：转发给一个统一入参的接口：AbstractBeanFactory.getMergedBeanDefinition()。
 										#考虑到性能：决定：使用同步块，先从已融合的beanDefinition map:AbstractBeanFactory.mergedBeanDefinitions里取，有则直接返回。
 										#如果此时该融合map里没有：则需要新建bean definition 和root bean definition并融合。具体步骤分为：
@@ -65,7 +67,7 @@
 													>考虑到属性传递接口通用：如果mpd有scope值，那么这里需要强制传递mbd的scope范围是：RootBeanDefinition.SCOPE_SINGLETON		
 													>最后的事情：将mpd放到融合bean definition map:AbstractBeanFactory.mergedBeanDefinitions.put(name, mpd)		
 							>由于：信息已经足够：决定：判断bd是否为合成类型--通过mbd中的字段判断。
-							@由于：工厂bean有了，合成类型也有了，FactoryBean类型的name也有了，决定从工厂bean中获取实例。FactoryBeanRegistrySupport.getObjectFromFactoryBean()
+							@由于：工厂bean有了，合成类型也有了，FactoryBean类型的name也有了，决定从工厂bean中获取实例。@FactoryBeanRegistrySupport.getObjectFromFactoryBean()
 								#当工厂bean管理的bean是单例模式 且 单例池singletonObjects里包含了name: 认为是单例模式，
 									#由于：多线程下可能多次调用创建：而进入同步块，再次尝试从FactoryBeanRegistrySupport.factoryBeanObjectCache里获取，取到则直接返回。
 									#没有则进行实质的通过factorybean来获取：对于这件事情，考虑到：从factorybean里获取可能需要权限，因此可能需要放到权限框架里，还有一些收尾工作。doGetObjectFromFactoryBean()
@@ -95,7 +97,7 @@
 									>返回object
 							>返回object 
 				#否则args为null或者instance为null: 
-					@当“正在创建中的bean集合”的线程局部变量prototypesCurrentlyInCreation里包含时：直接抛出异常。
+					@当“正在创建中的bean集合”的线程局部变量prototypesCurrentlyInCreation里包含时：直接抛出异常new BeanCurrentlyInCreationException()。
 					#此时则name没有在创建：此时考虑可能可以通过parentBeanFactory来获取bean,决定：获取parentBeanFactory
 					#如果此时parentBeanFactory不为null且还没有bean definition:即beanDefinitionMap里没有, 则决定通过parentBeanFactory来获取bean,具体过程如下：
 						@由于：可能出现递归的调用“通过factory来获取bean”方法，所以决定：获取name的原始name---就是权威名/&权威名(如果是工厂bean)
@@ -103,9 +105,9 @@
 							#否则不是这种类型，进一步如果args != null:则此时instance为null, 决定：使用args入参从bean工厂里获取实例：parentBeanFactory.getBean(原始name, args)	
 							#否则args==null, 进一步requiredType	如果!= null: 调用rt入参来获取parentBeanFactory.getBean(nameToLookup, requiredType)							
 							#否则就只能直接根据name获取：parentBeanFactory.getBean(nameToLookup)								
-					>否则此时：parentBeanFactory==null 或者已经有name的BeanDefinition了；考虑可能出现重复创建，所以先标记已经在创建：同步方式加到alreadyCreated:set中---且删除mergedBeanDefinitions里的同name key。显然只会加一次，移除一次。
+					>否则此时：parentBeanFactory==null 或者已经有name的BeanDefinition了；考虑可能出现重复创建，所以先标记已经在创建@markBeanAsCreated()：同步方式加到alreadyCreated:set中---且删除mergedBeanDefinitions里的同name key。显然只会加一次，移除一次。
 					>考虑后面会通过各种参数和条件而用不同路径创建bean, 决定：先通用的方法获取本地融合bean:getMergedLocalBeanDefinition(name) mbd
-						#如果mbd是抽象的：那么抛出错误。
+						#如果mbd是抽象的：那么抛出错误。@checkMergedBeanDefinition()
 					>进一步考虑：bean可能有依赖，依赖自然要先创建，所以决定：先从mbd获取所有的依赖名数组，并先将这些依赖逐个创建和注册。							
 						#当依赖不为null: 考虑到循环依赖，且接口常用，所以转发委托给专门的依赖检测接口：					
 							@循环依赖检测接口的检测：如果存在，则抛出异常。通过 权威名-依赖此name的set 这个map:DefaultSingletonBeanRegistry.dependentBeanMap来帮助判断：取出值集合dependentBeans。					
@@ -114,12 +116,14 @@
 								#否则检测dependentBeans的每个元素的依赖主 集合：即递归地往上找，是否在依赖主的依赖主 集合里依赖了该bean。				
 							@注册依赖bean: 一个是放到 name<-依赖name的set map:dependentBeanMap里--上面也会使用来帮助判断循环依赖，一个是放到name->被依赖的name的set map:dependenciesForBeanMap里---来在销毁依赖前，先把依赖的销毁。		
 							@开始真正的要做的事-:创建依赖bean: 由于这是一个常见的方法，且有多个入参接口，且显然也应该和最开始获取bean的接口一样，所以直接调用：AbstractBeanFactory.getBean(name)。。和最开始调用的方法一样。			
-					#当mbd是单例时：开始实质性的获取单例,而不是像之前的仅仅从缓存里。通过单例工厂方式。
+					#当mbd是单例时：开始实质性的获取单例,而不是像之前的仅仅从缓存里。先通过单例工厂方式：@getSingleton(String beanName, ObjectFactory<?> singletonFactory) 得到单例之后再@getObjectForBeanInstance()获取真正的实例bean
 						@考虑到：可能多线程创建，所以需要同步块，需要缓存---先判读是否单例池中存在,如果存在直接返回
 							#否则不存在：考虑到当前可能在运行销毁单例：所以从正在销毁单例池singletonsCurrentlyInDestruction中查看，有则抛出错误。
-							#此时的情况：则name没有创建在单例池也没有被销毁：开始常见的前面已经叙述的三段通知：
+							#开始单例创建之前的准备：@beforeSingletonCreation()
+								#如果beanName不在 ”创建检查例外集合“inCreationCheckExclusions 里 且 也添加到 正在创建的单例集合singletonsCurrentlyInCreation中失败--即已经存在了：抛异常new BeanCurrentlyInCreationException()
+							#此时的情况：则name没有创建在单例池也没有被销毁：开始常见的前面已经叙述的三段通知：来创建单例。
 								>前置处理：同前述
-								>单例工厂获取单例：singletonFactory.getObject()
+								>单例工厂获取单例：singletonFactory.getObject() 并且执行结果放到singletonObject，然后标记为新建newSingleton = true
 									>单例工厂为lamda注入：做的事情为：创建--->编织/异常则销毁
 										@创建：并且初始化、各种post-processors处理。createBean(String beanName, RootBeanDefinition mbd, @Nullable Object[] args)
 											@解析获取bean的Class对象：直接从mdb获取，或者：或许需要放到权限框架地：通过beanExpressionResolver.evaluate()入参为bean name/ 定义中的Scope来获取 评估结果：expressionParser.parseExpression()来获取表达式对象，使用该对象的Expression.getValue(EvaluationContext context)得到评估结果---可能和name一样或者是个Class类型对象。$$$$
@@ -1799,40 +1803,132 @@
 																	
 												>完成实质创建。							
 											>返回实质创建结果。
-											
-																
-															
-															
-															
-															
-															
-												
-												
-												
-												
-												
-												
-												
-												
-												
-								>后置处理：同前述 
-								>加入单例池：singletonObjects加入，单例工厂singletonFactories中移除name, 提前单例池earlySingletonObjects中移除，带注册顺序的注册单例池：registeredSingletons添加。
-							>返回单例。
-					#否则如果mbd是原型模式时：
+							>此时单例已经创建完毕--通过工厂。开始finally的必做之事：
+								>首先是例常方法：@afterSingletonCreation() 此时已经创建完毕。
+									>所以：先将beanName从singletonsCurrentlyInCreation中移除：如果失败了 且 beanName不在“检查例外集合”inCreationCheckExclusions内：那么抛出异常new IllegalStateException()							
+								>前面已经标记新建：需要添加到各个池里：@addSingleton()
+									>依次：加到singletonObjects/移除出singletonFactories/移除出earlySingletonObjects/加到registeredSingletons															
+					#否则如果mbd是原型模式时：也是三段方法：
+						@例行先标记正在创建原型：@beforePrototypeCreation()
+							#设置name到线程局部变量prototypesCurrentlyInCreation：如果这个变量是集合数据结构：先转后将name加入这个集合。
+						>开始实质的创建bean: @createBean()
+						@例行的移除标记：@afterPrototypeCreation()
+							#取出线程局部变量prototypesCurrentlyInCreation里的元素：是string直接移除remove,否则是集合从集合中移除。
+						>例行的获取实际的bean: @getObjectForBeanInstance()
 					#否则其他所有情况：
-				>如果创建的bean的类型就是参数中requireType，需要做一些后续处理：		
-													
-													
-													
+						>从scopes:map里获取Scope对象：如果是null,抛new IllegalStateException("No Scope registered for scope name '" + scopeName + "'")
+						-以Scope.get()方式获取值对象：
+							-以ServletContextScope实现为例：先从servletContext里取name的值，无则调用注入的obj工厂开始.getObject(),然后设置属性回去：name-这个取得的对象。返回这个对象。
+							>注入的lamda obj工厂的实现：也是典型的三段式：@beforePrototypeCreation() @createBean(beanName, mbd, args) @afterPrototypeCreation(beanName)
+						>取得这个实例后，开始真正获取单例：@getObjectForBeanInstance()
+					-下面是其他的一些事情。
+					>如果创建的bean的类型不是参数中requireType要求的类型，需要做一些后续处理：	调用转换器进行 按需转换.	
+						>取转换器+按需转换：@getTypeConverter().convertIfNecessary()
+						#转换结果如果是null: 抛new BeanNotOfRequiredTypeException()
+				>返回单例。
  >AbstractBeanFactory.getBean(String name, Class<T> requiredType)开始的：
- 
- 
- 
- 
- 
- 
- 
- 
+>刷新方法：@refresh()
+	>准备数据：@prepareRefresh()
+		>初始化部分占位符资源：@initPropertySources() 实际什么也没做。
+		>创建一个标准环境来验证要求的属性：@StandardEnvironment.validateRequiredProperties()
+			>直接转发调用占位符的@ConfigurablePropertyResolver.validateRequiredProperties() ---内容就是看有没有requiredProperties属性里的所有属性，如果有一个没有，都抛出异常。
+	>刷新内部bean工厂：@AbstractApplicationContext.obtainFreshBeanFactory()	
+		>先刷新bean工厂：@refreshBeanFactory()
+			-以AbstractRefreshableApplicationContext为例：
+				#如果已经有了bean工厂：先将bean摧毁然后关闭bean工厂：
+					#摧毁@destroyBeans()
+						>直接使用@bf.destroySingletons()
+							>递归先父类：然后清空manualSingletonNames属性--手工注册的单例。再清空类型匹配：@clearByTypeCache(): allBeanNamesByType/singletonBeanNamesByType
+					>关闭@closeBeanFactory()
+						>并非直接置空：而是先将序列化id:serializationId=null再将beanFactory=null处理。
+				#再重建工厂：@createBeanFactory()	
+					#如果parent是ConfigurableApplicationContext类型：取parent的bf, 否则直接取parent,设置到一个新建的new DefaultListableBeanFactory()里。
+					#使用当前上下文初始化定制化bf: @customizeBeanFactory() /allowCircularReferences/allowBeanDefinitionOverriding 属性转移 
+					#加载bean定义：@loadBeanDefinitions()
+						-对AnnotationConfigWebApplicationContext实现：
+							>创建注解bean定义阅读器：new AnnotatedBeanDefinitionReader()对象：
+								>需要注册所有的注解 后置处理器：@AnnotationConfigUtils.registerAnnotationConfigProcessors()
+									>解包装获取DefaultListableBeanFactory类型的bf:@unwrapDefaultListableBeanFactory()
+									>按条件bf注入依赖比较器：dependencyComparator:AnnotationAwareOrderComparator.INSTANCE, 自动绑定候选解析器：@autowireCandidateResolver()
+									>按条件bdr注入处理器：org.springframework.context.annotation.internalConfigurationAnnotationProcessor:new RootBeanDefinition()  @AnnotationConfigUtils.registerPostProcessor()  注册就是注册到bf.beanDefinitionMap里。
+													同理注入：org.springframework.context.annotation.internalAutowiredAnnotationProcessor/org.springframework.context.annotation.internalCommonAnnotationProcessor/org.springframework.context.annotation.internalPersistenceAnnotationProcessor/org.springframework.context.event.internalEventListenerProcessor/org.springframework.context.event.internalEventListenerFactory
+									
+							>创建类路径bean定义阅读器：new ClassPathBeanDefinitionScanner()对象：
+									>注册默认的过滤器：@registerDefaultFilters()
+										>加到属性includeFilters里：new AnnotationTypeFilter(Component.class)/其他Class:javax.annotation.ManagedBean/javax.inject.Named
+									>设置资源加载器：resourcePatternResolver = ResourcePatternUtils.getResourcePatternResolver()	
+																this.metadataReaderFactory = new CachingMetadataReaderFactory(resourceLoader);
+																this.componentsIndex = CandidateComponentsIndexLoader.loadIndex(this.resourcePatternResolver.getClassLoader());
+							>再次注入bf单例：org.springframework.context.annotation.internalConfigurationBeanNameGenerator/		
+							>开始统一的注册：annotatedClasses如果不是null:开始统一的注册：AnnotatedBeanDefinitionReader.register()	
+								>转发到@registerBean()
+									@转发到@doRegisterBean()
+										>一个bean从new AnnotatedGenericBeanDefinition()开始，设置它的各种属性，最后封装到new BeanDefinitionHolder()里，进一步的转移@AnnotationConfigUtils.applyScopedProxyMode()
+										>然后是注册定义和别名：@BeanDefinitionReaderUtils.registerBeanDefinition()
+											>即@registry.registerBeanDefinition(beanName, definitionHolder.getBeanDefinition()) --到beanDefinitionMap属性。
+											>第二：@registry.registerAlias()注册别名。--到aliasMap属性。
+							>如果basePackages不是null:那么要从基本包路径下开始加载：调用@scanner.scan()开始加载。
+								>中间转发给：@doScan() 在给定包下寻找要注册的所有bean定义。
+									>遍历所有的包：
+										>对每个包：@findCandidateComponents() 获取候选定义集合
+											>按条件从索引里找到候选定义：@addCandidateComponentsFromIndex()
+												>从类型过滤器开始：遍历includeFilters， 对每个TypeFilter：找到模式---即注解的名称：@extractStereotype(), 根据这个名称从CandidateComponentsIndex.index中找到List<Entry>,再找到Entry匹配包的entry的type名，构成一个集合返回。
+												>遍历这个type集合：对每个type
+													>通过前面的metadataReaderFactory获取metadata reader： 也就是构造一个str="classpath:" + clsName + ".class"的Resource对象，封装到new SimpleMetadataReader() 这个reader。
+													>利用reader看是否是候选组件：	@isCandidateComponent() 内容也是利用excludeFilters/includeFilters的TypeFilter进行的类型匹配：@match(), 有一个匹配到或者被conditionEvaluator忽略，则都不是候选。
+													>新建一个sbd:new AnnotatedGenericBeanDefinition(metadataReader.getAnnotationMetadata())
+													>如果这个sbd匹配到了：@isCandidateComponent(sbd)---即元数据表明有Lookup注解且抽象 等条件； 则 将这个bd加入候选：
+													
+											>其他情况直接从包下找到候选定义：@scanCandidateComponents()
+												>包路径的占位符先解析：@resolveBasePackage(basePackage)
+												>构造Class搜索路径：packageSearchPath=classpath*:packageSearchPath/**/*.class
+												>加载为Resource[]: new PathMatchingResourcePatternResolver().getResources()
+													>方法1：@findPathMatchingResources() --要判断:bundle/vfs/不是jar 三种类型处理。
+														>即便从jar里获取也可：@PathMatchingResourcePatternResolver.doFindPathMatchingJarResources()
+															>使用JarFile封装，遍历这个jf：得到JarEntry， 再将它名称当路径封装到Resource对象
+														>一般的：@doFindPathMatchingFileResources() 路径匹配与封装：new ServletContextResource() / new FileSystemResource()
+												>遍历这些资源：对每个： 取得元数据reader:MetadataReader
+													>是候选：@isCandidateComponent()则封装Resource到新建的一个new ScannedGenericBeanDefinition()里 ,将这个sbd加入候选集合。
+										>遍历候选定义集合： 对每个候选定义 
+											>解析出ScopeMetadata: @scopeMetadataResolver.resolveScopeMetadata() 从而得到scope名 来设置到候选定义。
+											>如果候选是AbstractBeanDefinition类型：设置更多属性：@postProcessBeanDefinition()
+												>应用默认属性：设置进去beanDefinition.applyDefaults(new BeanDefinitionDefaults());
+													>包括：setLazyInit/setAutowireMode/setDependencyCheck/setInitMethodName/setEnforceInitMethod/setDestroyMethodName/setEnforceDestroyMethod
+												>设置额外的属性：setAutowireCandidate()这个布尔是一个匹配结果：PatternMatchUtils.simpleMatch()
+											#否则如果是AnnotatedBeanDefinition类型：转发给AnnotationConfigUtils.processCommonDefinitionAnnotations()
+												>转发给@processCommonDefinitionAnnotations() 
+													>也设置属性若干：setLazyInit:元数据里Lazy注解属性/setPrimary:Lazy/setDependsOn:DependsOn/setRole:Role/setDescription:Description
+											#检验候选是否冲突等：@checkCandidate()
+											#如果正常-可以注册：
+												>候选转移到new BeanDefinitionHolder()
+												#再次重新转移：@AnnotationConfigUtils.applyScopedProxyMode() 为bh
+												>加入外层bean定义集合：
+												>注册这个bh:@registerBeanDefinition() 内部统一的@BeanDefinitionReaderUtils.registerBeanDefinition()
+
+								>注册注解处理器：@AnnotationConfigUtils.registerAnnotationConfigProcessors()
+							>开始加载资源地址数组：@getConfigLocations()
+								>遍历这个地址数组：对每个资源：当做类名：反射加载Class,再注册：@reader.register(clazz)
+					>加载bd完毕：赋值this.beanFactory=新的bf，后返回。
+	>事3：bf的准备：@prepareBeanFactory() 加载器-处理器等的配置
+		>设置的属性包括：beanExpressionResolver/属性编辑器仓库propertyEditorRegistrars/
+		>增加的处理器：new ApplicationContextAwareProcessor(this) 
+		>特殊方式如感知方式注册依赖：ignoredDependencyInterfaces属性：EnvironmentAware/EmbeddedValueResolverAware/ResourceLoaderAware/ApplicationEventPublisherAware/MessageSourceAware/ApplicationContextAware			
+		>注册可解析的依赖：@registerResolvableDependency() 添加到map:resolvableDependencies里。BeanFactory/ResourceLoader/ApplicationEventPublisher/ApplicationContext 四大类型的值：bf/this/this/this
+		>增处：new ApplicationListenerDetector(this)
+		>如果bf里包括loadTimeWeaver名的bean: 增处：new LoadTimeWeaverAwareProcessor(), 设置临时类加载器new ContextTypeMatchClassLoader()
+		>bf如果不含：environment/systemProperties/systemEnvironment 都要注册对应的环境属性单例@bf.registerSingleton()---内容是加到manualSingletonNames属性里。
+			>数据都从new StandardEnvironment()里获取 
+		>允许后置处理器：实际无动作@postProcessBeanFactory()
+		>实例化和激活部分处理器：@invokeBeanFactoryPostProcessors()
+			>先转发：@PostProcessorRegistrationDelegate.invokeBeanFactoryPostProcessors() 入参为获取的全部bfpp:beanFactoryPostProcessors属性
+				>遍历每个入参bf后置处理器：
+					#如果是 类型：应用@postProcessBeanDefinitionRegistry()方法
+						-如ConfigurationClassPostProcessor实现：加到registriesPostProcessed属性，再@processConfigBeanDefinitions()统一处理。
+				>从bf里获取BeanDefinitionRegistryPostProcessor 类型的处理器全部来遍历：@beanFactory.getBeanNamesForType(BeanDefinitionRegistryPostProcessor) 来找出实现了PriorityOrdered的处理器来应用@postProcessBeanDefinitionRegistry()方法	
+ 				>从bf里获取 BeanDefinitionRegistryPostProcessor类型的处理器全部来遍历：@beanFactory.getBeanNamesForType(BeanDefinitionRegistryPostProcessor) 来找出实现了Ordered的处理器来应用@postProcessBeanDefinitionRegistry()方法	
+				>对所有的处理器:应用@postProcessBeanFactory()方法
+				>再beanFactory.getBeanNamesForType(BeanFactoryPostProcessor)取出来应用：先实现了PriorityOrdered的@postProcessBeanFactory(), 后实现了Ordered的同方法，再其他类的其他方法。
+				>最后清除元数据：@beanFactory.clearMetadataCache()
  
  
  
