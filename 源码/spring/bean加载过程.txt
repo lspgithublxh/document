@@ -1727,27 +1727,77 @@
 																-对ApplicationContextAwareProcessor实现：直接返回 
 																	
 												>事情5：提前暴露模式的缓存处理：
-													
+													#如果前面已经确定当前bean允许提前暴露 并且 正在创建中： 需要检查
+														#仅仅从单例池或者提前单例池中获取单例：而不备选从单例工厂里取单例的引用：@getSingleton()
+														#如果引用earlySingletonReference不是null: 进一步处理。
+															#如果初始化之后的对象引用exposedObject和bw的包装实例一样：那么exposedObject=earlySingletonReference赋值一下。
+															#否则开始寻找：提前引用了某个bean,后来这个bean层层封装，但是后来缺没有被引用，则要抛出异常：过程是：
+																>处理条件：this.allowRawInjectionDespiteWrapping=false即不允许原始注入--即便最后包装 且 beanName存在被其他bean当属性之类来依赖：@hasDependentBean()
+																	>获取这些依赖beanName的bean:@getDependentBeans() 并且遍历：对每个name:
+																		#直接检查：@@removeSingletonIfCreatedForTypeCheckOnly()
+																			#如果这个name没有被创建过一次：即alreadyCreated(高版本)属性没有包含：那么需要从单例池等里移除，且返回true。移除的地点：singletonObjects/singletonFactories/earlySingletonObjects/registeredSingletons/factoryBeanObjectCache
+																			#否则：相当于创建过1次，则返回false,即没有执行移除动作。
+																		#如果检查结果false:那么创建过(name存在高版本)，将这个name加到一个依赖列表actualDependentBeans里。
+																	>如果上述依赖列表不是空：则抛出创建异常：new BeanCurrentlyInCreationException() 因为不允许原始注入 但实际上注入的又是原始的beanName
+																
 												>事情6：一次性注册bean: @registerDisposableBeanIfNecessary()
-																					
-																					
-																					
-																					
-																					
-																					
-																					
-																					
-																					
-																					
-																					
-																			
-																			
-																			
-																			
-																			
-																			
-																			
-																			
+													#如果mbd不是原型模式 且 要求销毁@requiresDestruction()								
+														#有销毁方法：@DisposableBeanAdapter.hasDestroyMethod()							
+															>如果是DisposableBean/AutoCloseable类型：返回true 
+															>如果mbd的销毁方法名@getDestroyMethodName()是：(inferred), 那么只要有close/shutdown方法都是有销毁方法的。
+															#否则是用户自定义的只要销毁方法名不是空串，都是有的。
+														#或者有解构感知bean后置处理器hasDestructionAwareBeanPostProcessors=true 且 查询一下可能有的解构后置处理器：@DisposableBeanAdapter.hasApplicableProcessors()
+															>遍历所有的处理器：如果是DestructionAwareBeanPostProcessor类型：那么查看是否有解构处理方法：@requiresDestruction()---一般直接返回true/false
+															-只要有一个有：都返回true,否则才false 
+													#如果mbd是单例模式：注册销毁方法：@registerDisposableBean()	入参为new DisposableBeanAdapter()
+														@首先是@new DisposableBeanAdapter() 工作主要为属性设置
+															#一个是销毁方法激活条件invokeDisposableBean：bean是 DisposableBean类型 且 destroy方法不是外部管理@isExternallyManagedDestroyMethod()--即externallyManagedDestroyMethods属性包含？						
+															#查看内部的销毁方法destroyMethodName：@inferDestroyMethodIfNecessary()和上述的(inferred)类似： 
+															#如果这个destroyMethodName是“destroy”：那么带安全框架地获取同名的最小参数销毁方法：@determineDestroyMethod()
+															#如果这个方法是null且定义又强制有：@isEnforceDestroyMethod() 则抛定义验证异常new BeanDefinitionValidationException()
+															#否则获取这个销毁方法的参数：如果参数个数>1 抛异常new BeanDefinitionValidationException()。如果参数个数为1但类型不是boolean也抛出异常new BeanDefinitionValidationException()
+															>过滤寻找全部处理器中DestructionAwareBeanPostProcessor类型的且要求解构@requiresDestruction()的处理器：返回。
+														@然后是注册一次性销毁的bean: registerDisposableBean()直接注册注入map:disposableBeans里。	
+													#否则：看Scope：如果是null:抛new IllegalStateException()
+														#否则注册销毁回调@scope.registerDestructionCallback()：入参也是new DisposableBeanAdapter()
+															-对AbstractRequestAttributesScope实现的销毁回调注册：
+																#从当前上下文里取请求的属性：@RequestContextHolder.currentRequestAttributes()
+																	#依次是线程局部变量requestAttributesHolder/备为线程局部变量inheritableRequestAttributesHolder里取:RequestAttributes
+																	#如果请求属性是null: 先加载javax.faces.context.FacesContext类 ，成功后开始面板方式创建：@FacesRequestAttributesFactory.getFacesRequestAttributes()
+																		>获取面板上下文：@FacesContext.getCurrentInstance()
+																		>封装新建面板请求而返回：new FacesRequestAttributes(facesContext)
+																	#如果还是null:抛new IllegalStateException()
+																>开始使用请求属性注册回调：@registerDestructionCallback()
+																	-对于FacesRequestAttributes实现：毫无动作。
+																	-对ServletRequestAttributes实现：
+																		#如果当前scope是REQUEST:那么@registerRequestDestructionCallback()
+																			#其实就是存入map:requestDestructionCallbacks
+																		#否则@registerSessionDestructionCallback()
+																			#获取session: @obtainSession()
+																				#直接转发：@getSession(true)
+																					#如果请求激活了：@requestActive=true
+																						>从请求里获取：request.getSession(true)
+																							-对HttpServletRequestWrapper实现：直接调用apache的@ApplicationHttpRequest.getSession(true)
+																								>核心是从上下文获取：@context.getManager().findSession()//org.apache.catalina.core.ApplicationHttpRequest.context
+																									-对org.apache.catalina.session.PersistentManagerBase实现：
+																										>而核心是内部的一个map:sessions属性。
+																										>第二核心是一个创建session的方法：@createSession(sessionId)
+																											>先是一个基本内容为空的：new StandardSession(Manager)//Manager=rg.apache.catalina.session.ManagerBase
+																												>设置accessCount=new AtomicInteger() 
+																												>设置manager=入参manager
+																											>然后设置基本属性：new=true/valid=true/creationTime=当前时间/maxInactiveInterval=sessionTimeout*60
+																												>如果sessionId是null:生成一个：@generateSessionId()
+																													>通过 org.apache.catalina.util.StandardSessionIdGenerator.generateSessionId("")循环式创建---即sessions存在就重新创建。sessionId.len=16
+																														>创建SecureRandom对象：SHA1PRNG算法。SecureRandom.getInstance(secureRandomAlgorithm)
+																														>赋值byte[16]:random.nextBytes(bytes)		
+																														>遍历这个bytes: 转换为字符串：规则为：
+																															>高四位变成整数：转为十六进制数的字符形式-数字或者字符
+																															>低四位也变成整数：转为十六进制数的字符形式-数字或者字符
+																														>这样，总共得到了32个十六进制字符。
+																											>新建 SessionTiming timing = new SessionTiming(session.getCreationTime(), 0) 加到Deque:sessionCreationTiming并弹出一个。	
+																			>往session里增加一个属性：“ServletRequestAttributes.DESTRUCTION_CALLBACK”+beanName， 值为new DestructionCallbackBindingListener(callback) callback就是最开始的new DisposableBeanAdapter()对象。
+																	
+												>完成实质创建。							
 											>返回实质创建结果。
 											
 																
