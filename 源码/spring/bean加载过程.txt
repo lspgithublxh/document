@@ -1929,10 +1929,65 @@
 				>对所有的处理器:应用@postProcessBeanFactory()方法
 				>再beanFactory.getBeanNamesForType(BeanFactoryPostProcessor)取出来应用：先实现了PriorityOrdered的@postProcessBeanFactory(), 后实现了Ordered的同方法，再其他类的其他方法。
 				>最后清除元数据：@beanFactory.clearMetadataCache()
- 
- 
- 
- 
+	>事4：开始注册bean后置处理器：@registerBeanPostProcessors()
+		>直接转发：@PostProcessorRegistrationDelegate.registerBeanPostProcessors()
+			>直接从bean工厂里寻找bean后置处理器类型的所有类名：@beanFactory.getBeanNamesForType(BeanPostProcessor)
+			-过滤的中间直接增加一个 检查 bean后置处理器：@new BeanPostProcessorChecker()
+			>遍历前述获取的处理器名数组： 对每个处理器名 
+				>依次@bf.isTypeMatch()匹配了PriorityOrdered类型的bean处理器,从bf.getBean()里获取出来，进一步实现了MergedBeanDefinitionPostProcessor的处理器也找出来， 匹配Ordered的处理器也找出来分别放到不同的处理器集合里。
+				>依次增加实现了PriorityOrdered类型/Ordered类型/其他独立类型/MergedBeanDefinitionPostProcessor类型的所有bean处理器：bf.addBeanPostProcessor() 加到bf里。
+				>最后增加监听器类型的bean后置处理器：new ApplicationListenerDetector()
+	>事5：初始化消息资源：@initMessageSource()
+		#如果bf包含messageSource名的bean: 则取出赋值给AbstractApplicationContext.messageSource
+			#如果这个ms是HierarchicalMessageSource类型：则要向上递归赋值：设置parentMessageSource=@getInternalParentMessageSource()即取父的ms
+		#否则设置：AbstractApplicationContext.messageSource=new DelegatingMessageSource() 设置parentMessageSource=@getInternalParentMessageSource()
+		>最后将这个 ms注册到bf/加到bf: name=messageSource, v=this.messageSource  这个@bf.registerSingleton() 注册都是注册到 bf.manualSingletonNames属性。
+	>事6：初始化应用事件广播器：@initApplicationEventMulticaster()	
+		#如果bf包含“applicationEventMulticaster”bean:@containsLocalBean() 内容就是 singletonObjects/beanDefinitionMap包含。：那么取出来getBean(ApplicationEventMulticaster) 设置到this.applicationEventMulticaster这个属性里：
+		#否则构造new SimpleApplicationEventMulticaster(beanFactory)来设置 到 AbstractApplicationContext.applicationEventMulticaster属性。同时注册到bf:k=applicationEventMulticaster 自然的。
+	>事7：初始化特殊的bean:在实例化之前：@onRefresh() 尽管内容无。		
+	>事8：注册监听器：@registerListeners()
+		>取属性中的所有监听器：applicationListeners， 遍历：对每个：
+			>调用应用事件广播器：加入应用监听器：applicationEventMulticaster.addApplicationListener()
+				>先获取监听器原来的单例目标：@AopProxyUtils.getSingletonTarget() ---内容仅仅 看如果是Advised/SingletonTargetSource 实例 则 取target 
+				>如果找到了这个单例目标-：且是ApplicationListener类型：因监听器不能监听监听器 则移除出this.defaultRetriever.applicationListeners	
+				>将监听器加入：defaultRetriever.applicationListeners。 同时缓存map:retrieverCache 清空 
+		>取bf里的所有ApplicationListener监听器：@getBeanNamesForType(ApplicationListener) 遍历：对每个	
+			>使用广播器直接添加到：@addApplicationListenerBean() 到 this.defaultRetriever.applicationListenerBeans里。清空retrieverCache
+		>取属性中earlyApplicationEvents：存的是全部事件：遍历全部事件、开始广播事件ApplicationEvent：
+			>调用广播器广播事件：@multicastEvent()
+				>直接转发给@multicastEvent()
+					>获取事件对应的监听器：自然是@getApplicationListeners()-@retrieveApplicationListeners() 最终是从this.defaultRetriever.applicationListeners/this.defaultRetriever.applicationListenerBeans里取 匹配到 事件类型的：
+					>遍历监听器：或使用Executor地执行：内容为执行@invokeListener()
+						>核心为转发@doInvokeListener(): 内容即调用执行@ApplicationListener.onApplicationEvent(ApplicationEvent)  将事件广播于每个监听器。
+	>事9: 实例化所有非non-lazy-init的单例：@finishBeanFactoryInitialization()					
+		#如果bf包含转换服务Bean:name=conversionService, 且匹配ConversionService类型：那么 获取出来设置给bf.conversionService属性。
+		#如果bf没有嵌入值解析器：@hasEmbeddedValueResolver() 那么增加一个-加入到bf.embeddedValueResolvers属性：内容为用环境来执行@ConfigurableEnvironment.resolvePlaceholders(strVal	)
+		#取bf里所有LoadTimeWeaverAware类型的bean name出来：遍历：@getBean()创建。
+		#设置bf.setTempClassLoader(null)
+		#缓存所有元数据：冻结：@freezeConfiguration()内容为：configurationFrozen=true, frozenBeanDefinitionNames=beanDefinitionNames
+		#实质的实例化non-lazy-init单例：@preInstantiateSingletons()
+			#遍历beanDefinitionNames属性：对每个
+				#先融合得到rbd:@getMergedLocalBeanDefinition():bd
+				#对于非抽象非延迟的单例：
+					#如果是工厂bean： 取bean执行@isEagerInit()
+			#再次遍历：取单例，如果实现了SmartInitializingSingleton类型：带安全框架地执行@afterSingletonsInstantiated()方法。
+	>事9：发布上下文刷新事件，执行LifecycleProcessor's onRefresh()：@finishRefresh()
+		>resourceCaches属性清空
+		>无论有或者没有：注册new DefaultLifecycleProcessor() 设置到lifecycleProcessor属性。再执行@.onRefresh()方法。	
+			>转发@startBeans()设置this.running=true
+		>发布刷新事件：@publishEvent(new ContextRefreshedEvent(this))
+		>注册自己了：@LiveBeansView.registerApplicationContext()
+			#取spring.liveBeansView.mbeanDomain名的bean,
+			#往MBeanServer里注册 new LiveBeansView() - new ObjectName(mbeanDomain, MBEAN_APPLICATION_KEY, applicationName)
+			#属性applicationContexts添加了一个上下文。
+	>事10：必做：@resetCommonCaches()
+		>ReflectionUtils.clearCache();
+		>AnnotationUtils.clearCache();
+		>ResolvableType.clearCache();
+		>CachedIntrospectionResults.clearClassLoader()  包含：acceptedClassLoaders/strongClassCache/softClassCache
+	---刷新 方法完成。 
+
 世界观： 
  >容器：具有活跃、关闭状态。
  >bean注册器中的单例: 
