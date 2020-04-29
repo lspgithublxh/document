@@ -2007,7 +2007,16 @@
 																								>replace方法提取和设置：@parseReplacedMethodSubElements() replaced-method名称的 name/replacer  , 子元素里还有match 
 																								>构造方法解析：@parseConstructorArgElements() constructor-arg 名称的：@parseConstructorArgElement()--解析index/type/name封装到new ConstructorArgumentValues.ValueHolder(value)设置。
 																								>属性解析：@parsePropertyElements() property 名称的@parsePropertyElement()  name/value设置new PropertyValue(propertyName, val)   解析元数据@parseMetaElements() meta/key/value 来设置new BeanMetadataAttribute()
-																								>qualifier属性解析：@parseQualifierElements() qualifier名称的@parseQualifierElement() type/value/key/value/attribute
+																								>qualifier属性解析：@parseQualifierElements() qualifier名称的@parseQualifierElement() type/value/key/value/attribute   new AutowireCandidateQualifier() - new BeanMetadataAttribute()
+																							>beanName生成：@XmlReaderContext.generateBeanName()	
+																								>构造开始：@BeanDefinitionReaderUtils.generateBeanName() -- 构造 new DefaultBeanNameGenerator().generateBeanName()
+																									>一般规则：	beanClassName为主：有parent则加$child， 有factoryBeanName则$created ， 内部则#hashcode
+																							>构造如new BeanDefinitionHolder()返回。
+																						>再装饰：@decorateBeanDefinitionIfRequired()
+																							>根据Element的全部属性进行：@decorateIfRequired()
+																								>使用readerContext.namespaceHandlerResolver.resolve(namespaceUri)解析获取
+																									>属性入map:@CollectionUtils.mergePropertiesIntoMap()  属性Properties从handlerMappingsLocation里加载。
+																									>从这个map里取入参url对应的handlerOrClassName
 																				#否则beans：则@doRegisterBeanDefinitions(Element ele)
 																			>否则用户空间：则用法2：@delegate.parseCustomElement(ele)
 																>否则直接以下解析：
