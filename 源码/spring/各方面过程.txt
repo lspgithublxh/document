@@ -33,7 +33,21 @@
 	 >getObject():自己实例化一个对象返回，而初始值可以标签注入，标签的属性同类的属性名。标签的class=xxx.AFactoryBean这个工厂类的bean。而&id还可以获取到这个FactoryBean
 	 >getObjectType():
 	 >isSingleton(): 
- >spring-aop:
+ >spring-aop: 
+	>AspectJ:  是一个代码编译工具。类似Java Complier Complier是写切面文件， 后编译时植入到Class代码中，且运行时需要专门的运行jar包。
+		>语法： public aspect xxx{	
+					pointcut xxxname():
+						call(void *targeClassName.linkPointmethodName());
+					before():	xxxname(){
+						System.out.println("start before");
+					}
+					after() returning():	xxxname(){
+						System.out.pringlin("after execute");
+					}
+				}
+		>植入效果(切面应用到目标对象)：是在切点方法在调用时--即用户编写的某个工程下的所有文件下某处调用了切点方法-连接点方法：则在调用的前后按定义增加前置通知/后置通知/环绕通知。---编译时织入。
+	>java 动态代理不能对没有实现接口的类进行的原因：//错误理解：生成的新的代理类 实现了用户接口但是同时继承了Proxy类，java不支持多继承。	
+		
  >spring-context: ApplicationContext优先级更高于BeanFactory的加载bean的。AbstractApplicationContext.refresh()方法。
   >refresh()过程：
    >prepareRefresh()-initPropertySources()；配置环境的初始化，属性源初始化如propertySource，开发者自己进行。如对属性environment--(为ConfigurableEnvironment类型)里的MutablePropertySources类型的属性propertySources设置两个key:servletContextInitParams和servletConfigInitParams他们的值如ServletConfigPropertySource类型。检测有空的key会报错。
@@ -53,4 +67,8 @@
 >目标3：会话活动图。
 >目标4：理解开发不能让完成什么功能就只实现某种功能：不完成更多附加的功能--如统计/日志/监控---方便以后1.出问题找原因2.新需求在此基础上轻松开发3.实时监控开发的功能评估效果4.以后统计数据不会窘迫困难甚至无法得出准确数据。不能让做什么就只做什么。
 
+
+
+>经验：
+	>经验1：使用eclipse java search可以实现在jar里寻找某个方法名出现的所有类。
 

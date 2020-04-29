@@ -15,6 +15,9 @@
 //情况-通用处理。
 //情况-精细结构。
 //数据结构-与处理。
+//某个时刻某个地方：所有可能用户做的事情。
+
+
 
 >加载bean: 
  >AbstractApplicationContext.getBean(String name)开始的：
@@ -1908,6 +1911,125 @@
 								>注册注解处理器：@AnnotationConfigUtils.registerAnnotationConfigProcessors()
 							>开始加载资源地址数组：@getConfigLocations()
 								>遍历这个地址数组：对每个资源：当做类名：反射加载Class,再注册：@reader.register(clazz)
+						-对AbstractXmlApplicationContext实现：因为这个实现的子类是ClassPathXmlApplicationContext，是xml文件解析的入口。所以它的实现需要稍微了解。
+							>先将bf注入xml reader: new XmlBeanDefinitionReader(bf)
+							>再配置这个reader: 环境:environment/直接取this的--即创建一个new StandardEnvironment()。resourceLoader=自己this就是。SAX实体解析器：entityResolver=new ResourceEntityResolver(this)
+							>开始客户化的实现：@initBeanDefinitionReader()
+								>简单验证设置：@reader.setValidating(this.validating)入参值是true
+									>验证模式设置：validationMode=自动模式VALIDATION_AUTO   ， 然后namespaceAware=false  即要使用xml验证。
+							>开始加载bf定义：@loadBeanDefinitions()	
+								>取configResources配置的资源开始用reader加载：@reader.loadBeanDefinitions()
+									>遍历资源数组：对每个资源对象：
+										>转发@XmlBeanDefinitionReader.loadBeanDefinitions()并重新封装入参为new EncodedResource(resource)
+											>使用线程局部变量resourcesCurrentlyBeingLoaded存储Set<EncodedResource>：这个集合可以用来检测循环加载xml：--避免。
+											>转换：Resource->InputSource, 转发给@doLoadBeanDefinitions()
+												>非常干脆：@doLoadDocument()解析为Document对象。
+													>先取验证模式：@getValidationModeForResource()--默认为VALIDATION_XSD
+													>再直接转发@documentLoader.loadDocument()加载：
+														>构造documentfactory:DocumentBuilderFactory: @createDocumentBuilderFactory()
+															>工厂方法：@DocumentBuilderFactory.newInstance() 
+																>内部反射加载：com.sun.org.apache.xerces.internal.jaxp.DocumentBuilderFactoryImpl类。
+																>同时加载$java.home/lib/jaxp.properties文件到Properties属性：FactoryFinder.cacheProps   当然只加载一次。
+															>再设置一些常规属性：略。
+														>创建documentbuilder:@createDocumentBuilder()
+															>来源DocumentBuilder: factory.newDocumentBuilder()	设置其他属性。略。
+														>开始document的解析构造：@builder.parse(inputSource)。后面与spring无关，不再述。因为parse()的实例为：com.sun.org.apache.xerces.internal.jaxp.DocumentBuilderImpl
+												>在注册这个document为bd对象：@registerBeanDefinitions(doc, resource)
+													>先建bd的文档阅读器：@createBeanDefinitionDocumentReader() BeanDefinitionDocumentReader
+														>直接加载@BeanUtils.instantiateClass(this.documentReaderClass) 此类就是DefaultBeanDefinitionDocumentReader
+													>创建阅读器上下文：@createReaderContext()
+														>直接返回new XmlReaderContext()， 入参包括：@getNamespaceHandlerResolver()
+															>创建默认的@createDefaultNamespaceHandlerResolver()设置到XmlBeanDefinitionReader.namespaceHandlerResolver属性。
+																>默认的为：new DefaultNamespaceHandlerResolver(cl)
+																	>入参有：META-INF/spring.handlers 这个字符串  作为handlerMappingsLocation属性的值。
+													>开始用reader注册：@reader.registerBeanDefinitions()
+														>直接转发：@doRegisterBeanDefinitions(Element root)
+															>创建代理：@createDelegate()
+																>实现：new BeanDefinitionParserDelegate(readerContext) 
+																>用实现初始化一下：@initDefaults()
+																	>转发：@populateDefaults()注入常规的bd属性。从属性defaults=new DocumentDefaultsDefinition()里。
+																	>使用reader上下文fire一下默认注册事件：@readerContext.fireDefaultsRegistered(this.defaults)
+																		>转发@eventListener.defaultsRegistered() 实际没有操作。 
+															>查看入参Element有没有profile属性：如果有，对值先,;分割
+																>如果环境不接受这个数组：那么要直接返回，不再后续解析。接受条件：@acceptsProfiles()  
+																	>如果！开头一个不活跃@isProfileActive()就返回true,
+																		>否则先取全部：@AbstractEnvironment.doGetActiveProfiles()
+																			>从环境里取出spring.profiles.active属性。去全部空白之类。
+																			>将值以,逗号分隔：添加到AbstractEnvironment.activeProfiles属性里。
+																		>如果上述集合包含入参值：那么接受。
+																	>否则一个活跃@isProfileActive()直接返回true
+															-开始常见三段论：
+															>预解析：@preProcessXml() 无内容
+															>实际解析：@parseBeanDefinitions()
+																>查询Element root的默认名称空建是：http://www.springframework.org/schema/beans 则开始以下解析：
+																	>取全部孩子节点：遍历：
+																		>对每个：如果Node是Element类型：开始处理：
+																			>如果默认空间：则用法1：@parseDefaultElement() 分类解析：
+																				>如果Element名为import： 则@importBeanDefinitionResource()解析 
+																					>必须有resource属性：否则报错。
+																					>对此属性的值进行占位符替换：@resolveRequiredPlaceholders() 比如可能出现${user.dir}占位符。 
+																						>转发调用@propertyResolver.resolveRequiredPlaceholders()
+																					>如果是url/uri(classpath*:开头或者classpath:开头都属于): 则再次转发@AbstractBeanDefinitionReader.loadBeanDefinitions()	
+																						>使用资源解析器resourceLoader解析这个url/uri为资源数组：@resourceLoader.getResources(location)
+																							>再次@findPathMatchingResources()实现来获取Resource[] 
+																							#或者通过加载器cl.getResources(path)来实现---封装到new UrlResource()
+																						>处理资源数组：@loadBeanDefinitions()，对每个资源：直接@loadBeanDefinitions()
+																							>再次直接@loadBeanDefinitions(new EncodedResource(resource))
+																							-此时实现只能看PropertiesBeanDefinitionReader的：否则递归了。
+																								>先将资源封装到new InputStreamReader()
+																								>再用属性持久化工具进行加载到Properties对象：@propertiesPersister.load()  - new DefaultPropertiesPersister()
+																								>加载之后利用这个Properties注册：@registerBeanDefinitions(Map<?, ?> map, @Nullable String prefix, String resourceDescription)
+																									>遍历这个properties的键值对：是xxx.yyy[zzz] 模式。
+																									>认为xxx是beanName: 要从bean注册仓库bf访问的beanDefinitionMap属性中看 是否包含：没有包含开始注册这个bean:@registerBeanDefinition(String beanName, Map<?, ?> map, String prefix, String resourceDescription)
+																										>继续遍历map：外层构造一个new MutablePropertyValues()对象，将map里的k-v 设置到这个pvs里，另一部分设置到一个新建的定义@BeanDefinitionReaderUtils.createBeanDefinition()---内容：new GenericBeanDefinition()为主设置属性， pvs也设置到这里。
+																										>使用仓库bf开始注册：@bf.registerBeanDefinition(String beanName, BeanDefinition beanDefinition)--也就是注册到beanDefinitionMap里。
+																					>否则直接加载：@getReaderContext().getResource().createRelative() ---路径封装到new FileUrlResource()			
+																						>接着使用的加载方式也类似：也是注册Resource形式进行。
+																					>最后要使用reader上下文发布一个import-处理 事件：@fireImportProcessed()
+																						>定义封装到new ImportDefinition()而执行@EmptyReaderEventListener.importProcessed()	发布--实际上空。									
+																														
+																				#否则如果alias: 则@processAliasRegistration()
+																					>name/alias属性获取：后先注册@registerAlias()后激活事件@fireAliasRegistered()
+																						>注册就是注册到aliasMap属性里。
+																						>激活：就是发布事件@eventListener.aliasRegistered(new AliasDefinition()) 事情为空。不做任何事。
+																				#否则bean: 则@processBeanDefinition()
+																					>先让委托解析为bdh：@delegate.parseBeanDefinitionElement()
+																						>统一转发到@parseBeanDefinitionElement(Element ele, @Nullable BeanDefinition containingBean)
+																							>解析id,name
+																							>检查name唯一：@checkNameUniqueness(): 内部set:usedNames辅助。
+																							>再次解析@parseBeanDefinitionElement(Element ele, String beanName, @Nullable BeanDefinition containingBean)
+																								>查看class,parent属性，
+																								>创建bd:@BeanDefinitionReaderUtils.createBeanDefinition()  -new GenericBeanDefinition()
+																								>设置常见bd属性：@parseBeanDefinitionAttributes()
+																								>取子元素的description值设置：description
+																								>元数据如meta设置：@parseMetaElements()
+																								>lookup子元素设置：@parseLookupOverrideSubElements() lookup-method名称的  name/bean, 封装和设置new LookupOverride(methodName, beanRef)
+																								>replace方法提取和设置：@parseReplacedMethodSubElements() replaced-method名称的 name/replacer  , 子元素里还有match 
+																								>构造方法解析：@parseConstructorArgElements() constructor-arg 名称的：@parseConstructorArgElement()--解析index/type/name封装到new ConstructorArgumentValues.ValueHolder(value)设置。
+																								>属性解析：@parsePropertyElements() property 名称的@parsePropertyElement()  name/value设置new PropertyValue(propertyName, val)   解析元数据@parseMetaElements() meta/key/value 来设置new BeanMetadataAttribute()
+																								>qualifier属性解析：@parseQualifierElements() qualifier名称的@parseQualifierElement() type/value/key/value/attribute
+																				#否则beans：则@doRegisterBeanDefinitions(Element ele)
+																			>否则用户空间：则用法2：@delegate.parseCustomElement(ele)
+																>否则直接以下解析：
+															>解析后：@postProcessXml()无内容
+								>然后取configLocations配置的资源开始reader加载：主要看这个默认的路径：如果configLocations没有配置：需要设置为默认的：@getDefaultConfigLocations()
+									-以XmlWebApplicationContext实现为例：
+										#如果名称空间不是null: 则默认路径设置为：/WEB-INF/namespace/.xml
+										#否则为：/WEB-INF/applicationContext.xml
+									
+							
+							
+							
+							
+							
+							
+							
+							
+							
+							
+							
+							
+							
 					>加载bd完毕：赋值this.beanFactory=新的bf，后返回。
 	>事3：bf的准备：@prepareBeanFactory() 加载器-处理器等的配置
 		>设置的属性包括：beanExpressionResolver/属性编辑器仓库propertyEditorRegistrars/
@@ -1987,6 +2109,12 @@
 		>ResolvableType.clearCache();
 		>CachedIntrospectionResults.clearClassLoader()  包含：acceptedClassLoaders/strongClassCache/softClassCache
 	---刷新 方法完成。 
+-----------------------------------------------------------------------专题：spring-aop 
+
+
+>应用1：切面->通知->事务拦截器(来对拦截到的方法进行事务增强)
+-----------------------------------------------------------------------专题：spring-web 
+-----------------------------------------------------------------------专题：spring-security 
 
 世界观： 
  >容器：具有活跃、关闭状态。

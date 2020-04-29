@@ -1,0 +1,33 @@
+//品味：慢慢。广问，嵌套问
+//spring的逻辑结构：情况-要做的事情； 数据-要做的事情：
+//流程动作> 调用方法@  分支判断# 
+//世界观：*
+//不止是为了单单为了实现这单一的功能仅此而已，必须考虑更多(情况)做更多(事情，准备；化被动为主动去做)，而不是直接仅仅只做什么。
+//考虑-决定-预防-收益/影响/后果-预测下一步要做什么(甚至下n步)
+//大的想法，具体行动。
+//出现了if-else就是因为有不同的考虑。
+//阅读文档达到直接可以看出思路编写程序的清晰逻辑的地步。
+//一个大函数功能直接看懂而描述。
+//从网上找答案变为从源码中找答案。
+//功能组织体系，而不是动作实现体系。是目标，是事情，而不是精细到实现方案的动作。
+//数据源-数据结果模式：而不是全部动作过程。
+//能够主动猜某个方法的功能和猜测它的实现。
+//情况-通用处理。
+//情况-精细结构。
+//数据结构-与处理。
+//某个时刻某个地方：所有可能用户做的事情。
+
+>从new ClassPathXmlApplicationContext(String path, Class<?> clazz)开始：
+	>层层转发到统一的入参处理接口：ClassPathXmlApplicationContext(String[] paths, Class<?> clazz, @Nullable ApplicationContext parent)
+		>先设置一个null的parent参数：层层super(parent)向上，直到AbstractApplicationContext(): 会有更多的动作：
+			>先this():设置resourcePatternResolver=new PathMatchingResourcePatternResolver(this) 
+			>后设置parent: @setParent():parent=null 因为此时parent是null:后续本来可能的parent环境和本环境合并merge()忽略。
+		>遍历入参路径：映射为new ClassPathResource()对象，设置到configResources属性。
+			>路径需要整理：@StringUtils.cleanPath()
+				>替换：\为/
+				>截取：:冒号后面的内容为真正需要使用的
+				#如果真正使用的以/开头：那么截掉。
+				>将这个真路径 按/截划为字符串数组：@delimitedListToStringArray()
+				>遍历字符串数组：合并.. 字符和左边的非..和.的字符串，即路径合并。
+				>再次拼出合并后的路径：@collectionToDelimitedString()返回。
+		>转发调用@AbstractApplicationContext.refresh();	
