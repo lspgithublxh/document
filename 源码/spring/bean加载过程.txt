@@ -147,8 +147,82 @@
 														#当检测出的targetType不为null: 开始初始化前的处理器通知applyBeanPostProcessorsBeforeInstantiation
 															@由于处理器通知是常见的，所以统一接口：此时关注实例化前通知方法，所以以一个具体方法来走处理器责任链。
 																#遍历所有BeanPostProcessors: 对所有的InstantiationAwareBeanPostProcessor类型的处理器：
-																	@调用对应方法来尝试获取代理：但是不会层层编织--只会编织一次--InstantiationAwareBeanPostProcessor.postProcessBeforeInstantiation(targetType, beanName)
+																	@调用对应方法来尝试获取代理：但是不会层层编织--只会编织一次--InstantiationAwareBeanPostProcessor.postProcessBeforeInstantiation(targetType, beanName) 其中SmartInstantiationAwareBeanPostProcessor是子接口。
 																		#如果结果不为null:则返回这个结果。最后否则返回null。
+																		-特别的；要对这个方法的实现类做探讨：因为aop代理的一个processor精心实现了这个方法：这个处理器就是 AbstractAutoProxyCreator，一个处理器其实就是一个上下文：对全部bean都有缓存记录特性。
+																			>获取缓存键@getCacheKey():类名 ,工厂类则加&前缀。
+																			>如果set:targetSourcedBeans不包含入参beanName: 则进行通知判断：
+																				>通知beans集合已经包含了：map:advisedBeans则返回。
+																				>如果beanName是不应该被代理的基础设施类：@isInfrastructureClass()  或者是 应该被忽略的类@shouldSkip() :那么直接将这个cacheKey放到advisedBeans里表示不能被代理。直接返回。
+																					>忽略判断：直接转发@AutoProxyUtils.isOriginalInstance()
+																						>如果beanName结尾是.ORIGINAL 就是true
+																			>如果有目标资源：开始创建它的代理：
+																				>获取目标资源@getCustomTargetSource()
+																					>从数组AbstractAutoProxyCreator.customTargetSourceCreators属性遍历：匹配@TargetSource.getTargetSource()得出。匹配到一个就返回
+																						>创建目标资源：看QuickTargetSourceCreator实现：@createBeanFactoryBasedTargetSource()
+																							>beanName如果是:开头：返回new CommonsPool2TargetSource()类型。
+																							>%开头：new ThreadLocalTargetSource() 
+																							>!开头：new PrototypeTargetSource()
+																						>创建内部工厂：@getInternalBeanFactoryForBean() 缓存模式：map:internalBeanFactories
+																							>创建内部工厂：用bf: @buildInternalBeanFactory()
+																								>用入参封装：new DefaultListableBeanFactory()
+																								>属性转移：@copyConfigurationFrom()
+																								>从这个工厂中移除 AopInfrastructureBean 类型的 beanPostProcessor 
+																								>返回这个工厂。放到internalBeanFactories属性。
+																						>获取合并bd:@beanFactory.getMergedBeanDefinition()封装到new GenericBeanDefinition(bd)：bdcopy
+																						>用上述工厂注册bdcopy:@internalBeanFactory.registerBeanDefinition(beanName, bdCopy)  --也是到beanDefinitionMap里。
+																				>资源如果不是null:
+																					>那么先 将beanName加到targetSourcedBeans集合。
+																					>获取全部通知和通知者：@getAdvicesAndAdvisorsForBean(beanClass, beanName, targetSource)
+																						>获取合格的通知者：@findEligibleAdvisors(beanClass, beanName)
+																							>获取所有的候选通知者：@findCandidateAdvisors()
+																								>通过@advisorRetrievalHelper.findAdvisorBeans() 获取通知者beans。这个属性是new BeanFactoryAdvisorRetrievalHelperAdapter(bf)类型。 
+																									>先要取或者设置通知者类数组到：cachedAdvisorBeanNames属性。
+																										>获取方法：从bf里取@BeanFactoryUtils.beanNamesForTypeIncludingAncestors(Advisor.class) 即通知者类型的集合
+																									>遍历这个通知者类型集合：对每个：合法验证：@isEligibleBean()	--直接返回true 
+																										>如果正在bf创建中：@isCurrentlyInCreation()那么什么也不做。
+																										>否则从bf里取出放到list:Advisor里：@beanFactory.getBean(name, Advisor.class)
+																								>上面获取的仅仅是候选通知者：开始过滤出可以应用的通知者集合：@findAdvisorsThatCanApply()
+																									>设置当前线程正在代理的bean实例：@ProxyCreationContext.setCurrentProxiedBeanName() 到一个线程局部变量：ProxyCreationContext.currentProxiedBeanName
+																									>实际的过滤：@AopUtils.findAdvisorsThatCanApply()
+																										>第一次遍历：对每个： 
+																											>如果是IntroductionAdvisor类型 且能应用@canApply() :那么加入合法的通知者集合里。
+																												>直接转发@canApply()
+																													>通过advisor的@classFilter.matches(targetClass)来匹配----内容：DefaultIntroductionAdvisor实现是直接返回true
+																										>第二次遍历：对每个： 
+																											>如果是IntroductionAdvisor类型 直接忽略：否则继续：以下：
+																												>直接转发@canApply() 如果能应用，加入合法通知者集合。
+																													>如果是PointcutAdvisor类型：转发@canApply(Pointcut pc, Class<?> targetClass, boolean hasIntroductions)
+																														>再次classFilter匹配：@matches()没匹配到直接返回false 。
+																														>看Pointcut的MethodMatcher：如果是true: 返回true 
+																														>取全部接口来遍历：
+																															>取每个接口的每个方法：遍历看方法上匹配的：@IntroductionAwareMethodMatcher.matches(), MethodMatcher.matches()
+																																>取Method的ShadowMatch: @getTargetShadowMatch()  有always,never属性判断。
+																																>或者看Method是否有专门的注解：以AnnotationMethodMatcher实现为例：	略。
+																									>扩展合法通知者：@extendAdvisors() 空
+																									>排序通知者：@sortAdvisors()	 AnnotationAwareOrderComparator为比较器。
+																									>设置空：类似三段论。
+																						>非空转数组返回，否则空。
+																					>开始创建代理：@createProxy()
+																						>先在融合bean定义里加“org.springframework.aop.framework.autoproxy.AutoProxyUtils.originalTargetClass”->目标类Class 
+																						>新建代理工厂：new ProxyFactory()
+																						>评估接口或者设置proxyTargetClass：@evaluateProxyInterfaces() -实际是拦截器都需要代理实现的。
+																						>构建通知者数组：@buildAdvisors() 进行一层包装如可能：new DefaultPointcutAdvisor()
+																						>客户化定制：@customizeProxyFactory()空	
+																						>获取代理返回：@proxyFactory.getProxy(getProxyClassLoader())
+																						--对代理工厂：需要看@invoke()方法：因为这里真正的使用了advisors
+																							>对最终普通的代理：先获取方法的拦截器链：@advised.getInterceptorsAndDynamicInterceptionAdvice(Method method, @Nullable Class<?> targetClass) 采用缓存模式。
+																								>缓存链的获取：@advisorChainFactory.getInterceptorsAndDynamicInterceptionAdvice()
+																									>核心内容就是获取通知数组：Advisor[]：advisorArray来遍历。对每个：
+																										>如果是PointcutAdvisor类型： 
+																											>如果通知的切点的过滤器链匹配了入参类：@pointcutAdvisor.getPointcut().getClassFilter().matches(actualClass)则：
+																												>获取切点的MethodMatcher：
+																													>无论是否IntroductionAwareMethodMatcher类型：都要匹配入参方法：@MethodMatcher.matches()
+																														>如果匹配到了了：取advisor的拦截器：@DefaultAdvisorAdapterRegistry.getInterceptors()
+																															>如果是Advisor是MethodInterceptor类型：自己就要加。
+																															>再从List<AdvisorAdapter> adapters:DefaultAdvisorAdapterRegistry里补充：而AdvisorAdapter三种类型：AfterReturningAdviceAdapter/MethodBeforeAdviceAdapter/ThrowsAdviceAdapter
+																																>只要是这三种类型：获取拦截器：@getInterceptor(Advisor advisor) 加入拦截器列表。
+																																	>封装返回new AfterReturningAdviceInterceptor(advisor.getAdvice())
 														#当上述处理器通知返回的结果不为null时：需要进行后置处理器处理---前面有使用过。applyBeanPostProcessorsAfterInitialization	
 															@同样，后置处理器处理也是统一的接口：应用通知，只需要直接获取所有的处理器，直接调用后置方法BeanPostProcessor.postProcessAfterInitialization(result, beanName)层层编织。
 																#编织的结果为null: 则直接返回上次编织的结果。
@@ -859,8 +933,14 @@
 																											#只要满足：充分使用、代理目标类、无用户提供代理接口：									
 																												#如果目标类是接口，或者已经是一个代理类(代理缓存中)：	返回jdk动态代理：new JdkDynamicAopProxy(config)							
 																												#其他情况：使用cglib来代理：new ObjenesisCglibAopProxy()								
-																											#否则都是用jdk动态代理：new JdkDynamicAopProxy()									
-																									@得到的代理获取代理实例：@getProxy():	JdkDynamicAopProxy/CglibAopProxy两类实现：										
+																											#否则都是用jdk动态代理：new JdkDynamicAopProxy()	
+																												>这个类里的advised.advisorArray就是一个Advisor[]数组
+																									@得到的代理获取代理实例：@getProxy():	JdkDynamicAopProxy/CglibAopProxy两类实现：
+																										-以JdkDynamicAopProxy实现为例：
+																											>先取代理要实现的接口：@AopProxyUtils.completeProxiedInterfaces(this.advised, true)
+																												>直接AdvisedSupport.interfaces属性就是：遍历。
+																												>可能要在末尾加几个：只要这个interfaces里有SpringProxy/Advised/DecoratingProxy	
+																											>动态代理：@Proxy.newProxyInstance()
 																							>如果此时得到的代理是null: 重新解析依赖@doResolveDependency()	
 																						>返回代理。	
 																			#如果参数值类型是String：直接bean工厂评估：@evaluateBeanDefinitionString()
@@ -1160,8 +1240,8 @@
 																						#看是否是一个合理的代理接口：@isConfigurationCallbackInterface() 容器配置回调则不是合理的。不合理的包括：InitializingBean/AutoCloseable/DisposableBean/Closeable/接口里有Aware：@ObjectUtils.containsElement() 
 																						#看是否是一个内部语言接口：@isInternalLanguageInterface() 是内部语言接口那么是不能代理的。这些接口类包括：name: 相等于groovy.lang.GroovyObject， 结尾与.cglib.proxy.Factory，结尾于.bytebuddy.MockAccess
 																						>如果上述两个条件都表明：这是一个可以的代理接口，那么直接退出循环。认为合理。
-																					#如果认为合理：那么开始代理接口：即把接口加入代理工厂：proxyFactory.addInterface()
-																					#否则不合理：仅仅设置为代理类：setProxyTargetClass()
+																					#如果认为合理：那么开始代理接口：即把接口都加入代理工厂：proxyFactory.addInterface()---内部加到interfaces属性。
+																					#否则不合理：仅仅设置为代理类：setProxyTargetClass(true)
 																			>开始构建加入通知和拦截器：@buildAdvisors()	共同拦截器和具体拦截器都加入。
 																				#先解析具体拦截器：@resolveInterceptorNames()
 																					#遍历拦截器名数组：AbstractAutoProxyCreator.interceptorNames
@@ -1917,7 +1997,7 @@
 							>开始客户化的实现：@initBeanDefinitionReader()
 								>简单验证设置：@reader.setValidating(this.validating)入参值是true
 									>验证模式设置：validationMode=自动模式VALIDATION_AUTO   ， 然后namespaceAware=false  即要使用xml验证。
-							>开始加载bf定义：@loadBeanDefinitions()	
+							>开始加载bf定义：@AbstractXmlApplicationContext.loadBeanDefinitions()	
 								>取configResources配置的资源开始用reader加载：@reader.loadBeanDefinitions()
 									>遍历资源数组：对每个资源对象：
 										>转发@XmlBeanDefinitionReader.loadBeanDefinitions()并重新封装入参为new EncodedResource(resource)
@@ -2016,9 +2096,20 @@
 																						>根据Element的全部属性进行迭代层层装饰：@decorateIfRequired()
 																							-当检查node不是默认名称空间时：开始以下解析：
 																							>使用readerContext.namespaceHandlerResolver.resolve(namespaceUri)解析获取NamespaceHandler
-																								>属性入map:@CollectionUtils.mergePropertiesIntoMap()  属性Properties从handlerMappingsLocation里加载。
-																								>从这个map里取入参url(node.getNamespaceURI())对应的handlerOrClassName， 反射加载为Clas。
-																								>实例化：@BeanUtils.instantiateClass(handlerClass) 。初始化：@namespaceHandler.init();
+																								>属性入map:@CollectionUtils.mergePropertiesIntoMap()  属性Properties从handlerMappingsLocation里加载。而值在：默认实现DefaultNamespaceHandlerResolver里是META-INF/spring.handlers
+																									>而spring-beans中的这个handlers文件里的内容为：http\://www.springframework.org/schema/c=org.springframework.beans.factory.xml.SimpleConstructorNamespaceHandler
+																																	http\://www.springframework.org/schema/p=org.springframework.beans.factory.xml.SimplePropertyNamespaceHandler
+																																	http\://www.springframework.org/schema/util=org.springframework.beans.factory.xml.UtilNamespaceHandler
+																									>而spring-aop中的这个handlers文件里的内容为：http\://www.springframework.org/schema/aop=org.springframework.aop.config.AopNamespaceHandler
+																								>从这个map里取入参url(node.getNamespaceURI())对应的handlerOrClassName， 反射加载为Clas:。
+																								>实例化：@BeanUtils.instantiateClass(handlerClass) 为NamespaceHandler类型。初始化：@namespaceHandler.init();
+																									-从上述的spring.handlers文件内容来看：常见的实现 AopNamespaceHandler 有必要看：初始化:init()方法； 核心：装饰方法@decorate()。
+																										>初始化方法：@init()
+																											>注册aop空间下的各个标签的解析器：注册方法@registerBeanDefinitionParser()--内容就是放到map:NamespaceHandlerSupport.parsers属性里---此属性后面有提到。
+																												>标签："config", 解析器：new ConfigBeanDefinitionParser()
+																												>标签："aspectj-autoproxy", 解析器：new AspectJAutoProxyBeanDefinitionParser()
+																												>标签：“scoped-proxy”，装饰器：new ScopedProxyBeanDefinitionDecorator()  -- 这个特殊：调用@registerBeanDefinitionDecorator()来注册。即放到map:NamespaceHandlerSupport.decorators属性里。
+																												>标签："spring-configured", 解析器：new SpringConfiguredBeanDefinitionParser()
 																							>此时找到了namespaceURI对应的NamespaceHandler: 开始用来装饰@handler.decorate() 入参包括：new ParserContext()
 																								>寻找节点装饰器：@findDecoratorForNode()
 																									>即从如果node时Element类型--> 用node.getLocalName()从map:decorators取/如果时 Attr类型则从map:attributeDecorators里取.
@@ -2041,8 +2132,8 @@
 																				#否则beans：则@doRegisterBeanDefinitions(Element ele) 嵌套进行递归调用。
 																			>否则用户空间：则用法2：@delegate.parseCustomElement(ele)
 																				>转发为统一入参的：@parseCustomElement()
-																					>也是根据reader上下文获取名称空间解析器 根据 namespaceUri 来解析 得到 名称空间handler: NamespaceHandler:@readerContext.getNamespaceHandlerResolver().resolve(namespaceUri)
-																					>使用这个namespaceHandler来解析：@parse();
+																					>也是根据reader上下文获取名称空间解析器 根据 namespaceUri 来解析 得到 名称空间handler: NamespaceHandler:@readerContext.getNamespaceHandlerResolver().resolve(namespaceUri)。。namespaceHandlerResolver.
+																					>使用这个namespaceHandler来解析：@NamespaceHandlerSupport.parse();
 																						>转发给@findParserForElement()来获取BeanDefinitionParser解析器。
 																							>自然是从属性map:parsers里匹配一个出来。入参为localName
 																						>然后用这个名称空间下的bd解析器来解析@bdp.parse()
@@ -2059,16 +2150,21 @@
 																								>bd重新封装到BeanDefinitionHolder后注册：@BeanDefinitionReaderUtils.registerBeanDefinition()
 																								>发布事件@postProcessComponentDefinition()实际无。
 																								>再发布：@readerContext.fireComponentRegistered()也无。
+																							-以前面说的aop的 namespacehandler注册了AspectJAutoProxyBeanDefinitionParser解析类为例：
+																								>如果有必要：注册aspectJ相关的注解：@AopNamespaceUtils.registerAspectJAnnotationAutoProxyCreatorIfNecessary(ParserContext parserContext, Element sourceElement)
+																								>bd定义扩展：@extendBeanDefinition()
+																									>从bf中取出“org.springframework.aop.config.internalAutoProxyCreator”的bd定义(上一步注册中已经注册了)：beanDef， 如果element有孩子：调用@addIncludePatterns(),入参就有这个beanDef
+																										>方法实现下面有述。填充bf多属性值，增加“includePatterns”：模式列表ManagedList<TypedStringValue>。
 																							-以AspectJAutoProxyBeanDefinitionParser例：
 																								>注册AspectJ注解creator: @AopNamespaceUtils.registerAspectJAnnotationAutoProxyCreatorIfNecessary()
 																									>转发@AopConfigUtils.registerAspectJAnnotationAutoProxyCreatorIfNecessary()			
 																										>转发实际注册@registerOrEscalateApcAsRequired():入参AnnotationAwareAspectJAutoProxyCreator.class		
 																											>实际注册到map: beanDefinitionMap, key=org.springframework.aop.config.internalAutoProxyCreator	, value=new RootBeanDefinition(cls)设置其他属性后端值
-																										>可能需要代理：
-																											>如果有proxy-target-class属性则需要@useClassProxyingIfNecessary()	
-																												>仅仅bd里的属性值MutablePropertyValues增加proxyTargetClass=true
+																										>可能需要代理：@useClassProxyingIfNecessary()
+																											>如果有proxy-target-class属性则需要	@AopConfigUtils.forceAutoProxyCreatorToUseClassProxying(registry)
+																												>仅仅org.springframework.aop.config.internalAutoProxyCreator这个bd里的属性值MutablePropertyValues增加proxyTargetClass=true
 																											>如果有expose-proxy属性需要@forceAutoProxyCreatorToExposeProxy()	
-																												>仅仅bd里的属性值MutablePropertyValues增加exposeProxy=true
+																												>仅仅org.springframework.aop.config.internalAutoProxyCreator这个bd里的属性值MutablePropertyValues增加exposeProxy=true
 																										>可能需要注册部件：@registerComponentIfNecessary()
 																											>用解析上下文注册组件：@封装到new BeanComponentDefinition(org.springframework.aop.config.internalAutoProxyCreator) 再@ParserContext.registerComponent()
 																												>实际内容仅仅为发送事件：@fireComponentRegistered()--也是空。
@@ -2091,31 +2187,40 @@
 																													>即bd的多属性值里添加：“transactionManagerBeanName”=@TxNamespaceHandler.getTransactionManagerName(element)取得的事务管理类名 element的transactionManager属性。
 																												>上下文注册：@parserContext.registerBeanComponent()
 																										>反射加载javax.transaction.Transactional类：成功了则：
-																											>注册切面：@registerJtaTransactionAspect()
-																												
+																											>注册jta切面：@registerJtaTransactionAspect()
+																												>类似，如果定义map里没有org.springframework.transaction.config.internalJtaTransactionAspect：
+																													>构造new RootBeanDefinition()，工厂方法=aspectOf，
+																														>注册事务管理器：@registerTransactionManager()
+																															>即bd的多属性值里添加：“transactionManagerBeanName”=@TxNamespaceHandler.getTransactionManagerName(element)取得的事务管理类名 element的transactionManager属性。
+																														>上下文注册：@parserContext.registerBeanComponent()					
+																																			
 																									>否则应该是proxy:	转发@AopAutoProxyConfigurer.configureAutoProxyCreator(element, parserContext)							
-
-
-																							
-																>否则直接以下解析：
+																										>类似的注册creator:@AopNamespaceUtils.registerAutoProxyCreatorIfNecessary()												
+																											>转发注册@AopConfigUtils.registerAutoProxyCreatorIfNecessary()
+																												>转发注册@registerOrEscalateApcAsRequired(InfrastructureAdvisorAutoProxyCreator) 	
+																											>如果没有org.springframework.transaction.config.internalTransactionAdvisor这个定义，那么：												
+																												>构造一个new RootBeanDefinition("org.springframework.transaction.annotation.AnnotationTransactionAttributeSource"):sourceDef
+																												>生成名称来注册：@registerWithGeneratedName()
+																													>名：@generateBeanName(beanDefinition)
+																													>注册：@registerBeanDefinition(generatedName, beanDefinition)
+																												>构造事务拦截器：new RootBeanDefinition(TransactionInterceptor):interceptorDef
+																												@注册事务管理器：@registerTransactionManager()	
+																												>拦截器的多属性值增加:"transactionAttributeSource"->new RuntimeBeanReference()										
+																												@注册这个拦截器：@registerWithGeneratedName(RootBeanDefinition)										
+																												>构造事务属性资源通知：new RootBeanDefinition(BeanFactoryTransactionAttributeSourceAdvisor.class):advisorDef
+																												>添加属性：“transactionAttributeSource”->new RuntimeBeanReference() 同时增加上一步得到的拦截器名：“adviceBeanName”-->xxname	
+																												>注册这个通知：@registerBeanDefinition(txAdvisorBeanName, advisorDef)，txname=org.springframework.transaction.config.internalTransactionAdvisor
+																												>构造复合组件： new CompositeComponentDefinition(element.getTagName(), eleSource):compositeDef将上述sourceDef/interceptorDef/advisorDef	封装到compositeDef.addNestedComponent(new BeanComponentDefinition(sourceDef, sourceName))添加进来。
+																												>然后用上下文注册：@parserContext.registerComponent(compositeDef)	--仅仅发布事件。
+				
+																>否则直接以下解析：delegate.parseCustomElement(root)直接根节点的客户标签解析。
 															>解析后：@postProcessXml()无内容
-								>然后取configLocations配置的资源开始reader加载：主要看这个默认的路径：如果configLocations没有配置：需要设置为默认的：@getDefaultConfigLocations()
-									-以XmlWebApplicationContext实现为例：
-										#如果名称空间不是null: 则默认路径设置为：/WEB-INF/namespace/.xml
-										#否则为：/WEB-INF/applicationContext.xml
-									
-							
-							
-							
-							
-							
-							
-							
-							
-							
-							
-							
-							
+								>然后取configLocations配置的资源开始reader加载：@AbstractBeanDefinitionReader.loadBeanDefinitions(String... locations)
+									-在资源获取时，这个默认的路径：如果configLocations没有配置：需要设置为默认的：@getDefaultConfigLocations()
+										-以XmlWebApplicationContext实现为例：
+											#如果名称空间不是null: 则默认路径设置为：/WEB-INF/namespace/.xml
+											#否则为：/WEB-INF/applicationContext.xml
+									>最终也会查询转换为Resource对象数组：先用资源加载器((ResourcePatternResolver) resourceLoader).getResources(location)解析转换为资源数组，而转调用@XmlBeanDefinitionReader.loadBeanDefinitions(Resource resource) 
 							
 					>加载bd完毕：赋值this.beanFactory=新的bf，后返回。
 	>事3：bf的准备：@prepareBeanFactory() 加载器-处理器等的配置
