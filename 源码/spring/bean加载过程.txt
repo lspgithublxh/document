@@ -2012,13 +2012,91 @@
 																								>构造开始：@BeanDefinitionReaderUtils.generateBeanName() -- 构造 new DefaultBeanNameGenerator().generateBeanName()
 																									>一般规则：	beanClassName为主：有parent则加$child， 有factoryBeanName则$created ， 内部则#hashcode
 																							>构造如new BeanDefinitionHolder()返回。
-																						>再装饰：@decorateBeanDefinitionIfRequired()
-																							>根据Element的全部属性进行：@decorateIfRequired()
-																								>使用readerContext.namespaceHandlerResolver.resolve(namespaceUri)解析获取
-																									>属性入map:@CollectionUtils.mergePropertiesIntoMap()  属性Properties从handlerMappingsLocation里加载。
-																									>从这个map里取入参url对应的handlerOrClassName
-																				#否则beans：则@doRegisterBeanDefinitions(Element ele)
+																					>再装饰：@decorateBeanDefinitionIfRequired()
+																						>根据Element的全部属性进行迭代层层装饰：@decorateIfRequired()
+																							-当检查node不是默认名称空间时：开始以下解析：
+																							>使用readerContext.namespaceHandlerResolver.resolve(namespaceUri)解析获取NamespaceHandler
+																								>属性入map:@CollectionUtils.mergePropertiesIntoMap()  属性Properties从handlerMappingsLocation里加载。
+																								>从这个map里取入参url(node.getNamespaceURI())对应的handlerOrClassName， 反射加载为Clas。
+																								>实例化：@BeanUtils.instantiateClass(handlerClass) 。初始化：@namespaceHandler.init();
+																							>此时找到了namespaceURI对应的NamespaceHandler: 开始用来装饰@handler.decorate() 入参包括：new ParserContext()
+																								>寻找节点装饰器：@findDecoratorForNode()
+																									>即从如果node时Element类型--> 用node.getLocalName()从map:decorators取/如果时 Attr类型则从map:attributeDecorators里取.
+																								>得到BeanDefinitionDecorator之后开始调用它的装饰：@decorator.decorate() 入参包括BeanDefinitionHolder对象
+																									-以aop相关的AbstractInterceptorDrivenBeanDefinitionDecorator实现为例：
+																										>根据Node创建bd:@createInterceptorDefinition()
+																											>创建new BeanDefinitionBuilder(new RootBeanDefinition()):interceptor 设置beanClass=MethodSecurityInterceptor.clas 
+																											>给interceptor进行属性设置：自动绑定。 增加属性：“accessDecisionManager”---new RuntimeBeanReference() , "authenticationManager"---new RuntimeBeanReference()
+																											>获取Element的protect下的所有元素：@DomUtils.getChildElementsByTagName()
+																											>遍历这个Element列表：对每个封装为BeanDefinitionBuilder.rootBeanDefinition(SecurityConfig.class).getBeanDefinition()放到一个 mappings里，最后加到new RootBeanDefinition(MapBasedMethodSecurityMetadataSource.class)元素里，此元素以“securityMetadataSource”属性名加到interceptor里，
+																											>返回interceptor的bd。
+																										>将得到的 BeanDefinition封装到 new BeanDefinitionHolder()再注册：@BeanDefinitionReaderUtils.registerBeanDefinition()
+																											>即注册到beanDefinitionMap/aliasMap
+																										>对于入参definitionHolder 当它的bd的beanClassName是ProxyFactoryBean时： 要封装到new RootBeanDefinition()，再封装到new BeanDefinitionHolder()---来最为最终返回值。	
+																										>否则直接返回。	
+																						>再根据ChildNodes再次再次装饰：@decorateIfRequired()
+																					>再将返回装饰后的bdh注册：@BeanDefinitionReaderUtils.registerBeanDefinition()
+																					>最后发布一个新增组件定义的事件：@fireComponentRegistered(new BeanComponentDefinition())
+																						>发布一个注册事件：@eventListener.componentRegistered(componentDefinition) 但内容为空
+																				#否则beans：则@doRegisterBeanDefinitions(Element ele) 嵌套进行递归调用。
 																			>否则用户空间：则用法2：@delegate.parseCustomElement(ele)
+																				>转发为统一入参的：@parseCustomElement()
+																					>也是根据reader上下文获取名称空间解析器 根据 namespaceUri 来解析 得到 名称空间handler: NamespaceHandler:@readerContext.getNamespaceHandlerResolver().resolve(namespaceUri)
+																					>使用这个namespaceHandler来解析：@parse();
+																						>转发给@findParserForElement()来获取BeanDefinitionParser解析器。
+																							>自然是从属性map:parsers里匹配一个出来。入参为localName
+																						>然后用这个名称空间下的bd解析器来解析@bdp.parse()
+																							-以AbstractBeanDefinitionParser实现为例：
+																								>先构造一个简单的AbstractBeanDefinition：@parseInternal()
+																									-以AbstractSingleBeanDefinitionParser实现为例：
+																										>构造一个空壳：BeanDefinitionBuilder： @BeanDefinitionBuilder.genericBeanDefinition()
+																										>设置常见的属性放到rawBeanDefinition原生定义里。及其他简单属性。
+																										>然后@doParse() 实际无内容 
+																										>后直接返回bdb的bd
+																									
+																								>对这个bd进一步填充：
+																									>id属性/name属性/
+																								>bd重新封装到BeanDefinitionHolder后注册：@BeanDefinitionReaderUtils.registerBeanDefinition()
+																								>发布事件@postProcessComponentDefinition()实际无。
+																								>再发布：@readerContext.fireComponentRegistered()也无。
+																							-以AspectJAutoProxyBeanDefinitionParser例：
+																								>注册AspectJ注解creator: @AopNamespaceUtils.registerAspectJAnnotationAutoProxyCreatorIfNecessary()
+																									>转发@AopConfigUtils.registerAspectJAnnotationAutoProxyCreatorIfNecessary()			
+																										>转发实际注册@registerOrEscalateApcAsRequired():入参AnnotationAwareAspectJAutoProxyCreator.class		
+																											>实际注册到map: beanDefinitionMap, key=org.springframework.aop.config.internalAutoProxyCreator	, value=new RootBeanDefinition(cls)设置其他属性后端值
+																										>可能需要代理：
+																											>如果有proxy-target-class属性则需要@useClassProxyingIfNecessary()	
+																												>仅仅bd里的属性值MutablePropertyValues增加proxyTargetClass=true
+																											>如果有expose-proxy属性需要@forceAutoProxyCreatorToExposeProxy()	
+																												>仅仅bd里的属性值MutablePropertyValues增加exposeProxy=true
+																										>可能需要注册部件：@registerComponentIfNecessary()
+																											>用解析上下文注册组件：@封装到new BeanComponentDefinition(org.springframework.aop.config.internalAutoProxyCreator) 再@ParserContext.registerComponent()
+																												>实际内容仅仅为发送事件：@fireComponentRegistered()--也是空。
+																									>定义扩展：@extendBeanDefinition()			
+																										>先从beanDefinitionMap取org.springframework.aop.config.internalAutoProxyCreator的bd		
+																										>如果element有子：则要加模式：@addIncludePatterns()
+																												>遍历子元素封装到new TypedStringValue() 然后加到bd的MutablePropertyValues属性，的子属性：key=includePatterns, value= TypedStringValue列表。
+																							-再以事务相关的AnnotationDrivenBeanDefinitionParser为例：
+																								>注册事务事件监听工厂：@registerTransactionalEventListenerFactory()
+																									>新建new RootBeanDefinition()， beanClass设置=TransactionalEventListenerFactory， 封装到new BeanComponentDefinition(),名为=org.springframework.transaction.config.internalTransactionalEventListenerFactory								
+																									>注册这个组件：@parserContext.registerBeanComponent(BeanComponentDefinition)								
+																										>注册定义：@BeanDefinitionReaderUtils.registerBeanDefinition(BeanDefinitionHolder definitionHolder, BeanDefinitionRegistry registry) --到beanDefinitionMap和aliasMap
+																										>注册组件：同@registerComponent()上述有了。	
+																								>取element的mode属性：
+																									>如果是aspectj:
+																										>注册切面：@registerTransactionAspect()
+																											>如果定义map里没有org.springframework.transaction.config.internalTransactionAspect：
+																												>构造new RootBeanDefinition()，工厂方法=aspectOf，
+																												>注册事务管理器：@registerTransactionManager()
+																													>即bd的多属性值里添加：“transactionManagerBeanName”=@TxNamespaceHandler.getTransactionManagerName(element)取得的事务管理类名 element的transactionManager属性。
+																												>上下文注册：@parserContext.registerBeanComponent()
+																										>反射加载javax.transaction.Transactional类：成功了则：
+																											>注册切面：@registerJtaTransactionAspect()
+																												
+																									>否则应该是proxy:	转发@AopAutoProxyConfigurer.configureAutoProxyCreator(element, parserContext)							
+
+
+																							
 																>否则直接以下解析：
 															>解析后：@postProcessXml()无内容
 								>然后取configLocations配置的资源开始reader加载：主要看这个默认的路径：如果configLocations没有配置：需要设置为默认的：@getDefaultConfigLocations()
