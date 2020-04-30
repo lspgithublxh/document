@@ -223,6 +223,21 @@
 																															>再从List<AdvisorAdapter> adapters:DefaultAdvisorAdapterRegistry里补充：而AdvisorAdapter三种类型：AfterReturningAdviceAdapter/MethodBeforeAdviceAdapter/ThrowsAdviceAdapter
 																																>只要是这三种类型：获取拦截器：@getInterceptor(Advisor advisor) 加入拦截器列表。
 																																	>封装返回new AfterReturningAdviceInterceptor(advisor.getAdvice())
+																															>遍历拦截器：再次封装：@new InterceptorAndDynamicMethodMatcher()
+																										>如果是IntroductionAdvisor类型：再次看是否classFilter匹配：@ia.getClassFilter().matches(actualClass)
+																											>如果匹配获取拦截器数组：@registry.getInterceptors(advisor)实现方法类似。
+																										>如果其他类型：直接取拦截器数组。返回拦截器数组转换为的拦截器列表。
+																							>封装到Innvocation开始走：	new ReflectiveMethodInvocation()
+																								>如果走到最后了：那么直接@invokeJoinpoint()
+																									>激发直接方法：@AopUtils.invokeJoinpointUsingReflection()
+																								>当前类如果是InterceptorAndDynamicMethodMatcher类型：
+																									>如果方法匹配：执行激活通知方法@interceptor.invoke(this)
+																										-以AspectJAfterAdvice实现为例：
+																											>先移动指针mi.proceed() //MethodInvocation
+																											>必做之事：反射调用通知：
+																												>先匹配切点表达式:@getJoinPointMatch()
+																													>主体使用@pointcut.getExpression()取表达式，ProxyMethodInvocation.getUserAttribute(expression) -- 来自ExposeInvocationInterceptor.currentInvocation()
+																												>然后@invokeAdviceMethod()	
 														#当上述处理器通知返回的结果不为null时：需要进行后置处理器处理---前面有使用过。applyBeanPostProcessorsAfterInitialization	
 															@同样，后置处理器处理也是统一的接口：应用通知，只需要直接获取所有的处理器，直接调用后置方法BeanPostProcessor.postProcessAfterInitialization(result, beanName)层层编织。
 																#编织的结果为null: 则直接返回上次编织的结果。
