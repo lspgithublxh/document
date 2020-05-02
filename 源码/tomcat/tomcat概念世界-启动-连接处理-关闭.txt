@@ -1,0 +1,51 @@
+//品味：慢慢。广问，嵌套问
+//spring的逻辑结构：情况-要做的事情； 数据-要做的事情：
+//流程动作> 调用方法@  分支判断# 
+//世界观：*
+//不止是为了单单为了实现这单一的功能仅此而已，必须考虑更多(情况)做更多(事情，准备；化被动为主动去做)，而不是直接仅仅只做什么。
+//考虑-决定-预防-收益/影响/后果-预测下一步要做什么(甚至下n步)
+//大的想法，具体行动。
+//出现了if-else就是因为有不同的考虑。
+//阅读文档达到直接可以看出思路编写程序的清晰逻辑的地步。
+//一个大函数功能直接看懂而描述。
+//从网上找答案变为从源码中找答案。
+//功能组织体系，而不是动作实现体系。是目标，是事情，而不是精细到实现方案的动作。
+//数据源-数据结果模式：而不是全部动作过程。
+//能够主动猜某个方法的功能和猜测它的实现。
+//情况-通用处理。
+//情况-精细结构。
+//数据结构-与处理。
+//某个时刻某个地方：所有可能用户做的事情。
+
+>从创建ServerSocket开始：AprEndpoint类中。而这个又是 被 org.apache.catalina.startup.Tomcat类的@init()方法启动的。所以从这里开始。
+	>Tomcat.init()
+		>创建服务器：@getServer() 对应有Service之前有论述。
+		>服务器初始化：@server.init()
+			>方法被LifecycleBase实现：
+				>关键方法@initInternal()由子类实现：以StandardServer为例子：
+					>最后遍历所有的Serivce来初始化@init()：而Service 之前默认注入的 StandardService 实现类：而这个类继承了 LifecycleMBeanBase 类， 后者继承了 LifecycleBase 类，它才有init()的实现：
+						>核心关键又是调用@initInternal()，而又是子类才实现。 StandardService有 实现：
+							-核心是四大初始化：
+							>先递归父类实现
+							>后引擎初始化：@engine.init()
+							>再执行器 初始化：@Executor.init()
+							>再映射初始化：@mapperListener.init()
+							>最后所有的连接器初始化：@Connector.init() 连接器也实现了 LifecycleMBeanBase 接口，所以init() 其中调用了关键方法@initInternal() 还是看Connector实现：
+								>也是先父类递归@initInternal()
+								>协议handler:protocolHandler 设置：ProtocolHandler.setAdapter(new CoyoteAdapter(this))
+								>核心的协议handler初始化：@protocolHandler.init()
+									>配置升级协议：@configureUpgradeProtocol()
+									>核心的初始化父类：@super.init() 即AbstractProtocol.init()
+										>核心关键又是endpoint的初始化：@AbstractEndpoint.int()
+											>先绑定：@bindWithCleanup()
+												>直接转发@bind() 这个只能子类实现：
+													-以 AprEndpoint 实现为例：
+														>本地方法：创建apr 内存池： Pool.create(0) 返回long
+														>本地方法：创建server socket内存池： serverSockPool = Pool.create(rootPool)
+														>本地方法：创建一个apr_sockaddr: Address.info()
+														>本地方法：非常经典，创建apr server socket : serverSock = Socket.create(Address.getInfo(inetAddress).family, Socket.SOCK_STREAM,Socket.APR_PROTO_TCP, rootPool);
+														>本地方法判断是否在unix环境下@OS.IS_UNIX：是则 地址重用：@Socket.optSet(serverSock, Socket.APR_SO_REUSEADDR, 1)
+														>其他serverSock属性设置。
+														>本地方法：开始监听：@Socket.listen(serverSock, getAcceptCount())
+														>如果是ssl使用：则还要 SSLContext 相关若干属性设置/包括用本地方法进行。
+											>后是一些注册工作如：@registerJmx()

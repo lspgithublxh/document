@@ -16,8 +16,10 @@
 //情况-精细结构。
 //数据结构-与处理。
 //某个时刻某个地方：所有可能用户做的事情。
-
-
+//就像是军队打仗一样：AbstractApplicationContext上下文就是总部主帅，负责整个流程，但实现个别子流程；ServletWebServerApplicationContext就是地区主帅，负责使用总部流程且根据区域情况具体化部分流程实现，同时负责分给不同的人去实现更细的子流程(用人/用器：如事件广播器、bean工厂、生命周期处理器; 向它们发号命令：调用/叫他们做什么)，层层下去到事务的精细结构。(负责事务的精细级别 就看出 和一线的和当前的距离)
+	>对一个事物类：他是有属性
+	>对一个组织类：他是有人；属性当作人。人可能是为他办事的，也可能是监听他的监听器。
+	>对一个系统类：他是有组件/器具；属性当作器具
 
 >加载bean: 
  >AbstractApplicationContext.getBean(String name)开始的：
@@ -1994,10 +1996,11 @@
 						#转换结果如果是null: 抛new BeanNotOfRequiredTypeException()
 				>返回单例。
  >AbstractBeanFactory.getBean(String name, Class<T> requiredType)开始的：
->刷新方法：@refresh()
+>刷新方法：@AbstractApplicationContext.refresh()
 	>准备数据：@prepareRefresh()
+		>基本属性：this.active=true this.closed=false
 		>初始化部分占位符资源：@initPropertySources() 实际什么也没做。
-		>创建一个标准环境来验证要求的属性：@StandardEnvironment.validateRequiredProperties()
+		>创建一个标准环境来验证要求的属性：@StandardEnvironment.validateRequiredProperties()  标准环境：this.enviroment=new StandardEnvironment(),this.earlyApplicationEvents=new LinkedHashSet<>()
 			>直接转发调用占位符的@ConfigurablePropertyResolver.validateRequiredProperties() ---内容就是看有没有requiredProperties属性里的所有属性，如果有一个没有，都抛出异常。
 	>刷新内部bean工厂：@AbstractApplicationContext.obtainFreshBeanFactory()	
 		>先刷新bean工厂：@refreshBeanFactory()
@@ -2005,7 +2008,13 @@
 				#如果已经有了bean工厂：先将bean摧毁然后关闭bean工厂：
 					#摧毁@destroyBeans()
 						>直接使用@bf.destroySingletons()
-							>递归先父类：然后清空manualSingletonNames属性--手工注册的单例。再清空类型匹配：@clearByTypeCache(): allBeanNamesByType/singletonBeanNamesByType
+							>递归先父类@DefaultSingletonBeanRegistry.destroySingletons()
+								>先标记摧毁：singletonsCurrentlyInDestruction=true
+								>父类里调用各个bean自己的销毁方法@DisposableBean.destroy()后 
+									>清空四大单例池变量：singletonObjects/singletonFactories/earlySingletonObjects/registeredSingletons
+								>直接清空dependentBeanMap/dependenciesForBeanMap/containedBeanMap：
+								>再重新标记摧毁结束：singletonsCurrentlyInDestruction=false
+							>然后清空manualSingletonNames属性--手工注册的单例。再清空类型匹配：@clearByTypeCache(): allBeanNamesByType/singletonBeanNamesByType
 					>关闭@closeBeanFactory()
 						>并非直接置空：而是先将序列化id:serializationId=null再将beanFactory=null处理。
 				#再重建工厂：@createBeanFactory()	
@@ -2201,7 +2210,7 @@
 																									-以aop相关的AbstractInterceptorDrivenBeanDefinitionDecorator实现为例：
 																										>根据Node创建bd:@createInterceptorDefinition()
 																											>创建new BeanDefinitionBuilder(new RootBeanDefinition()):interceptor 设置beanClass=MethodSecurityInterceptor.clas 
-																											>给interceptor进行属性设置：自动绑定。 增加属性：“accessDecisionManager”---new RuntimeBeanReference() , "authenticationManager"---new RuntimeBeanReference()
+																											>给interceptor进行属性设置：自动绑定。 增加属性：“accessDecisionManager”---new RuntimeBeanReference("org.springframework.security.defaultMethodAccessManager") , "authenticationManager"---new RuntimeBeanReference("org.springframework.security.authenticationManager"), "securityMetadataSource"-new RootBeanDefinition(MapBasedMethodSecurityMetadataSource.class)
 																											>获取Element的protect下的所有元素：@DomUtils.getChildElementsByTagName()
 																											>遍历这个Element列表：对每个封装为BeanDefinitionBuilder.rootBeanDefinition(SecurityConfig.class).getBeanDefinition()放到一个 mappings里，最后加到new RootBeanDefinition(MapBasedMethodSecurityMetadataSource.class)元素里，此元素以“securityMetadataSource”属性名加到interceptor里，
 																											>返回interceptor的bd。
@@ -2309,19 +2318,39 @@
 					>加载bd完毕：赋值this.beanFactory=新的bf，后返回。
 	>事3：bf的准备：@prepareBeanFactory() 加载器-处理器等的配置
 		>设置的属性包括：beanExpressionResolver/属性编辑器仓库propertyEditorRegistrars/
-		>增加的处理器：new ApplicationContextAwareProcessor(this) 
+		>增加的处理器：new ApplicationContextAwareProcessor(this) 来在初始化之前处理：有各种aware的bean的各种对应属性注入的事情。
 		>特殊方式如感知方式注册依赖：ignoredDependencyInterfaces属性：EnvironmentAware/EmbeddedValueResolverAware/ResourceLoaderAware/ApplicationEventPublisherAware/MessageSourceAware/ApplicationContextAware			
 		>注册可解析的依赖：@registerResolvableDependency() 添加到map:resolvableDependencies里。BeanFactory/ResourceLoader/ApplicationEventPublisher/ApplicationContext 四大类型的值：bf/this/this/this
-		>增处：new ApplicationListenerDetector(this)
-		>如果bf里包括loadTimeWeaver名的bean: 增处：new LoadTimeWeaverAwareProcessor(), 设置临时类加载器new ContextTypeMatchClassLoader()
+		>增处：new ApplicationListenerDetector(this) 来在初始化之后处理：如果这个bean是ApplicationListener类型，那么加入监听器列表AbstractApplicationContext.applicationListeners/applicationEventMulticaster
+		>如果bf里包括loadTimeWeaver名的bean: 增处：new LoadTimeWeaverAwareProcessor()--在初始化之后如果这个bean是LoadTimeWeaverAware类型那么要设置这个处理器的loadTimeWeaver属性到bean里, 设置临时类加载器new ContextTypeMatchClassLoader()
 		>bf如果不含：environment/systemProperties/systemEnvironment 都要注册对应的环境属性单例@bf.registerSingleton()---内容是加到manualSingletonNames属性里。
 			>数据都从new StandardEnvironment()里获取 
 		>允许后置处理器：实际无动作@postProcessBeanFactory()
-		>实例化和激活部分处理器：@invokeBeanFactoryPostProcessors()
+			-但是对于子容器：是可能有动作的：如 AbstractRefreshableWebApplicationContext 的实现 
+				>增加了一个处理器：ServletContextAwareProcessor 在初始化前进行了处理：
+					>如果这个bean实现了ServletContextAware/ServletContextAware则要分别注入这个processor.servletContext/servletConfig属性---这两个属性又来自 AbstractRefreshableWebApplicationContext 上下文。
+				>增加两个scope对象注册到 AbstractBeanFactory.scopes	: request->new RequestScope(), session=new SessionScope(), 甚至application->ServletContext
+				>增加特殊依赖类的默认 绑定值：@bf.registerResolvableDependency() ServletRequest->new RequestObjectFactory(), ServletResponse->new ResponseObjectFactory(), HttpSession->new SessionObjectFactory(), WebRequest->new WebRequestObjectFactory(),, FacesContext/ExternalContext 也有匿名的对象工厂类。
+				>注册单例：到 manualSingletonNames 属性。 "servletContext"/servletConfig/contextParameters(这个值从上下文org.apache.catalina.core.ApplicationContext里取)/contextAttributes(也是上下文里取)
+		>实例化和激活部分处理器(第一次调用处理器处理)：@invokeBeanFactoryPostProcessors()
 			>先转发：@PostProcessorRegistrationDelegate.invokeBeanFactoryPostProcessors() 入参为获取的全部bfpp:beanFactoryPostProcessors属性
 				>遍历每个入参bf后置处理器：
-					#如果是 类型：应用@postProcessBeanDefinitionRegistry()方法
-						-如ConfigurationClassPostProcessor实现：加到registriesPostProcessed属性，再@processConfigBeanDefinitions()统一处理。
+					#如果是 BeanDefinitionRegistryPostProcessor 类型：应用@postProcessBeanDefinitionRegistry()方法
+						-如ConfigurationClassPostProcessor实现：加到registriesPostProcessed属性，再@processConfigBeanDefinitions(BeanDefinitionRegistry registry)统一处理。
+							>注册多个。
+						-如ServletComponentRegisteringPostProcessor 实现：和spring-boot web启动有关：
+							>在内嵌服务器模式下：@isRunningInEmbeddedWebServer()
+								>使用一个组件提供者ClassPathScanningCandidateComponentProvider 辅助进行@scanPackage() 
+									>即进行 .findCandidateComponents()发现所有候选的组件
+										>使用三大组件进行handle:@ServletComponentHandler:WebServletHandler/WebFilterHandler/WebListenerHandler
+											>handle的内容也是注册beandefinition
+						-如 ConfigurationClassPostProcessor 实现： 服务bean的 配置有关：
+							>核心为@reader.loadBeanDefinitions(Set<ConfigurationClass> configurationModel)
+								>用转到@ConfigurationClassBeanDefinitionReader.loadBeanDefinitionsFromRegistrars()
+									-对于 ServletComponentScanRegistrar 实现的注册中心：
+										>会新建一个 new GenericBeanDefinition()定义， beanClass=ServletComponentRegisteringPostProcessor
+										>注册到beanDefinitionMap:key=servletComponentRegisteringPostProcessor
+									
 				>从bf里获取BeanDefinitionRegistryPostProcessor 类型的处理器全部来遍历：@beanFactory.getBeanNamesForType(BeanDefinitionRegistryPostProcessor) 来找出实现了PriorityOrdered的处理器来应用@postProcessBeanDefinitionRegistry()方法	
  				>从bf里获取 BeanDefinitionRegistryPostProcessor类型的处理器全部来遍历：@beanFactory.getBeanNamesForType(BeanDefinitionRegistryPostProcessor) 来找出实现了Ordered的处理器来应用@postProcessBeanDefinitionRegistry()方法	
 				>对所有的处理器:应用@postProcessBeanFactory()方法
@@ -2330,7 +2359,7 @@
 	>事4：开始注册bean后置处理器：@registerBeanPostProcessors()
 		>直接转发：@PostProcessorRegistrationDelegate.registerBeanPostProcessors()
 			>直接从bean工厂里寻找bean后置处理器类型的所有类名：@beanFactory.getBeanNamesForType(BeanPostProcessor)
-			-过滤的中间直接增加一个 检查 bean后置处理器：@new BeanPostProcessorChecker()
+			-过滤的中间直接增加一个 检查 bean后置处理器：@new BeanPostProcessorChecker()--初始化之后检查--没有额外的事情
 			>遍历前述获取的处理器名数组： 对每个处理器名 
 				>依次@bf.isTypeMatch()匹配了PriorityOrdered类型的bean处理器,从bf.getBean()里获取出来，进一步实现了MergedBeanDefinitionPostProcessor的处理器也找出来， 匹配Ordered的处理器也找出来分别放到不同的处理器集合里。
 				>依次增加实现了PriorityOrdered类型/Ordered类型/其他独立类型/MergedBeanDefinitionPostProcessor类型的所有bean处理器：bf.addBeanPostProcessor() 加到bf里。
@@ -2343,7 +2372,18 @@
 	>事6：初始化应用事件广播器：@initApplicationEventMulticaster()	
 		#如果bf包含“applicationEventMulticaster”bean:@containsLocalBean() 内容就是 singletonObjects/beanDefinitionMap包含。：那么取出来getBean(ApplicationEventMulticaster) 设置到this.applicationEventMulticaster这个属性里：
 		#否则构造new SimpleApplicationEventMulticaster(beanFactory)来设置 到 AbstractApplicationContext.applicationEventMulticaster属性。同时注册到bf:k=applicationEventMulticaster 自然的。
-	>事7：初始化特殊的bean:在实例化之前：@onRefresh() 尽管内容无。		
+	>事7：初始化特殊的bean:在实例化之前：@onRefresh() 尽管内容无。
+		- 但是对于子类 ServletWebServerApplicationContext 却是重大功能：创建webserver:
+			>先还是super.onRefresh()  ---对主题资源初始化赋值 GenericWebApplicationContext.themeSource= UiApplicationContextUtils.initThemeSource(this)
+			>再@createWebServer()
+				>直接从bf里取ServletWebServerFactory的实现类：且只能1个，所以一定是用户先配置好了一个工厂bean: 从 配置类ServletWebServerFactoryConfiguration可以看到：里面就有new TomcatServletWebServerFactory() 所在方法的@Bean注解。
+				>初始化：@ServletContextInitializer.onStartup()
+				>就开始了真正的：@getWebServer()
+					>创建服务器：new Tomcat() //org.apache.catalina.startup.Tomcat
+					>配置一系列：最后封装到new TomcatWebServer(), 然后执行@initialize()
+						>启动this.tomcat.start()
+						>启动一个非守护线程：内容为：等待tomcat:@TomcatWebServer.this.tomcat.getServer().await()
+							>内部会启动一个ServerSocket，并且访问队列为1，然后在等待连接，如果收到的字符转为字符串后等于“SHUTDOWN”，则退出循环，或者stopAwait=true退出
 	>事8：注册监听器：@registerListeners()
 		>取属性中的所有监听器：applicationListeners， 遍历：对每个：
 			>调用应用事件广播器：加入应用监听器：applicationEventMulticaster.addApplicationListener()
@@ -2370,16 +2410,87 @@
 				#对于非抽象非延迟的单例：
 					#如果是工厂bean： 取bean执行@isEagerInit()
 			#再次遍历：取单例，如果实现了SmartInitializingSingleton类型：带安全框架地执行@afterSingletonsInstantiated()方法。
-	>事9：发布上下文刷新事件，执行LifecycleProcessor's onRefresh()：@finishRefresh()
+	>事10：发布上下文刷新事件，执行LifecycleProcessor's onRefresh()：@finishRefresh()
 		>resourceCaches属性清空
-		>无论有或者没有：注册new DefaultLifecycleProcessor() 设置到lifecycleProcessor属性。再执行@.onRefresh()方法。	
-			>转发@startBeans()设置this.running=true
+		>无论有或者没有：注册单例@registerSingleton(): 
+			>super.registerSingleton(String beanName, Object singletonObject):增加到单例池：singletonObjects/registeredSingletons, 同时从singletonFactories/earlySingletonObjects移除。
+			>"lifecycleProcessor"-new DefaultLifecycleProcessor()到manualSingletonNames里
+		>设置到lifecycleProcessor属性。再执行@DefaultLifecycleProcessor.onRefresh()方法。
+			>转发@DefaultLifecycleProcessor.startBeans()设置this.running=true
+				>从bf里的beanDefinitionNames/manualSingletonNames 取 Lifecycle 类型的beanName出来，再bf.getBean()取出，放到一个map返回。
+				>遍历 每个封装到new LifecycleGroup对象里。
+				>对每个LifecycleGroup对象，调用它的@start()方法
+					>遍历它的list:members:LifecycleGroupMember属性，@doStart()开始 
+						>先将member的依赖都先@doStart()
+						>然后再次@Lifecycle.start() $$
 		>发布刷新事件：@publishEvent(new ContextRefreshedEvent(this))
 		>注册自己了：@LiveBeansView.registerApplicationContext()
 			#取spring.liveBeansView.mbeanDomain名的bean,
 			#往MBeanServer里注册 new LiveBeansView() - new ObjectName(mbeanDomain, MBEAN_APPLICATION_KEY, applicationName)
 			#属性applicationContexts添加了一个上下文。
-	>事10：必做：@resetCommonCaches()
+		-对于子类上下文实现 会增多一些内容：以 ServletWebServerApplicationContext 实现为例
+			>先父类的实现：即上述：super.finishRefresh()
+			>再启动服务器：@startWebServer()
+				>调用webServer 去完成 启动 服务器 这件事：@webServer.start()
+					>事情1：@addPreviouslyRemovedConnectors()
+						>取tomcat的server: 再取server的所有Service出来:将外部的还在TomcatWebServer手里的map: Service-Connector[] 表明的Connector[]重新添加到对应的Service里：各自领回家;最后自然是清空这个map。
+							>在@getServer()里：如果没有server,则新建一个new StandardServer(),再给它配加@addService()一个new StandardService():名为：Tomcat的Service
+								>而addService内容不只加而已，还会启动服务@service.start() 直接转发给 LifecycleBase 实现。而里面具体关键为：
+									>调用 startInternal() 则由子类实现：即 StandardService 实现
+										>核心再次是四大启动： 最后是Connector的启动.start() ---也是交给了 LifecycleBase 实现，而关键又是 startInternal()给 Connector实现：
+											>再次关键是：protocolHandler.start() 协议处理器启动。
+												>再次关键是：端点启动：@endpoint.start()
+													>没绑定继续绑定：@bindWithCleanup()
+													>然后子类实现：@AprEndpoint.startInternal()
+														>初始化连接器数量限制：@initializeConnectionLatch()
+														>新建Poller线程 new Poller()并init()和start()  可能还有 SendFile 也这样做：new Sendfile() init() 和 start() 
+														>开启接收线程：@startAcceptorThreads()
+															>新建：@new Acceptor<>(this)
+															>放到一个new Thread(acceptor, threadName) 并启动这个线程。
+															-很明显：Acceptor的@run()实现就是最关键的：
+																>接受下一个连接：@endpoint.serverSocketAccept()
+																	>本地方法：@long socket = Socket.accept(serverSock)来获取  。获取客户端地址信息：@Address.getInfo(Address.get(Socket.APR_REMOTE, socket)) 
+																>开始核心的转发：@AprEndpoint.setSocketOptions(long socket)
+																	>构造：new AprSocketWrapper(socket, this)
+																	>设置各种基本属性。
+																	>放到连接map:connections里。
+																	>封装为new SocketWithOptionsProcessor(wrapper) 再放入执行器执行@execute()。
+						>Connector手里有protocolHandler协议处理器：可能需要关闭.stop()	
+					>事情2：端口有关。
+						>先取端口@tomcat.getConnector()
+							>实际当然是取第一个Service(名Tomcat)的第一个Connector,如果没有Connector,则新建一个new Connector("HTTP/1.1") ，端口设置=8080(默认)
+								>非常重要的：在@new Connector()实现里：因为Http/1.1协议，而会 反射加载“org.apache.coyote.http11.Http11AprProtocol”类，赋值给 协议处理器属性：Connector.protocolHandler。。。其他协议还有：org.apache.coyote.ajp.AjpAprProtocol之类
+						>再@performDeferredLoadOnStartup()
+							>先取tomcat.getEngine()
+								>实际当然是从第一个Service里取：如果没有，则新建new StandardEngine() name=Tomcat,defaulthost=hostname, realm=new SimpleRealm()
+							>再给这个容器赋值一个子容器：new StandardHost()实际上加到了map: ContainerBase.children里。
+							>遍历这个Host的所有Children容器：对每个容器：如果是TomcatEmbeddedContext类型 ,调用它的@deferredLoadOnStartup()
+								>取全部的Child容器：遍历,先@getLoadOnStartup()--直接取StandardWrapper.loadOnStartup值, 按结果分组，再将分组结果依次合并，合并之后再次遍历：对每个Wrapper:调用它的@load()
+									>加载Servlet:@loadServlet()
+										>取实例管理器：@instanceManager() 即容器 StandardContext.instanceManager:InstanceManager属性，
+										>使用servletClass属性加载Class再构造方法.newInstance()构建实例，同时也有一些postConstruct有关注解的方法的反射执行。
+										>设置属性之外还有 初始化@initServlet()
+											>执行它的@init()方法
+												-以ServletHttpHandlerAdapter实现为例：
+													>事情为获取servletPath:@getServletPath()---即根据servlet名字 从上下文ApplicationContext的child:ContainerBase里获取注册中心：@getServletRegistration() -ServletRegistration, 
+														>从注册中心获取到servletMappings:@getMappings()
+														>取mappings值的如/* 0-后2， /的“”字符串。返回。
+										>然后发送load事件：@fireContainerEvent()
+											>事件封装到：new ContainerEvent(), 遍历全部listeners:ContainerListener , 调用它的@containerEvent()
+									>如果是jspServlet：会注册相关的MBean
+						>再@checkThatConnectorsHaveStarted()
+							>还是看第一Service的所有Connector是否是LifecycleState.FAILED状态：是则抛出异常。
+			>再发布事件：@publishEvent(new ServletWebServerInitializedEvent(webServer, this)) -- 使用AbstractApplicationContext的广播器广播。
+			-组织结构：
+				>Server:
+					>Service:
+						>Connector:
+							>ProtocolHandler
+						>Engine: 作为container
+							>Realm: 领域
+							>Container: 子容器：实际上的实现:StandardContext/ContainerBase/TomcatEmbedContext/StandardHost
+								>ContainerBase/ContainerListener
+	>事11：必做：@resetCommonCaches()
 		>ReflectionUtils.clearCache();
 		>AnnotationUtils.clearCache();
 		>ResolvableType.clearCache();
