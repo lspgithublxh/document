@@ -20,6 +20,8 @@
 	>对一个事物类：他是有属性
 	>对一个组织类：他是有人；属性当作人。人可能是为他办事的，也可能是监听他的监听器。
 	>对一个系统类：他是有组件/器具；属性当作器具
+//为什么层次多：因为连续地向上进行了抽象，每层都分类了/拆分了不同的功能，每层连续往下拆分。
+
 
 >加载bean: 
  >AbstractApplicationContext.getBean(String name)开始的：
@@ -2441,9 +2443,99 @@
 											>再次关键是：protocolHandler.start() 协议处理器启动。
 												>再次关键是：端点启动：@endpoint.start()
 													>没绑定继续绑定：@bindWithCleanup()
-													>然后子类实现：@AprEndpoint.startInternal()
+													>然后子类实现：@AprEndpoint.startInternal() // AprEndpoint 类里有非常多的有用的内部类。
 														>初始化连接器数量限制：@initializeConnectionLatch()
 														>新建Poller线程 new Poller()并init()和start()  可能还有 SendFile 也这样做：new Sendfile() init() 和 start() 
+															>Poller的@init()
+																>有@allocatePoller(): 空间分配：Poll.create(size, pool, 0, timeout * 1000) 
+																>有addList初始化：new SocketList[]
+															>Poller的@start()
+																>直接新建一个new Thread()，注入Poller本身：并启动。
+																	>所以看@run()方法：
+																		>关键看转发处理：@maintain()
+																			>根据socketid从connections里取出AprSocketWrapper
+																				>调用它的读或写来处理:@socketWrapper.readOperation.process() / socketWrapper.writeOperation.process() 直接放到Excutor来执行。SocketWrapperBase.OperationState.process()
+																					-以 AprOperationState 实现为例：看处理过程。直接转发@run()
+																						>核心关键接收数据在@read()方法里的@fillReadBuffer()方法里：
+																							>会读两次，读取数据到Buffer里：@Socket.recvb(getSocket().longValue(), to, to.position(),to.remaining())
+																						>如果是写模式：则在@write()的阻塞：@writeBlocking() 非阻塞@writeNonBlocking()方法里
+																							>阻塞方式下：@writeBlockingDirect()
+																								>核心@doWrite()交给内部类实现：AprEndpoint.AprSocketWrapper
+																									>再次转发：@doWriteInternal()
+																										>开始发送、循环发送发完为止：@Socket.sendb(getSocket().longValue(), sslOutputBuffer,sslOutputBuffer.position(), sslOutputBuffer.limit())
+																						>最后有Poller.add()功能：@registerReadInterest()等。
+															>SendFile的@start()也类似：之前是@init()：Pool.create(serverSockPool)， @start()内容：
+																>先阻塞等待：@Poll.poll(sendfilePollset, pollTime, desc, false)
+																>核心发送：@Socket.sendfilen(state.socket, state.fd,state.pos,state.length, 0)
+																>socket处理：@processSocket()
+																	>从connections.get(Long.valueOf(socket))取出AprSocketWrapper，读或写：@socketWrapper.readOperation.process().
+																	>或者再次转发：@processSocket(socketWrapper, event, true) 开始分发：
+																		>先从AbstractEndpoint.processorCache.pop()弹出。否则new SocketProcessor(socketWrapper, event)预备。
+																		>调用Executor执行这个sc 
+																			>从run()直接转发到@SocketProcessor.doRun()
+																				>取AbstractEndpoint.handler调用.process(socketWrapper, event)
+																					>此时从ConnectionHandler.connections.get(socket)得到合适的Processor	， 也可能从UpgradeProtocol.getProcessor()获取
+																						>调用这个Processor的.process(wrapper, status):此时已经转发到了AbstractProcessorLight类 
+																							>可能获取分发类型DispatchType：开始转发	@dispatch()  而这方法只返回一个SocketState状态。
+																								-对AbstractProcessor实现：里面已经有Request/Response属性。
+																									>使用它的Adapter属性调用@asyncDispatch(request, response, status)
+																										>核心：@connector.getService().getContainer().getPipeline().getFirst().invoke() 以StandardHostValve实现为例：
+																											>根据状态继续转发：@status()
+																												>请求Request会设置越来越多的属性。
+																												>然后走向定制：@custom() 
+																													>response也进行更多的设置
+																													>转发：先从上下文获取请求转发器servletContext.getRequestDispatcher(),再@forward()转发：就变成了ServletRequest等
+																														>@doForward()
+																															>包装：@wrapRequest()为 ApplicationHttpRequest 
+																															>再次转发：@processRequest()
+																																>再次转发@invoke()
+																																	>开始构建过滤器链：@ApplicationFilterFactory.createFilterChain(request, wrapper, servlet) 得到ApplicationFilterChain
+																																	>执行过滤：@filterChain.doFilter(request, response)
+																																		>带安全框架地@internalDoFilter()
+																																			>取出过滤器执行：@ filter.doFilter(request, response, this)
+																																			>如果没有过滤成功：则继续：@servlet.service(request, response) ， 此时已经开始 javax.servlet.Servlet 类
+																																				- 以 HttpServlet 实现为例： 
+																																					>直接将强转ServletRequest为HttpServletRequest等 后转发给@service()
+																																						>常见的 @doPost()之类：
+																																							-以 FrameworkServlet 实现为例：
+																																								>直接转发@processRequest()
+																																									>做一些上下文初始化
+																																									>然后转发给子类 @doService()实现： DispatcherServlet 的实现 。
+																																										>继续设置request属性后：转发给@doDispatch()
+																																											>第一步：@checkMultipart() 请求解析 
+																																												>this.multipartResolver.resolveMultipart(request)
+																																											>第二步：匹配handler:@getHandler()
+																																												>遍历this.handlerMappings：对每个HandlerMapping，@调用mapping.getHandler(request) 得到handler:HandlerExecutionChain不为null就返回。
+																																											>3：handler还要转适配器：@getHandlerAdapter() 遍历this.handlerAdapters  对每个HandlerAdapter， 支持adapter.supports(handler) 就返回这个	HandlerAdapter
+																																											>4: 开始应用拦截器：@applyPreHandle()被拦截了直接返回
+																																												>遍历this.interceptors， 对每个HandlerInterceptor ，应用前置方法@interceptor.preHandle(request, response, this.handler) 如果被拦截了，那么开始@triggerAfterCompletion()---即使用全部拦截器执行@interceptor.afterCompletion(request, response, this.handler, ex)返回false
+																																											>5.使用handler开始处理：即控制器里的事情：@ha.handle()
+																																												-以AbstractHandlerMethodAdapter 实现为例： 
+																																													>几乎直接转发给 子类实现：@handleInternal() RequestMappingHandlerAdapter的实现：
+																																														>经过一顿检查，开始@invokeHandlerMethod() 已经传入handler方法
+																																														>handle方法包装：@createInvocableHandlerMethod()--new ServletInvocableHandlerMethod(handlerMethod)
+																																														>设置一些参数：也new ModelAndViewContainer()容器。
+																																														>开始反射这个方法并回设相关数据到视图：@invocableMethod.invokeAndHandle(webRequest, mavContainer)
+																																															>核心为：@invokeForRequest()
+																																																>取参数@getMethodArgumentValues()
+																																																	>解析参数：@this.resolvers.resolveArgument() InvocableHandlerMethod
+																																																>开始@doInvoke()
+																																																	>核心为使用被桥接的方法进行反射调用：@this.bridgedMethod..invoke(getBean(), args)
+																																															>设置返回状态 
+																																														>开始获取视图；@getModelAndView()
+																																															>使用模型工厂：等。封装出new ModelAndView()返回。
+																																												-以 HttpRequestHandlerAdapter 实现为例： 
+																																													>跟资源处理有关：@handleRequest() 查对应的RequestDispatcher  然后@forward()递归了。
+																																											>6.应用视图名：@applyDefaultViewName()
+																																											>7.再次应用拦截器：@mappedHandler.applyPostHandle(processedRequest, response, mv)
+																																												>遍历拦截器，应用@.postHandle()方法即可。
+																																											>8.处理转发结果：@processDispatchResult()				
+																																									>发送请求处理事件等：@publishRequestHandledEvent()						
+																																															
+																																							-或DefaultServlet实现：是tomcat默认的。
+																																				- 以 ServletHttpHandlerAdapter 实现：和spring有关 
+																							
+																>也维持：@Poll.maintain(sendfilePollset, desc, false)
 														>开启接收线程：@startAcceptorThreads()
 															>新建：@new Acceptor<>(this)
 															>放到一个new Thread(acceptor, threadName) 并启动这个线程。
@@ -2453,13 +2545,15 @@
 																>开始核心的转发：@AprEndpoint.setSocketOptions(long socket)
 																	>构造：new AprSocketWrapper(socket, this)
 																	>设置各种基本属性。
-																	>放到连接map:connections里。
+																	>放到连接map:connections里key=socketid val=AprSocketWrapper。
 																	>封装为new SocketWithOptionsProcessor(wrapper) 再放入执行器执行@execute()。
+																		>所以要关注@run()方法
 						>Connector手里有protocolHandler协议处理器：可能需要关闭.stop()	
 					>事情2：端口有关。
 						>先取端口@tomcat.getConnector()
 							>实际当然是取第一个Service(名Tomcat)的第一个Connector,如果没有Connector,则新建一个new Connector("HTTP/1.1") ，端口设置=8080(默认)
-								>非常重要的：在@new Connector()实现里：因为Http/1.1协议，而会 反射加载“org.apache.coyote.http11.Http11AprProtocol”类，赋值给 协议处理器属性：Connector.protocolHandler。。。其他协议还有：org.apache.coyote.ajp.AjpAprProtocol之类
+								>非常重要的：在@new Connector()实现里：因为Http/1.1协议，而会 反射加载“org.apache.coyote.http11.Http11AprProtocol”类-- 这个类继承了 AbstractProtocol 接口，赋值给 协议处理器属性：Connector.protocolHandler。。。其他协议还有：org.apache.coyote.ajp.AjpAprProtocol之类
+								
 						>再@performDeferredLoadOnStartup()
 							>先取tomcat.getEngine()
 								>实际当然是从第一个Service里取：如果没有，则新建new StandardEngine() name=Tomcat,defaulthost=hostname, realm=new SimpleRealm()
@@ -2486,10 +2580,15 @@
 					>Service:
 						>Connector:
 							>ProtocolHandler
+								>AprEndpoint
+									>Handler
 						>Engine: 作为container
 							>Realm: 领域
 							>Container: 子容器：实际上的实现:StandardContext/ContainerBase/TomcatEmbedContext/StandardHost
 								>ContainerBase/ContainerListener
+								>Pipeline
+									>Valve:阀门：默认实现：StandardHostValve
+										>
 	>事11：必做：@resetCommonCaches()
 		>ReflectionUtils.clearCache();
 		>AnnotationUtils.clearCache();
