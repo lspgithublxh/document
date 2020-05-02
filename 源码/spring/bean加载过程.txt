@@ -2487,10 +2487,10 @@
 																													>转发：先从上下文获取请求转发器servletContext.getRequestDispatcher(),再@forward()转发：就变成了ServletRequest等
 																														>@doForward()
 																															>包装：@wrapRequest()为 ApplicationHttpRequest 
-																															>再次转发：@processRequest()
+																															>再次转发：@ApplicationDispatcher.processRequest(request,response,state)
 																																>再次转发@invoke()
 																																	>开始构建过滤器链：@ApplicationFilterFactory.createFilterChain(request, wrapper, servlet) 得到ApplicationFilterChain
-																																	>执行过滤：@filterChain.doFilter(request, response)
+																																	>执行过滤：@filterChain.doFilter(request, response) 层层递归过滤器链过滤完成后：
 																																		>带安全框架地@internalDoFilter()
 																																			>取出过滤器执行：@ filter.doFilter(request, response, this)
 																																			>如果没有过滤成功：则继续：@servlet.service(request, response) ， 此时已经开始 javax.servlet.Servlet 类
@@ -2529,9 +2529,74 @@
 																																											>6.应用视图名：@applyDefaultViewName()
 																																											>7.再次应用拦截器：@mappedHandler.applyPostHandle(processedRequest, response, mv)
 																																												>遍历拦截器，应用@.postHandle()方法即可。
-																																											>8.处理转发结果：@processDispatchResult()				
+																																											>8.处理转发结果：@processDispatchResult()	
+																																												>如果入参mv视图对象不是空：那么需要@render() 进行视图解析：
+																																													>首先是用locale解析器 解析出Locale： this.localeResolver.resolveLocale(request) 来看出是哪个地区的请求：是否要进行国际化而选择不同的资源文件，而读取其中的key-value
+																																													>也会设置到response: response.setLocale(locale)	
+																																													>如果有视图名，据此 用 视图解析器 解析出视图View对象： @resolveViewName()
+																																														>遍历全部视图解析器：DispatcherServlet.viewResolvers, 调用视图解析器的@resolveViewName()方法 
+																																															-对 ResourceBundleViewResolver 实现：直接 new GenericWebApplicationContext() 作为工厂 ，取ResourceBundleViewResolver.baseNames数组作为bundle的名字得到ResourceBundle：@ResourceBundle.getBundle()， 注册到这个工厂 @registerBeanDefinitions()
+																																																>然后直接从这个工厂取出View对象：@factory.getBean(viewName, View.class)
+																																													>没有视图名的：直接取出：@mv.getView()
+																																													>开始视图的数据写入response: @view.render(mv.getModelInternal(), request, response)
+																																														>创建一个融合后的键值map:@createMergedOutputModel() --AbstractView实现看：
+																																															>以request.getAttribute("View.pathVariables")的map结果为基本：外加AbstractView.staticAttributes这个map, 然后是加key=requestContextAttribute, val=@createRequestContext()----一个包含各种上下文属性的new RequestContext(request, response, getServletContext(), model)对象。
+																																														>准备写入：@prepareResponse() 
+																																															- AbstractView为例：
+																																																>加报头如：@response.setHeader("Pragma", "private"); response.setHeader("Cache-Control", "private, must-revalidate");
+																																															- AbstractJackson2View 为例：
+																																																>设置返回的内容类型：@response.setContentType()默认是text/html;charset=ISO-8859-1。否则是request.getAttribute("View.selectedContentType")得到的MediaType 的值。
+																																																>设置编码类型：@response.setCharacterEncoding() 默认是UTF-8
+																																																>如果默认，添加非缓存报头：@response.addHeader("Cache-Control", "no-store")
+																																														>真正的合并输出：@renderMergedOutputModel()
+																																															>先取合并的request:@getRequestToExpose()--请求重新封装为：new ContextExposingHttpServletRequest()
+																																															>将上述作为入参：@renderMergedOutputModel()子类实现 	
+																																																-以 AbstractJackson2View 实现为例： 
+																																																	>取出response.getOutputStream()输出流准备写：
+																																																	>model数据转值：@filterAndWrapModel(model, request)
+																																																		>模型过滤：@filterModel() 
+																																																			- MappingJackson2JsonView 实现为例： 
+																																																				>要求model:map里的value不能是BindingResult类型，key不能是JsonView/FilterProvider的名字。
+																																																		>过滤后的值封装到new MappingJacksonValue(value)备用 
+																																																		>从model里取：@model.get(JsonView.class.getName())的值出来，和 model.get(FilterProvider.class.getName()) 值出来，专门设置到MappingJacksonValue.setSerializationView()和@.setFilters()里。
+																																																		>返回这个MappingJacksonValue对象value。
+																																																	>开始真正的写json到流里：@writeContent(stream, value)
+																																																		>使用objectMapper的工厂生产：new ToXmlGenerator()这个：generator
+																																																		>先写头：@writePrefix()
+																																																			- MappingJackson2JsonView实现：
+																																																				>转调用@generator.writeRaw(this.jsonPrefix)
+																																																					>ToXmlGenerator.writeRaw(String text)
+																																																						>StreamWriter2Delegate.writeRaw(String text)
+																																																							>BaseStreamWriter.writeRaw(String text)
+																																																								>ISOLatin1XmlWriter.writeRaw(String str, int offset, int len)
+																																																									- 最终转到 以 EncodingXmlWriter 实现为例：@flushBuffer()
+																																																										>写入输出流：@mOut.write(mOutputBuffer, 0, ptr)： OutputStream
+																																																		>构建并配置：new ObjectWriter(this, config)
+																																																		>开始写内容：@objectWriter.writeValue(generator, value)
+																																																			>配置工作-初始化：@_configureGenerator(gen) 
+																																																			>先建序列化工具后序列化：@_prefetch.serialize(gen, value, _serializerProvider()) - new XmlSerializerProvider()序列化工具。
+																																																				>具体序列化：@ prov.serializeValue(gen, value, rootType) 已经是 com.fasterxml.jackson.databind.ser.DefaultSerializerProvider 类的工作。
+																																																					>ser.serialize(value, gen, this) 子类实现：
+																																																						- Jsr310NullKeySerializer 为例： 
+																																																							>直接gen.writeFieldName("")
+																																																								- WriterBasedJsonGenerator 为例： 
+																																																									>调用了很多方法：如@_writeString(String text) 
+																																																										>@_flushBuffer();
+																																																											>_writer.write(_outputBuffer, offset, len)
+																																																												>UTF8Writer.write(char[] cbuf, int off, int len)为例
+																																																													>write(cbuf[off])
+																																																														>_out.write(_outBuffer, 0, _outPtr); UTF8Writer
+																																																		>开始写后缀：@writeSuffix() 内容为空
+																																																		>刷剩下数据：@generator.flush()
+																																																			- ToXmlGenerator实现：
+																																																				>_xmlWriter.flush() 内容基本为空 
+																																																			- UTF8JsonGenerator 实现： com.fasterxml.jackson.core.json.UTF8JsonGenerator
+																																																				>_outputStream.flush()而已  OutputStream
+																																													>render完毕。	
+																																												>最后因为mappedHandler不是null:所以要激发完成事件：@triggerAfterCompletion()
+																																													>内容为遍历拦截器HandlerInterceptor，对每个执行@afterCompletion()
 																																									>发送请求处理事件等：@publishRequestHandledEvent()						
-																																															
+																															>最后调用response.getWriter().close()																
 																																							-或DefaultServlet实现：是tomcat默认的。
 																																				- 以 ServletHttpHandlerAdapter 实现：和spring有关 
 																							
