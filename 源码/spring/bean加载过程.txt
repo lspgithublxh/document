@@ -265,8 +265,139 @@
 																																				>先找javax.transaction.Transactional注解：@AnnotatedElementUtils.getMergedAnnotationAttributes()
 																																				>再设置传播级别等：@parseTransactionAnnotation(AnnotationAttributes attributes)
 																																					>新建new RuleBasedTransactionAttribute():rbta对象，设置传播级别：@rbta.setPropagationBehaviorName(PROPAGATION_注解的枚举类型的value属性的值)
-																																					>设置回滚规则：@rbta.setRollbackRules()  如果包含 Class[].class类型的rollbackOn属性，取出一个个/dontRollbackOn属性，
-																																						
+																																					>设置回滚规则：@rbta.setRollbackRules()  如果包含 Class[].class类型的rollbackOn属性，取出一个个封装到new RollbackRuleAttribute(rbRule)加到回滚规则集合里；如果包含Class[].class类型的dontRollbackOn属性，也取出分别封装到new NoRollbackRuleAttribute(rbRule)加到回滚规则集合里。
+																																			- 对 SpringTransactionAnnotationParser 实现也是类似逻辑：
+																																				>先找org.springframework.transaction.annotation.Transactional注解 
+																																				>再取各种属性设置等：@parseTransactionAnnotation()
+																																					>新建new RuleBasedTransactionAttribute():rbta对象 
+																																					>取枚举类型的propagation/isolation属性，分别设置到rbta相应属性里。其他基本属性如：timeout/readOnly/value,  Class[].class类型的rollbackFor/noRollbackFor, String[].class类型的rollbackForClassName/noRollbackForClassName
+																													>再取事务管理器：@determineTransactionManager(TransactionAttribute):PlatformTransactionManager。看TransactionAspectSupport的实现 
+																														>来源1：TransactionAspectSupport.transactionManager
+																														>来源2：如果有Qulifiad属性：那么从map:transactionManagerCache里取，没有则从beanFactory里取：@BeanFactoryAnnotationUtils.qualifiedBeanOfType()---内部就是this.beanFactory.getBean(PlatformTransactionManager.class)
+																													>再取方法的唯一性签名：如 事务属性的描述。
+																													>如果事务属性为空：那么专门处理：
+																														>先创建一个新的事务信息：@createTransactionIfNecessary()
+																															>核心工作：准备事务信息：@prepareTransactionInfo()
+																																>构建事务对象：new TransactionInfo().newTransactionStatus(status)设置状态，绑定到线程@bindToThread()----当前线程局部变量：transactionInfoHolder
+																														>再推动拦截器链进程：invocation.proceedWithInvocation() 结果就是最终的返回值
+																														>有异常要回滚：@completeTransactionAfterThrowing()
+																															>回滚使用事务管理器进行：@txInfo.getTransactionManager().rollback(txInfo.getTransactionStatus())
+																																>具体工作：使用状态进行转发：@processRollback()
+																																	>激活完成前工作：@triggerBeforeCompletion()
+																																		>内容：TransactionSynchronizationUtils.triggerBeforeCompletion()
+																																			>对每个同步：都要进行一些工作：@beforeCompletion() ConnectionSynchronization 实现为例
+																																				>未打开的连接：要解绑资源：@TransactionSynchronizationManager.unbindResource(this.dataSource)
+																																				>有连接要释放连接：@this.connectionHolder.hasConnection()：@releaseConnection()--注入Connection和this.dataSource数据源两个属性。
+																																					>直接转发@doReleaseConnection()
+																																						>如果数据源不是null:
+																																							>先从线程局部变量里取资源：@TransactionSynchronizationManager.getResource(dataSource) ---即从TransactionSynchronizationManager.resources。资源就是ConnectionHolder对象
+																																							>连接释放：@conHolder.released()后返回
+																																								>父类递归释放：直接是属性：ResourceHolderSupport.referenceCount--
+																																								>自身释放：this.connectionHandle.releaseConnection(this.currentConnection) -- 实际内容为空。
+																																						>否则开始直接关闭连接：@doCloseConnection(con, dataSource)
+																																							>数据源不是SmartDataSource类型：关闭连接：@con.close()---此为jdk接口：java.sql.Connection
+																																								- com.mysql.cj.jdbc.ConnectionImpl实现：
+																																									>先connectionLifecycleInterceptors:ConnectionLifecycleInterceptor逐个关闭
+																																									>真正关闭：@realClose()
+																																										>设置关闭原因：@session.setForceClosedReason(reason)
+																																											>非自动提交等条件下有回滚：@rollback()
+																																												>核心@rollbackNoChecks()
+																																													>核心执行一个回滚命令：@this.session.execSQL(null, "rollback", -1, null, false, this.nullStatementResultSetFactory, null, false)
+																																														>还有ping的动作：@ping(false, 0)
+																																														>调用协议发送：@this.protocol.sendQueryString(callingQuery...)
+																																															>构造new NativePacketPayload(packLength) 先发送一点：@sendPacket.writeInteger()实际是写入this.byteBuffer 
+																																															>真正发送：@sendQueryPacket()
+																																																>预处理：@invokeQueryInterceptorsPre()
+																																																	>已经使用查询拦截器：@interceptor.preProcess(sql, interceptedQuery) QueryInterceptor
+																																																		- SessionAssociationInterceptor 实现为例：
+																																																			>准备语句：@connection.clientPrepareStatement("SET @mysql_proxy_session=?")
+																																																			>开始设置： pstmt.setString(1, key);
+																																																			>执行：pstmt.execute()
+																																																			>finally:pstmt.close()
+																																																				- PreparedStatementWrapper 实现为例：
+																																																					>再次转发@execute() 
+																																																						- CallableStatement 实现为例：
+																																																							>转发父类：ClientPreparedStatement 同名执行。进行一些配置。
+																																																							>解析出参：@retrieveOutParams()
+																																																								>解析获取 connection.createStatement().executeQuery(outParameterQuery.toString())
+																																	>有保存点则回滚到保存点：@status.rollbackToHeldSavepoint()
+																																		>查询保存点：@this.savepoint
+																																		>查询保存点管理器：DefaultTransactionStatus.transaction:SavepointManager
+																																		>开始回滚到保存点：用保存点管理器 的子类实现：@rollbackToSavepoint() 
+																																			- JdbcTransactionObjectSupport 实现为例
+																																				>取connectionHolder属性：回滚@.getConnection().rollback((Savepoint) savepoint)
+																																					-因为也是java.sql.Connection的回滚方法，要看驱动实现类 
+																																				>设置一下属性：@resetRollbackOnly()
+																																		>开始释放保存点：@releaseSavepoint()
+																																			> JdbcTransactionObjectSupport 实现为例： 
+																																				>也是jdk的方式：@conHolder.getConnection().releaseSavepoint((Savepoint) savepoint)
+																																		>保存点置空：@setSavepoint(null) this.savepoint=null
+																																	>如果是新事务：则真正回滚：@doRollback(status)	
+																																		- JtaTransactionManager 实现为例 ：
+																																			>取用户事务回滚：@txObject.getUserTransaction().rollback()
+																																		- DataSourceTransactionManager 为例： 
+																																			>先取事务，再从事务中取出连接：来回滚：@status.getTransaction().getConnectionHolder().getConnection()
+																																				>核心也是连接的回滚：@con.rollback() 
+																																	>其他情况：可能会设置仅仅回滚：@doSetRollbackOnly(status)																							
+																																	>完成后激活：@triggerAfterCompletion()																							
+																																	>finally一定的清除事务：@cleanupAfterCompletion(status)																							
+																														>清除事务信息是必然的：@cleanupTransactionInfo()																										
+																														>再提交事务：@commitTransactionAfterReturning()
+																															>调用事务管理器进行：@txInfo.getTransactionManager().commit(txInfo.getTransactionStatus())
+																																>如果要进行本地回滚：则执行@processRollback()
+																													>否则事务属性不是null: 开始用事务管理器执行事务：@CallbackPreferringPlatformTransactionManager.execute(txAttr,callback)	子类实现：
+																														>看子类实现之前：要看这个回调函数：@callback()
+																															>先准备事务信息：@prepareTransactionInfo()
+																																>封装到对象：new TransactionInfo()
+																																>事务绑定到线程局部变量：@transactionInfoHolder() : transactionInfoHolder
+																															>核心方法：@invocation.proceedWithInvocation() 这个是函数式接口，结果又返回调用了：@invocation::proceed
+																															>清除事务信息：@cleanupTransactionInfo(txInfo)
+																																>直接txInfo.restoreThreadLocalStatus() 回复之前的值：transactionInfoHolder.set(this.oldTransactionInfo)
+																														-WebSphereUowTransactionManager为例：
+																															>取uowManager属性：它的uowManager.getUOWStatus() != UOWSynchronizationRegistry.UOW_STATUS_NONE && != UOWSynchronizationRegistry.UOW_TYPE_LOCAL_TRANSACTIONuowManager.getUOWType()值为true/false可以判断是否存在事务:existingTx
+																															>事务的传播级别：@d.getPropagationBehavior()
+																															>如果当前已经存在事务：
+																																>传播级别是Never: 则抛出异常 new IllegalTransactionStateException()
+																																>传播级别是嵌套： 抛出异常 new NestedTransactionNotSupportedException()
+																																>对于：support,required,mandatory, 则加入事务 。再判断@getTransactionSynchronization()事务同步状态!=SYNCHRONIZATION_NEVER则 要 同步 
+																																>对于：not_support , 如果同步状态 == SYNCHRONIZATION_ALWAYS 则要同步 
+																																>其他： 如果同步状态 != SYNCHRONIZATION_NEVER 则 要同步 
+																															>如果不存在事务：
+																																>传播级别是madatory: 抛出异常 
+																																>对于not_support, never, support:则 如果同步状态 == SYNCHRONIZATION_ALWAYS 则要同步 
+																																>其他：如果同步状态 != SYNCHRONIZATION_NEVER 要同步。 
+																															>如果不加入事务：则要悬挂事务：@suspend(null)
+																																>悬挂当前所有不活跃和同步的事务：@doSuspendSynchronization()
+																																	>获取当前线程的全部同步：@TransactionSynchronizationManager.getSynchronizations()
+																																		>即取：线程局部变量：TransactionSynchronizationManager.synchronizations
+																																	>遍历同步：每个都悬挂：@synchronization.suspend()
+																																		>大多数实现都是：解绑资源：@TransactionSynchronizationManager.unbindResource(this.resourceKey)
+																																	>清除同步：@TransactionSynchronizationManager.clearSynchronization() --将线程局部变量也清空。	
+																																>入参事务对象非空：则要真正悬挂：@doSuspend()
+																																	- jpa的实现 JpaTransactionManager 为例：
+																																		>清空实体管理器holder: @.setEntityManagerHolder(null, false) 构建一个新的解绑了的@TransactionSynchronizationManager.unbindResource(obtainEntityManagerFactory()=this.entityManagerFactory);
+																																		>清空连接holder:， 构建一个新的解绑了的holder:TransactionSynchronizationManager.unbindResource(getDataSource())
+																																		>封装到new SuspendedResourcesHolder(entityManagerHolder, connectionHolder)返回。
+																																>取出事务属性：利用TransactionSynchronizationManager 对象： 
+																																	>如事务名：	TransactionSynchronizationManager.getCurrentTransactionName(), 再清空：当前线程局部变量：currentTransactionName
+																																	>事务是否只读：@TransactionSynchronizationManager.isCurrentTransactionReadOnly() 也对应清空。
+																																	>事务隔离级别：@TransactionSynchronizationManager.getCurrentTransactionIsolationLevel()
+																																	>事务当前是否活跃：@TransactionSynchronizationManager.isActualTransactionActive()
+																																>封装上述信息到一个新的：new SuspendedResourcesHolder()返回。
+																															>构建对象：new UOWActionAdapter<>() 为action 有一个run()覆盖方法。
+																																>构建新的事务状态：@prepareTransactionStatus() new DefaultTransactionStatus()
+																																>开始回调：@callback.doInTransaction(status) 注入上述状态 ，得到的结果设置到this.ressult里
+																																>事务提交之前：广播消息之类的、传递给Processor值类的事：@triggerBeforeCommit(status)
+																																>有问题需要回滚：@uowManager.setRollbackOnly()
+																																>完成之前：@triggerBeforeCompletion()
+																															>调@uowManager.runUnderUOW(uowType, joinTx, action) com.ibm.wsspi.uow.UOWManager
+																																>
+																															>返回结果：@action.getResult()	
+																													>	
+																														
+																														
+																														
+																														
 																											-以AspectJAfterAdvice实现为例：看@invoke(MethodInvocation mi)方法的实现：其中的mi的实现就是 ReflectiveMethodInvocation
 																												>先移动指针mi.proceed() //MethodInvocation为接口，ReflectiveMethodInvocation 为实现类。
 																												>必做之事：反射调用通知：
