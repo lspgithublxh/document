@@ -243,73 +243,92 @@
 																										>如果是IntroductionAdvisor类型：再次看是否classFilter匹配：@ia.getClassFilter().matches(actualClass)
 																											>如果匹配获取拦截器数组：@registry.getInterceptors(advisor)实现方法类似。
 																										>如果其他类型：直接取拦截器数组。返回拦截器数组转换为的拦截器列表。
-																							>封装到Innvocation开始走：	new ReflectiveMethodInvocation()
+																							>封装到Innvocation开始走@proceed()：	new ReflectiveMethodInvocation()
 																								>如果走到最后了：那么直接@invokeJoinpoint()
 																									>激发直接方法：@AopUtils.invokeJoinpointUsingReflection()
-																								>当前类如果是InterceptorAndDynamicMethodMatcher类型：
-																									>如果方法匹配：执行激活通知方法@interceptor.invoke(this)
-																										-以AspectJAfterAdvice实现为例：
-																											>先移动指针mi.proceed() //MethodInvocation
-																											>必做之事：反射调用通知：
-																												>先匹配切点表达式:@getJoinPointMatch()
-																													>主体使用@pointcut.getExpression()取表达式，ExposeInvocationInterceptor.currentInvocation().getUserAttribute(expression) -- 最后一个方法是ProxyMethodInvocation	的。
-																														>内部使用map:ReflectiveMethodInvocation.userAttributes属性，key=expression, val=JoinPointMatch	
-																												>然后finally必做之事@invokeAdviceMethod()反射方式调用通知的方法。所以先找到匹配的通知，而反射对应的切面类和方法参数来执行
-																													>找到连接点：@getJoinPoint()
-																														>核心为：缓存pmi一个 key=JointPoint类名，value=new MethodInvocationProceedingJoinPoint(ExposeInvocationInterceptor.currentInvocation()) 返回这个value
-																													>获取通知的激活入参：@argBinding()入参有上述连接点。
-																														>先看通知方法的参数绑定情况：@calculateArgumentBindings()
-																															>通知方法的第一个入参是JoinPoint类型@maybeBindJoinPoint() | 通知方法的第一个入参是ProceedingJoinPoint类型@maybeBindProceedingJoinPoint()(around类型的通知) | 通知方法的第一个入参是JoinPoint.StaticPart类型@maybeBindJoinPointStaticPart()
-																															>上面没有一个满足：那么需要进行参数绑定：@bindArgumentsByName()
-																																>@构建参数名发现者：@createParameterNameDiscoverer()
-																																	>直接新建：@new DefaultParameterNameDiscoverer().addDiscoverer(new AspectJAdviceParameterNameDiscoverer(this.pointcut.getExpression()))同时里面的发现者也要设置返回方法名/异常方法名等。
-																																>调用参数名发现方法：同时也绑定形参各个具体值：@AspectJAdviceParameterNameDiscoverer.getParameterNames(Method method)	
-																																	>一个个参数的绑定：共7个：
-																																		>第一步开始@maybeBindThisJoinPoint()
-																																			>第一个参数类型为JoinPoint/ProceedingJoinPoint类型：则@bindParameterName()
-																																				>即给第0个参数名绑定:AspectJAdviceParameterNameDiscoverer.parameterNameBindings[0] = thisJoinPoint
-																																				>返回成功绑定。
-																																		>第二步开始：@maybeBindThrowingVariable()
-																																			>如果寻找到第x个参数是Throwable类型：@bindParameterName() 即.parameterNameBindings[x] = throwingName
-																																		>第三步开始：@maybeBindAnnotationsFromPointcutExpression()切点表达式的解析。
-																																			>切点表达式按空格分割为字符串数组，遍历这个数组： 对每个字符串： 
-																																				>把(的部分取出来：如果它在@this/@target/@within/@withincode/@annotation当中：
-																																					>获取切点实体：即()内的内容，封装到new PointcutBody()返回。否则只有(没有完成括号 可能有异常--需要从下一个字符串里取。
-																																					>对这个内容进行处理：@maybeExtractVariableName()
-																																						>首字母合法且小写：即认为是合理的方法名-当然每个字符也要检查。
-																																					>如果上述检查后合法：那么把这个字符串加到 变量名列表：varNames
-																																				>否则：	如果是@args(开头： 
-																																					>取括号内内容封装到new PointcutBody()：@getPointcutBody(tokens, i)
-																																					>也对内容参数检查：@maybeExtractVariableNamesFromArgs()
-																																						>直接,分割为字符串数组：即认为是变量数组，遍历数组，对每个： 
-																																							>去空格和合法检查@maybeExtractVariableName()后合法，则也加到 varNames里。
-																																			>最后对varNames处理： 用它来绑定方法参数中的注解类型。@bindAnnotationsFromVarNames()
-																																				>计算方法的未绑定的Annotation类型的参数个数：@countNumberOfUnboundAnnotationArguments()
-																																				>参数多余一个抛出异常：new AmbiguousBindingException()
-																																				>参数是1个：如果varNames不是1个也抛异常：new IllegalArgumentException() 否则： 
-																																					>开始绑定：@findAndBind(Annotation.class, varNames.get(0))
-																																						>即对匹配到的方法参数：将其索引i和入参varName设置到数组parameterNameBindings里：@bindParameterName()
-																																		>第四步开始：对于parameterNameBindings中值为null的，设置为returningName @maybeBindReturningVariable()		
-																																		>第五步开始：对于args(开头的也同样分割绑定：@maybeBindPrimitiveArgsFromPointcutExpression() 基本类型只能1个。
-																																		>第六步开始：对于target(/this(开头的@maybeBindThisOrTargetOrArgsFromPointcutExpression()
-																																		>第七步开始：对于引用类型的绑定：@maybeBindReferencePointcutParameter()
-																																			>先分割表达式：筛选出!xxx(开头的部分：取出!xxx()括号内包括的内容到new PointcutBody()里
-																																			>如果全部的PointcutPrimitive的名字:(@PointcutParser.getAllSupportedPointcutPrimitives()得到-如call/execution/initialization/reference pointcut)，加 &&,!,||,and,or,not 构造的集合都不包含xxx:
-																																				>则xxx当作一个变量名：@maybeExtractVariableName()合法性验证通过后加到 varNames里。
-																																			>只能是一个大小：varNames，否则要抛异常。否则正常绑定@bindParameterName()---未绑定的绑定。	
-																																		>其他情况抛出异常。new IllegalStateException("Unknown algorithmic step: "...)
-																																	>将这个parameterNameBindings返回。
-																																>获得的绑定数组赋值给AbstractAspectJAdvice.argumentNames:为空要抛出状态异常：否则：@bindExplicitArguments()
-																																	>将argumentNames的各个值存入反向类型的map:name-index: argumentBindings
-																																	>如果returningName属性值不是null而argumentBindings却没有：抛异常new IllegalStateException() 否则取出类型并设置：this.discoveredReturningType = this.aspectJAdviceMethod.getParameterTypes()[index];
-																																	>如果throwingName属性值不是null而argumentBindings却没有：抛异常new IllegalStateException() 否则也取出类型并设置：this.discoveredThrowingType = this.aspectJAdviceMethod.getParameterTypes()[index]
-																																	>配置参数名和参数类型：@configurePointcutParameters()---设置到AbstractAspectJAdvice.pointcut属性。
-																														>从入参jpMatch里取出切点参数数组@jpMatch.getParameterBindings():PointcutParameter[]
-																															>这个数组和map:argumentBindings进行匹配：即PointcutParameter.getName()来匹配 得到index, 然后value=PointcutParameter.getBinding(), 来得到一个index-value构成的新数组adviceInvocationArgs，返回这个数组。 
-																													>直接转发@invokeAdviceMethodWithGivenArgs() 入参就是上一步取得的 adviceInvocationArgs 数组。
-																														>反射调用执行方法通知方法：this.aspectJAdviceMethod.invoke(this.aspectInstanceFactory.getAspectInstance(), actualArgs)， 方法实参为adviceInvocationArgs数组，而对象实例为切面工厂所创建的切面实例。
-																															
-																															
+																										>直接的 method.invoke(ReflectiveMethodInvocation.target, ReflectiveMethodInvocation.arguments)
+																								>拦截器链动下去的当前拦截器 如果是InterceptorAndDynamicMethodMatcher:dm类型：拦截器链--this.interceptorsAndDynamicMethodMatchers
+																									>如果拦截器的方法匹配：@dm.methodMatcher.matches(this.method, targetClass, this.arguments) 则 执行激活通知方法@dm.interceptor.invoke(this)
+																										>其中：对于@matches()方法： 对-ControlFlowPointcut实现：是直接的看当前堆栈new Throwable().getStackTrace()中是否有匹配方法名的
+																										>对于@invoke(MethodInvocation invocation)方法：
+																											-以 TransactionInterceptor 实现为例：
+																												>先计算要代理的类Class：@AopUtils.getTargetClass(ReflectiveMethodInvocation.target)
+																												>在事务流程下反射：@invokeWithinTransaction()
+																													>先取事务属性：TransactionAttributeSource:@getTransactionAttributeSource() 再@.getTransactionAttribute()得到：TransactionAttribute
+																														>后一个方法：以 - AbstractFallbackTransactionAttributeSource 实现为例：使用了缓存模式。
+																															>核心方法为：@computeTransactionAttribute()
+																																>先计算出方法的原方法：避免是桥接方法
+																																>再查询事务属性：@findTransactionAttribute()
+																																	>转发：@determineTransactionAttribute() 子类 AnnotationTransactionAttributeSource 实现 
+																																		>遍历 set:annotationParsers:TransactionAnnotationParser集合：对每个解析器：调@parseTransactionAnnotation(Method)来解析：
+																																			-解析器实现：对 JtaTransactionAnnotationParser 
+																																				>先找javax.transaction.Transactional注解：@AnnotatedElementUtils.getMergedAnnotationAttributes()
+																																				>再设置传播级别等：@parseTransactionAnnotation(AnnotationAttributes attributes)
+																																					>新建new RuleBasedTransactionAttribute():rbta对象，设置传播级别：@rbta.setPropagationBehaviorName(PROPAGATION_注解的枚举类型的value属性的值)
+																																					>设置回滚规则：@rbta.setRollbackRules()  如果包含 Class[].class类型的rollbackOn属性，取出一个个/dontRollbackOn属性，
+																																						
+																											-以AspectJAfterAdvice实现为例：看@invoke(MethodInvocation mi)方法的实现：其中的mi的实现就是 ReflectiveMethodInvocation
+																												>先移动指针mi.proceed() //MethodInvocation为接口，ReflectiveMethodInvocation 为实现类。
+																												>必做之事：反射调用通知：
+																													>先匹配切点表达式:@getJoinPointMatch()
+																														>主体使用@pointcut.getExpression()取表达式，ExposeInvocationInterceptor.currentInvocation().getUserAttribute(expression) -- 最后一个方法是ProxyMethodInvocation	的。
+																															>内部使用map:ReflectiveMethodInvocation.userAttributes属性，key=expression, val=JoinPointMatch	
+																													>然后finally必做之事@invokeAdviceMethod()反射方式调用通知的方法。所以先找到匹配的通知，而反射对应的切面类和方法参数来执行
+																														>找到连接点：@getJoinPoint()
+																															>核心为：缓存pmi一个 key=JointPoint类名，value=new MethodInvocationProceedingJoinPoint(ExposeInvocationInterceptor.currentInvocation()) 返回这个value
+																														>获取通知的激活入参：@argBinding()入参有上述连接点。
+																															>先看通知方法的参数绑定情况：@calculateArgumentBindings()
+																																>通知方法的第一个入参是JoinPoint类型@maybeBindJoinPoint() | 通知方法的第一个入参是ProceedingJoinPoint类型@maybeBindProceedingJoinPoint()(around类型的通知) | 通知方法的第一个入参是JoinPoint.StaticPart类型@maybeBindJoinPointStaticPart()
+																																>上面没有一个满足：那么需要进行参数绑定：@bindArgumentsByName()
+																																	>@构建参数名发现者：@createParameterNameDiscoverer()
+																																		>直接新建：@new DefaultParameterNameDiscoverer().addDiscoverer(new AspectJAdviceParameterNameDiscoverer(this.pointcut.getExpression()))同时里面的发现者也要设置返回方法名/异常方法名等。
+																																	>调用参数名发现方法：同时也绑定形参各个具体值：@AspectJAdviceParameterNameDiscoverer.getParameterNames(Method method)	
+																																		>一个个参数的绑定：共7个：
+																																			>第一步开始@maybeBindThisJoinPoint()
+																																				>第一个参数类型为JoinPoint/ProceedingJoinPoint类型：则@bindParameterName()
+																																					>即给第0个参数名绑定:AspectJAdviceParameterNameDiscoverer.parameterNameBindings[0] = thisJoinPoint
+																																					>返回成功绑定。
+																																			>第二步开始：@maybeBindThrowingVariable()
+																																				>如果寻找到第x个参数是Throwable类型：@bindParameterName() 即.parameterNameBindings[x] = throwingName
+																																			>第三步开始：@maybeBindAnnotationsFromPointcutExpression()切点表达式的解析。
+																																				>切点表达式按空格分割为字符串数组，遍历这个数组： 对每个字符串： 
+																																					>把(的部分取出来：如果它在@this/@target/@within/@withincode/@annotation当中：
+																																						>获取切点实体：即()内的内容，封装到new PointcutBody()返回。否则只有(没有完成括号 可能有异常--需要从下一个字符串里取。
+																																						>对这个内容进行处理：@maybeExtractVariableName()
+																																							>首字母合法且小写：即认为是合理的方法名-当然每个字符也要检查。
+																																						>如果上述检查后合法：那么把这个字符串加到 变量名列表：varNames
+																																					>否则：	如果是@args(开头： 
+																																						>取括号内内容封装到new PointcutBody()：@getPointcutBody(tokens, i)
+																																						>也对内容参数检查：@maybeExtractVariableNamesFromArgs()
+																																							>直接,分割为字符串数组：即认为是变量数组，遍历数组，对每个： 
+																																								>去空格和合法检查@maybeExtractVariableName()后合法，则也加到 varNames里。
+																																				>最后对varNames处理： 用它来绑定方法参数中的注解类型。@bindAnnotationsFromVarNames()
+																																					>计算方法的未绑定的Annotation类型的参数个数：@countNumberOfUnboundAnnotationArguments()
+																																					>参数多余一个抛出异常：new AmbiguousBindingException()
+																																					>参数是1个：如果varNames不是1个也抛异常：new IllegalArgumentException() 否则： 
+																																						>开始绑定：@findAndBind(Annotation.class, varNames.get(0))
+																																							>即对匹配到的方法参数：将其索引i和入参varName设置到数组parameterNameBindings里：@bindParameterName()
+																																			>第四步开始：对于parameterNameBindings中值为null的，设置为returningName @maybeBindReturningVariable()		
+																																			>第五步开始：对于args(开头的也同样分割绑定：@maybeBindPrimitiveArgsFromPointcutExpression() 基本类型只能1个。
+																																			>第六步开始：对于target(/this(开头的@maybeBindThisOrTargetOrArgsFromPointcutExpression()
+																																			>第七步开始：对于引用类型的绑定：@maybeBindReferencePointcutParameter()
+																																				>先分割表达式：筛选出!xxx(开头的部分：取出!xxx()括号内包括的内容到new PointcutBody()里
+																																				>如果全部的PointcutPrimitive的名字:(@PointcutParser.getAllSupportedPointcutPrimitives()得到-如call/execution/initialization/reference pointcut)，加 &&,!,||,and,or,not 构造的集合都不包含xxx:
+																																					>则xxx当作一个变量名：@maybeExtractVariableName()合法性验证通过后加到 varNames里。
+																																				>只能是一个大小：varNames，否则要抛异常。否则正常绑定@bindParameterName()---未绑定的绑定。	
+																																			>其他情况抛出异常。new IllegalStateException("Unknown algorithmic step: "...)
+																																		>将这个parameterNameBindings返回。
+																																	>获得的绑定数组赋值给AbstractAspectJAdvice.argumentNames:为空要抛出状态异常：否则：@bindExplicitArguments()
+																																		>将argumentNames的各个值存入反向类型的map:name-index: argumentBindings
+																																		>如果returningName属性值不是null而argumentBindings却没有：抛异常new IllegalStateException() 否则取出类型并设置：this.discoveredReturningType = this.aspectJAdviceMethod.getParameterTypes()[index];
+																																		>如果throwingName属性值不是null而argumentBindings却没有：抛异常new IllegalStateException() 否则也取出类型并设置：this.discoveredThrowingType = this.aspectJAdviceMethod.getParameterTypes()[index]
+																																		>配置参数名和参数类型：@configurePointcutParameters()---设置到AbstractAspectJAdvice.pointcut属性。
+																															>从入参jpMatch里取出切点参数数组@jpMatch.getParameterBindings():PointcutParameter[]
+																																>这个数组和map:argumentBindings进行匹配：即PointcutParameter.getName()来匹配 得到index, 然后value=PointcutParameter.getBinding(), 来得到一个index-value构成的新数组adviceInvocationArgs，返回这个数组。 
+																														>直接转发@invokeAdviceMethodWithGivenArgs() 入参就是上一步取得的 adviceInvocationArgs 数组。
+																															>反射调用执行方法通知方法：this.aspectJAdviceMethod.invoke(this.aspectInstanceFactory.getAspectInstance(), actualArgs)， 方法实参为adviceInvocationArgs数组，而对象实例为切面工厂所创建的切面实例。
+																										>否则拦截器的方法没有匹配到：直接@proceed()下一个拦截器。						
+																																
 																															
 														#当上述处理器通知返回的结果不为null时：需要进行后置处理器处理---前面有使用过。applyBeanPostProcessorsAfterInitialization	
 															@同样，后置处理器处理也是统一的接口：应用通知，只需要直接获取所有的处理器，直接调用后置方法BeanPostProcessor.postProcessAfterInitialization(result, beanName)层层编织。
@@ -737,7 +756,7 @@
 																								#根据依赖描述的不同类型而分别处理：如果是StreamDependencyDescriptor类型：																				
 																									>获取和自动绑定匹配的符合要求类型的候选bean集合：@findAutowireCandidates()																				
 																										@直接调用统一的方法获取候选的names数组：BeanFactoryUtils.beanNamesForTypeIncludingAncestors()																				
-																											@先获取该类的所有beanNames:@DefaultListableBeanFactory.getBeanNamesForType()																		
+																											@先获取该类的所有beanNames:@DefaultListableBeanFactory.getBeanNamesForType()	从 beanDefinitionNames + manualSingletonNames 两个地方里取																	
 																												#如果配置冻结、要求类为null、不允许提前初始化：	调用统一的实质类解析方法@doGetBeanNamesForType()																	
 																													>遍历所有的bean定义：DefaultListableBeanFactory.beanDefinitionNames	, 对每个beanName																		
 																														#如果不是别称：																			
@@ -2406,12 +2425,19 @@
 		#取bf里所有LoadTimeWeaverAware类型的bean name出来：遍历：@getBean()创建。
 		#设置bf.setTempClassLoader(null)
 		#缓存所有元数据：冻结：@freezeConfiguration()内容为：configurationFrozen=true, frozenBeanDefinitionNames=beanDefinitionNames
-		#实质的实例化non-lazy-init单例：@preInstantiateSingletons()
+		#实质的实例化全部的 非抽象/单例/非懒初始化 类型的 beanName：@preInstantiateSingletons()
 			#遍历beanDefinitionNames属性：对每个
 				#先融合得到rbd:@getMergedLocalBeanDefinition():bd
-				#对于非抽象非延迟的单例：
-					#如果是工厂bean： 取bean执行@isEagerInit()
-			#再次遍历：取单例，如果实现了SmartInitializingSingleton类型：带安全框架地执行@afterSingletonsInstantiated()方法。
+				#对于非抽象非延迟的单例name：
+					#如果是工厂bean： 取bean带安全框架执行@isEagerInit()结果一般是false所以不执行@getBean()不注册这个工厂bean。
+					#非工厂类型：直接@getBean(beanName)
+			#再次遍历：取单例，如果实现了 SmartInitializingSingleton 接口：带安全框架地执行@afterSingletonsInstantiated()方法。
+				- 以 EventListenerMethodProcessor 实现为例： 
+					>核心为@processBean()方法 
+						>本质内容：都是取bean的类的有某种注解的方法出来：再遍历看 提供的工厂是否支持这些方法：也是这些方法是否包含某个注解，有则：开始处理。
+						>核心为遍历this.eventListenerFactories:EventListenerFactory事件监听器工厂列表： 对每个工厂看是否支持方法@factory.supportsMethod(method)
+							- 对 TransactionalEventListenerFactory 实现，就是 方法是否有 TransactionalEventListener注解，有则支持 。
+						>支持则要工厂创建ApplicationListener对象，加入监听器列表：@this.applicationContext.addApplicationListener(applicationListener)
 	>事10：发布上下文刷新事件，执行LifecycleProcessor's onRefresh()：@finishRefresh()
 		>resourceCaches属性清空
 		>无论有或者没有：注册单例@registerSingleton(): 
