@@ -2555,7 +2555,23 @@
 			>先还是super.onRefresh()  ---对主题资源初始化赋值 GenericWebApplicationContext.themeSource= UiApplicationContextUtils.initThemeSource(this)
 			>再@createWebServer()
 				>直接从bf里取ServletWebServerFactory的实现类：且只能1个，所以一定是用户先配置好了一个工厂bean: 从 配置类ServletWebServerFactoryConfiguration可以看到：里面就有new TomcatServletWebServerFactory() 所在方法的@Bean注解。
-				>初始化：@ServletContextInitializer.onStartup()
+				>先取ServletContextInitializer: @getSelfInitializer(): 内部执行@返回方法引用：ServletWebServerApplicationContext::selfInitialize()
+					>先上下文准备：@prepareWebApplicationContext()
+					>注册scope:@registerApplicationScope()
+					>环境变量注册：@WebApplicationContextUtils.registerEnvironmentBeans()
+					>构造一个new ServletContextInitializerBeans(getBeanFactory()) 执行它的：@.onStartup(servletContext)方法
+						>取servlet名字：开始注册@register(description, servletContext)
+							>增加servlet:@addRegistration(description, servletContext)
+								-对 ServletRegistrationBean 实现：
+									>基本转发：@servletContext.addServlet(name, this.servlet)
+								-对 AbstractFilterRegistrationBean 实现： 
+									>先取过滤器：@getFilter() 对和sprint-boot有关的实现：则是返回@FilterRegistrationBean.filter
+									>开始了添加filter:@ApplicationContext.addFilter()
+										>转发一层之后：同名方法下：存在new FilterDef() 后 @filterDef.setFilterName(filterName) 再添加：context.addFilterDef(filterDef)
+											>实际动作：@StandardContext.filterDefs.put(filterDef.getFilterName(), filterDef)
+											>广播事件：@fireContainerEvent("addFilterDef", filterDef)  从而filterDefs里就有内容了。
+										>最后还是封装返回：new ApplicationFilterRegistration(filterDef, context)	
+				>初始化：@ServletContextInitializer.onStartup()即执行上一步的lambda表达式。
 				>就开始了真正的：@getWebServer()
 					>创建服务器：new Tomcat() //org.apache.catalina.startup.Tomcat
 					>配置一系列：最后封装到new TomcatWebServer(), 然后执行@initialize()
@@ -2673,6 +2689,12 @@
 																															>再次转发：@ApplicationDispatcher.processRequest(request,response,state)
 																																>再次转发@invoke()
 																																	>开始构建过滤器链：@ApplicationFilterFactory.createFilterChain(request, wrapper, servlet) 得到ApplicationFilterChain
+																																		>内部实际上 就是直接 new ApplicationFilterChain()
+																																		>另外，补充Filter: 先从上下文取FilterMap: @context.findFilterMaps() - StandardContext.filterMaps 
+																																		>遍历这个FilterMap: 对每个@matchDispatcher() @matchFiltersURL()过滤之后：再利用@context.findFilterConfig()找到对应的配置：ApplicationFilterConfig- 来自 StandardContext.filterConfigs
+																																		>过滤之后开始加入过滤器：@filterChain.addFilter(filterConfig) 
+																																			>即加入了ApplicationFilterChain.filters
+																																		>再来一次过滤添加：但是过滤逻辑稍微不一样。
 																																	>执行过滤：@filterChain.doFilter(request, response) 层层递归过滤器链过滤完成后：
 																																		>带安全框架地@internalDoFilter()
 																																			>取出过滤器执行：@ filter.doFilter(request, response, this)
@@ -2760,7 +2782,8 @@
 																																																								- 对 RequestMappingHandlerMapping 实现： 
 																																																									>是看这个类有没有Controller/RequestMapping两个注解：AnnotatedElementUtils.hasAnnotation(beanType, Controller.class) || AnnotatedElementUtils.hasAnnotation(beanType, RequestMapping.class)) -- 这个搜索方法非常彻底：从自身/到实现的接口/层层父类/层层父类的接口:全部上级 都会去找。
 																																																								- 对 PropertySourcedRequestMappingHandlerMapping 实现也是：同上
-																																																							>只有上述成立：是handler:有Controller/RequestMapping注解之一，才认为是,然后进入@detectHandlerMethods()环节。			
+																																																							>只有上述成立：是handler:有Controller/RequestMapping注解之一，才认为是,然后进入@detectHandlerMethods()环节。
+																																																						-题外话：之前有说：在后面遍历handler所有方法的时候：过滤出有RequestMapping注解的Method,并且封装出mapping信息，然后一起开始注册：@registerHandlerMethod() 注册就注册到了@AbstractHandlerMethodMapping.mappingRegistry.mappingLookup|urlLookup里		
 																																																	>再封装到Match里：@addMatchingMappings()
 																																																		>遍历这些mappings,对每个：
 																																																			>@找到对应的值@getMatchingMapping()
@@ -2936,6 +2959,87 @@
 >应用1：切面->通知->事务拦截器(来对拦截到的方法进行事务增强)
 -----------------------------------------------------------------------专题：spring-web 
 -----------------------------------------------------------------------专题：spring-security 
+>注册Filter:为核心逻辑：
+	>在@Tomcat.start()方法下：
+		>先是@getServer();
+		>后是对服务器的server.start()
+			>实际上会转发到@LifecycleBase.start()
+				>关注@startInternal() 子类实现： StandardContext 的实现 
+					>重点关注initializers属性的遍历：对每个key:ServletContainerInitializer执行启动@.onStartup(entry.getValue(),getServletContext())
+						>过滤出WebApplicationInitializer类型的之后：遍历执行它的@.onStartup(servletContext)
+							-此时就看具体实现： spring-security有关的实现就是：AbstractSecurityWebApplicationInitializer 
+								>核心方法：@insertSpringSecurityFilterChain(servletContext)
+									>新建过滤器： new DelegatingFilterProxy(“springSecurityFilterChain”) 这就是第一个Filter
+									>利用来注册：@registerFilter(servletContext, true, filterName, springSecurityFilterChain)
+										>开始：@servletContext.addFilter(filterName, filter) - ApplicationContext tomcat
+											>核心：@context.addFilterDef(filterDef)
+												>实现： @filterDefs.put(filterDef.getFilterName(), filterDef) 在 StandardContext tomcat中。实现注册定义，后来就可以继续转移了。
+										>最后： registration.addMappingForUrlPatterns(dispatcherTypes, !insertBeforeOtherFilters, "/*")
+											>这个就常见了：@context.addFilterMap(filterMap)
+												>就是filterMaps.add(filterMap) - StandardContext 
+									-另外，还有一种注册过滤器的方法：即有个配置类 SecurityFilterAutoConfiguration
+										>类里有个bean方法：就是new DelegatingFilterProxyRegistrationBean("springSecurityFilterChain")
+										>类引用了 SecurityAutoConfiguration 类，后者引用了 SpringBootWebSecurityConfiguration 类 ， 后者又 WebSecurityConfigurerAdapter 类 都是@Configuration注解的
+					>其次关注：@filterStart()
+						>遍历：filterDefs属性，封装到new ApplicationFilterConfig(this, entry.getValue())， 加到@filterConfigs.put(name, filterConfig)
+	>在@AbstractApplicationContext.onRefresh()方法下：
+		- ServletWebServerApplicationContext 实现：
+			>核心为：@createWebServer() 
+				>还是：@getSelfInitializer().onStartup(servletContext)：回调方法都一样。
+					>核心为注册：@register(description, servletContext) 
+						>核心为配置：@configure(registration) - DynamicRegistrationBean 中，和spring-boot有关
+							>添加默认的：@registration.addMappingForUrlPatterns()
+								>新建new FilterMap() 封装到@setFilterName(filterDef.getFilterName())
+								>添加到上下文：@context.addFilterMap(filterMap)
+									>然后实质的添加：@filterMaps.add(filterMap) - StandardContext
+							>如果configure()实现 ： AbstractFilterRegistrationBean 中 
+								>关键为：@registration.addMappingForServletNames() - tomcat  ApplicationFilterRegistration
+									>核心：@ addFilterMapBefore(FilterMap filterMap)  StandardContext 
+										>实现：@filterMaps.addBefore(filterMap) 逻辑类似。
+	>新建过滤器链并使用：@AbstractApplicationContext.refresh()开始：
+		>进入@finishBeanFactoryInitialization()方法 
+			>看@DefaultListableBeanFactory.preInstantiateSingletons()的实现：
+				>再从所有的 beanDefinitionNames 的遍历中： 先取出单例：@getSingleton(beanName) 再看如果是 SmartInitializingSingleton 类型：则带安全框架地执行@afterSingletonsInstantiated() - 对 AutowireBeanFactoryObjectPostProcessor 实现
+					>遍历所有的smartSingletons: 对每个@singleton.afterSingletonsInstantiated() - SmartInitializingSingleton
+						>再具体：看 GlobalMethodSecurityConfiguration 的实现： 
+							>核心：初始化 方法安全拦截器：@initializeMethodSecurityInterceptor() - 再看 GlobalMethodSecurityConfiguration 的实现： 
+								>直接 GlobalMethodSecurityConfiguration.methodSecurityInterceptor.setAuthenticationManager(authenticationManager())
+								>明显是看@authenticationManager()的实现：
+									>先构造认证管理器：auth:new AuthenticationManagerBuilder(new ObjectPostProcessor<Object>())注入实例的实现是抛异常。
+										>开始构建：@auth.build() - AbstractSecurityBuilder 实现就是。
+											>核心为：@doBuild()
+												>核心为：@performBuild() 返回结果 看 WebSecurity 的实现：
+													>遍历ignoredRequests： 每个 封装到 new DefaultSecurityFilterChain(ignoredRequest) 加入一个列表 
+													>遍历：securityFilterChainBuilders， 每个先 @.build()--就是AbstractSecurityBuilder的@build() 再加到结果列表：securityFilterChains 
+													>上述再次封装到new FilterChainProxy()	甚至设置防火墙：httpFirewall
+														>这个是真正的Filter:继承了 GenericFilterBean 后者实现了Filter,InitializingBean和各种Aware
+														>其@doFilter()方法的查看：
+															>从之前的看是从@ApplicationFilterChain.internalDoFilter()方法进入的：开始处理各种Filter:
+																>内部调用@doFiler() - DelegatingFilterProxy 实现看：
+																	>转到@invokeDelegate()
+																		>@delegate.doFilter() - 实现就可以看 @FilterChainProxy.doFilter()了。
+																			
+													>做些验证工作：@filterChainProxy.afterPropertiesSet()
+													>最后是@postBuildAction.run()-- 这个就是下面说的回调。
+													>返回的就i是：FilterChainProxy对象。
+													-看 HttpSecurity 的实现： 直接 new DefaultSecurityFilterChain(requestMatcher, filters)
+												>另一个方法：@init() 看 AbstractConfiguredSecurityBuilder 的实现 
+													>先取全部配置：@getConfigurers() 遍历每一个：来初始化@configurer.init((B) this)
+														- 看 WebSecurityConfigurerAdapter 的 实现: 
+															>构建一个安全实体：@getHttp() HttpSecurity 对象。
+																>事实上：先new HttpSecurity()了
+																>最后配置了一下：@configure(http) 实际上非常重要 默认是 WebSecurityConfigurerAdapter 实现：就是全部的都需要认证 且 .formLogin().and().httpBasic()认证。
+																	>如果用户 继承了WebSecurityConfigurerAdapter写了一个子类，那么就调用它：
+																		>利用入参HttpSecurity，用户可以调用@.addFilterAfter()
+																			>转到@HttpSecurity.addFilter(filter)
+																				>里面的实现非常简单：就是@this.filters.add(filter)
+															>实体被加到：@WebSecurity.securityFilterChainBuilders.add(securityFilterChainBuilder)里
+															>再设置：@.postBuildAction(()->{}) 这个回调函数：
+																>调用http.getSharedObject(FilterSecurityInterceptor.class):从sharedObjects里取得到：FilterSecurityInterceptor对象
+																>再设置到入参：@web.securityInterceptor(securityInterceptor)里：即WebSecurity.filterSecurityInterceptor属性。
+									>build后的结果设置到 GlobalMethodSecurityConfiguration.authenticationManager 属性。	
+								>注意 这个全局类 是一个配置类@Configuration ， 还提供了一个@Bean方法：@methodSecurityInterceptor()--返回了 MethodInterceptor 对象，上面已经说过，这种 bean在构建代理 时 方法的通知者 Advisor 就是有从bf里取这种类型的过程。
+									>而上一步又明显设置了一个认证管理器。
 -----------------------------------------------------------------------专题：spring-boot 
 >重要配置类：WebMvcAutoConfiguration
 >启动类：SpringApplication 启动方法：@run(String... args)
