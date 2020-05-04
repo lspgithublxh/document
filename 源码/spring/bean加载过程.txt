@@ -344,7 +344,28 @@
 																														>清除事务信息是必然的：@cleanupTransactionInfo()																										
 																														>再提交事务：@commitTransactionAfterReturning()
 																															>调用事务管理器进行：@txInfo.getTransactionManager().commit(txInfo.getTransactionStatus())
-																																>如果要进行本地回滚：则执行@processRollback()
+																																>如果要进行本地回滚：则执行@processRollback(DefaultTransactionStatus status, boolean unexpected)直接返回
+																																	>类似的也是：@triggerBeforeCompletion(status)等和前面一样。
+																																>否则开始提交：@processCommit()
+																																	>类似三段论：AbstractPlatformTransactionManager实现为例：
+																																		>准备提交：@prepareForCommit(status) 空
+																																		>事前激活：@triggerBeforeCommit(status)
+																																			>提交前激活：@TransactionSynchronizationUtils.triggerBeforeCommit(status.isReadOnly())
+																																				>取全部同步，每个同步@synchronization.beforeCommit(readOnly)
+																																				-一般的实现没事。而对于mybatis的实现 SqlSessionSynchronization 则许多事。
+																																		>完成前激活：@triggerBeforeCompletion(status)
+																																			>激活：@TransactionSynchronizationUtils.triggerBeforeCompletion()
+																																				>对每个同步 进行调用：@synchronization.beforeCompletion()
+																																		>有保存点：要释放保存点：@status.releaseHeldSavepoint()
+																																			>用保存点管理器进行：@getSavepointManager().releaseSavepoint(savepoint)
+																																			>设置：setSavepoint(null)
+																																		>新事务：则提交：@doCommit(status)
+																																			>取事务：用 用户事务 提交：
+																																				>如果状态是回滚：则回滚：@status.getTransaction().getUserTransaction().rollback() ： javax.transaction.UserTransaction
+																																				>否则是提交：执行@txObject.getUserTransaction().commit()
+																																		>提交后激活：@triggerAfterCommit(status)内容类似 
+																																		>finally完成后激活：@triggerAfterCompletion()内容类似 
+																																		>finally 清除事务信息：@cleanupAfterCompletion() 内容类似 
 																													>否则事务属性不是null: 开始用事务管理器执行事务：@CallbackPreferringPlatformTransactionManager.execute(txAttr,callback)	子类实现：
 																														>看子类实现之前：要看这个回调函数：@callback()
 																															>先准备事务信息：@prepareTransactionInfo()
@@ -393,11 +414,7 @@
 																															>调@uowManager.runUnderUOW(uowType, joinTx, action) com.ibm.wsspi.uow.UOWManager
 																																>
 																															>返回结果：@action.getResult()	
-																													>	
-																														
-																														
-																														
-																														
+																													
 																											-以AspectJAfterAdvice实现为例：看@invoke(MethodInvocation mi)方法的实现：其中的mi的实现就是 ReflectiveMethodInvocation
 																												>先移动指针mi.proceed() //MethodInvocation为接口，ReflectiveMethodInvocation 为实现类。
 																												>必做之事：反射调用通知：
@@ -2050,7 +2067,16 @@
 																-对AdvisorAdapterRegistrationManager实现： 如果bean是AdvisorAdapter类：需要注册到通知仓库：@advisorAdapterRegistry.registerAdvisorAdapter()
 																	#DefaultAdvisorAdapterRegistry.adapters.add(adapter)
 																-对ApplicationContextAwareProcessor实现：直接返回 
-																	
+																-对 SimpleServletPostProcessor 实现： 和spring-web有关 
+																	>如果bean是Servlet类型：则处理 
+																		>进行初始化Servlet.init(new DelegatingServletConfig(beanName, this.servletContext))
+																			- 以 HttpServletBean 实现为例： 
+																				>注册资源编辑器：@bw.registerCustomEditor(Resource.class, new ResourceEditor())
+																				>子类继续初始化：@initServletBean() FrameworkServlet @initWebApplicationContext()	
+																					>子类继续初始化：@onRefresh() DispatcherServlet
+																						>核心@initStrategies()
+																							>其中有各种解析器的初始化：经典的就是handlermapping的初始化@initHandlerMappings(context)
+																								>但是map是从bf里取出来的bean。
 												>事情5：提前暴露模式的缓存处理：
 													#如果前面已经确定当前bean允许提前暴露 并且 正在创建中： 需要检查
 														#仅仅从单例池或者提前单例池中获取单例：而不备选从单例工厂里取单例的引用：@getSingleton()
@@ -2663,6 +2689,93 @@
 																																												>this.multipartResolver.resolveMultipart(request)
 																																											>第二步：匹配handler:@getHandler()
 																																												>遍历this.handlerMappings：对每个HandlerMapping，@调用mapping.getHandler(request) 得到handler:HandlerExecutionChain不为null就返回。
+																																													>先内部取：@getHandlerInternal()
+																																														-AbstractHandlerMethodMapping实现为例：
+																																															>调用url路径帮手获取匹配的路径：来解析@UrlPathHelper.getLookupPathForRequest()
+																																																>完整路径解析：@getPathWithinApplication()
+																																																	>获取上下文路径：并且解码@getContextPath()		从request的javax.servlet.include.context_path属性。
+																																																	>取uri: 即域名后?前的内容：@getRequestUri()
+																																																	>uri里的剩余内容：返回。
+																																																>其他方式：@getPathWithinServletMapping()略。 
+																																															>根据上一步的路径匹配 handlerMethod 有多个实现：@lookupHandlerMethod(lookupPath, request)				
+																																																- AbstractHandlerMethodMapping 实现为例
+																																																	>先从mapping仓库里取出对应的PathMatches:@this.mappingRegistry.getMappingsByUrl(lookupPath)
+																																																		>内容为：@MappingRegistry.urlLookup.get(urlPath)而这个MultiValueMap:urlLookup 就是关键。它的值在初始化的时候被赋值了。所以还看它的初始化。搜索本类，发现有一个@register(T mapping, Object handler, Method method)注册方法，所以这是突破口。
+																																																			>往上，是@AbstractHandlerMethodMapping.registerMapping(T mapping, Object handler, Method method)
+																																																				>再往上，是@AbstractWebMvcEndpointHandlerMapping.registerLinksMapping()	
+																																																					>继续往上，是@AbstractHandlerMethodMapping.initHandlerMethods()
+																																																						>还往上，是@AbstractHandlerMethodMapping.afterPropertiesSet()这个就是 本类实现的InitializingBean初始化接口。但是他是抽象类，所以得看子类：
+																																																						-找到 RequestMappingHandlerMapping 也实现了@afterPropertiesSet()接口且调用了super.afterPropertiesSet()所以这里就是入口。
+																																																							>继续看何时初始化的：这个就是何时调用 InitializingBean 接口方法的问题：
+																																																								>往上看到 @AbstractAutowireCapableBeanFactory.invokeInitMethods() 最后调用了。
+																																																									>继续：@AbstractAutowireCapableBeanFactory.initializeBean() , 再往上，就是 @AbstractAutowireCapableBeanFactory.doCreateBean(final String beanName, final RootBeanDefinition mbd, final @Nullable Object[] args)和创建bean直接相关了。
+																																																			>或者是另一个方法：@AbstractHandlerMethodMapping.registerHandlerMethod(Object handler, Method method, T mapping)	
+																																																				>而往上：是@AbstractHandlerMethodMapping.detectHandlerMethods(Object handler) 此时有必要看内容了，因为发现一个有趣的工作：
+																																																					>这个侦查方法的实现里：先是@ClassUtils.getUserClass(handlerType)取了handler的对应的bean的类型，再用内省机制 过滤出正确的方法：@MethodIntrospector.selectMethods(), 而注入的过滤器lamda表达式是：核心调用：@getMappingForMethod(method, userType)
+																																																						>只能看 RequestMappingHandlerMapping 的实现：
+																																																							>创建 RequestMappingInfo 信息：@createRequestMappingInfo(method)
+																																																								>终于：它开始取 方法上的：RequestMapping.class 类型注解，得到之后：继续封装：@createRequestMappingInfo(RequestMapping requestMapping, @Nullable RequestCondition<?> customCondition)
+																																																									>解析带占位符的路径：@resolveEmbeddedValuesInPatterns(requestMapping.path())
+																																																										>遍历路径：专门解析每一个：@this.embeddedValueResolver.resolveStringValue(patterns[i])			
+																																																											>直接转发：@this.helper.replacePlaceholders(strVal, this.resolver)  - PropertyPlaceholderConfigurer
+																																																												>转发：@parseStringValue(value, placeholderResolver, null) - PropertyPlaceholderHelper 类中
+																																																													>开始实际的解析工作：
+																																																														>比如匹配前缀的工作：@findPlaceholderEndIndex()
+																																																														>找到占位符后 替换占位符对应的值：@PropertyPlaceholderConfigurer.PropertyPlaceholderConfigurerResolver.resolvePlaceholder(String placeholderName()
+																																																															>转发：采用系统模式：@resolvePlaceholder(String placeholder, Properties props, int systemPropertiesMode)
+																																																																>开始通过占位符从Properties里寻找替换值：@resolveSystemProperty(placeholder)
+																																																																	>即先@resolvePlaceholder():
+																																																																		>直接取props.getProperty(placeholder)
+																																																																	>没有则从系统属性里取：System.getProperty(key) 防备： System.getenv(key)
+																																																									>设置method值：@.methods(requestMapping.method())
+																																																									>设置params值：@.params(requestMapping.params())
+																																																									>设置headers值：@.headers(requestMapping.headers())																	
+																																																									>设置consums值：@consumes(requestMapping.consumes())
+																																																									>设置produces值：@.produces(requestMapping.produces())
+																																																									>设置mappingName值：@.mappingName(requestMapping.name())
+																																																									>如果入参condition不是null:也设置进去：@.customCondition(customCondition)		
+																																																									>设置options值：@.options(this.config)	
+																																																									>设置完成开始,build@.build()	
+																																																										>部分信息封装到new PatternsRequestCondition()里， 
+																																																									>再和其他信息一起封装到new RequestMappingInfo()里 返回。其他信息在封装的时候都会先解析@parseExpressions()再返回。
+																																																							>如果创建的mappingInfo不是null, 则再次调用一次，但输入handlerType,@createRequestMappingInfo(handlerType)即在类级别再获得一次这样的信息。毕竟入参类型是AnnotationedElement
+																																																								>如果再次的结果不是null，那么和之前的那个合并：@hypeInfo.combine(info)
+																																																									>从name开始，一项一项的合并：如简单的两个普通字符串：则 type的值在前，method的值在后，中间#分割， 合并为一个新的字符串。有的要复杂一点，如模式的合并。而方法的合并：则直接两个list相并：
+																																																									>单项合并之后，直接封装到new RequestMappingInfo()返回。
+																																																								>获取路径前缀：@getPathPrefix() 内容实际上是 遍历pathPrefixes属性来解析：this.embeddedValueResolver.resolveStringValue(prefix)	解析到就返回。	
+																																																								>继续封装而返回@RequestMappingInfo.paths(prefix).build().combine(info)
+																																																					>得到过滤的方法之后，就开始注册。							
+																																																				>而这个@detectHandlerMethods()方法继续向上：									
+																																																					>往上@AbstractHandlerMethodMapping.processCandidateBean(String beanName)																				
+																																																					    >往上：@AbstractHandlerMethodMapping.initHandlerMethods() 
+																																																							>这个方法专门讲：因为不同于之前：
+																																																								>先是获取全部候选的beanNames:@getCandidateBeanNames() 遍历：不是“scopedTarget.”开头的name会被选中，进入@processCandidateBean()的流程中。
+																																																									>候选的beanNames: 实际上都是利用上下文取 全部的beans:@obtainApplicationContext().getBeanNamesForType(Object.class)	- DefaultListableBeanFactory 实现为例，允许单例和提前暴露，采用了缓存模式。最终来自：beanDefinitionNames/manualSingletonNames
+																																																									>注意：上下文来自：ApplicationObjectSupport.applicationContext	, 而这个类实现了 ApplicationContextAware 接口，所以它 会在getBean()过程中 被注入，就是通用的上下文。
+																																																							>往上：	@AbstractHandlerMethodMapping.afterPropertiesSet()						
+																																																								>往上：@RequestMappingHandlerMapping.afterPropertiesSet()
+																																																						>另外，这个方法要专门讲：因为实现很特别：
+																																																							>前面说过，传过来的入参是所有的beanName,所以先查看类型@obtainApplicationContext().getType(beanName)
+																																																							>再看这个类型Class是否是Hander类：@isHandler(beanType)
+																																																								- 对 RequestMappingHandlerMapping 实现： 
+																																																									>是看这个类有没有Controller/RequestMapping两个注解：AnnotatedElementUtils.hasAnnotation(beanType, Controller.class) || AnnotatedElementUtils.hasAnnotation(beanType, RequestMapping.class)) -- 这个搜索方法非常彻底：从自身/到实现的接口/层层父类/层层父类的接口:全部上级 都会去找。
+																																																								- 对 PropertySourcedRequestMappingHandlerMapping 实现也是：同上
+																																																							>只有上述成立：是handler:有Controller/RequestMapping注解之一，才认为是,然后进入@detectHandlerMethods()环节。			
+																																																	>再封装到Match里：@addMatchingMappings()
+																																																		>遍历这些mappings,对每个：
+																																																			>@找到对应的值@getMatchingMapping()
+																																																				>即查询匹配的请求匹配信息：@info.getMatchingCondition(request) 此时已经是 RequestMappingInfoHandlerMapping 实现。 
+																																																					>则是获取各种匹配条件：最后封装到new RequestMappingInfo()里，比如方法匹配条件：@this.methodsCondition.getMatchingCondition(request)；参数匹配条件：@this.paramsCondition.getMatchingCondition(request)
+																																																			>再mappingRegistry.mappingLookup.get(mapping) 结果封装到new Match()对象。而这个new Match()对象以后就是HandlerMethod
+																																																				>而这里的mappingLookup的初始化也是在 @MappingRegistry.register(T mapping, Object handler, Method method)
+																																																					>注册方法的入参就有handler,method: @createHandlerMethod()
+																																																						>如果handler是string:先当做name从bf里取出,再封装到new HandlerMethod(handler, method)
+																																																	>可能做的事：先从上一步的Match集合里取出第一个Match:bestMatch.handlerMethod:HandlerMethod 返回。@handleMatch()处理匹配。 或者@handleNoMatch()内容都比较普通。		
+																																																-PropertySourcedRequestMappingHandlerMapping 实现为例
+																																													>如果得到的handler是string, 那么用工厂取bean:@obtainApplicationContext().getBean(handlerName)	
+																																													>然后封装到HandlerExecutionChain @getHandlerExecutionChain()			
+																																													>返回这个handler执行器链。			
+																																																
 																																											>3：handler还要转适配器：@getHandlerAdapter() 遍历this.handlerAdapters  对每个HandlerAdapter， 支持adapter.supports(handler) 就返回这个	HandlerAdapter
 																																											>4: 开始应用拦截器：@applyPreHandle()被拦截了直接返回
 																																												>遍历this.interceptors， 对每个HandlerInterceptor ，应用前置方法@interceptor.preHandle(request, response, this.handler) 如果被拦截了，那么开始@triggerAfterCompletion()---即使用全部拦截器执行@interceptor.afterCompletion(request, response, this.handler, ex)返回false
@@ -2670,17 +2783,17 @@
 																																												-以AbstractHandlerMethodAdapter 实现为例： 
 																																													>几乎直接转发给 子类实现：@handleInternal() RequestMappingHandlerAdapter的实现：
 																																														>经过一顿检查，开始@invokeHandlerMethod() 已经传入handler方法
-																																														>handle方法包装：@createInvocableHandlerMethod()--new ServletInvocableHandlerMethod(handlerMethod)
-																																														>设置一些参数：也new ModelAndViewContainer()容器。
-																																														>开始反射这个方法并回设相关数据到视图：@invocableMethod.invokeAndHandle(webRequest, mavContainer)
-																																															>核心为：@invokeForRequest()
-																																																>取参数@getMethodArgumentValues()
-																																																	>解析参数：@this.resolvers.resolveArgument() InvocableHandlerMethod
-																																																>开始@doInvoke()
-																																																	>核心为使用被桥接的方法进行反射调用：@this.bridgedMethod..invoke(getBean(), args)
-																																															>设置返回状态 
-																																														>开始获取视图；@getModelAndView()
-																																															>使用模型工厂：等。封装出new ModelAndView()返回。
+																																															>handle方法包装：@createInvocableHandlerMethod()--new ServletInvocableHandlerMethod(handlerMethod)
+																																															>设置一些参数：也new ModelAndViewContainer()容器。
+																																															>开始反射这个方法并回设相关数据到视图：@invocableMethod.invokeAndHandle(webRequest, mavContainer)
+																																																>核心为：@invokeForRequest()
+																																																	>取参数@getMethodArgumentValues()
+																																																		>解析参数：@this.resolvers.resolveArgument() InvocableHandlerMethod
+																																																	>开始@doInvoke()
+																																																		>核心为使用被桥接的方法进行反射调用：@this.bridgedMethod..invoke(getBean(), args)
+																																																>设置返回状态 
+																																															>开始获取视图；@getModelAndView()
+																																																>使用模型工厂：等。封装出new ModelAndView()返回。
 																																												-以 HttpRequestHandlerAdapter 实现为例： 
 																																													>跟资源处理有关：@handleRequest() 查对应的RequestDispatcher  然后@forward()递归了。
 																																											>6.应用视图名：@applyDefaultViewName()
@@ -2823,6 +2936,30 @@
 >应用1：切面->通知->事务拦截器(来对拦截到的方法进行事务增强)
 -----------------------------------------------------------------------专题：spring-web 
 -----------------------------------------------------------------------专题：spring-security 
+-----------------------------------------------------------------------专题：spring-boot 
+>重要配置类：WebMvcAutoConfiguration
+>启动类：SpringApplication 启动方法：@run(String... args)
+	>准备上下文：@prepareContext()
+		>最后的监听器转发：@SpringApplicationRunListeners.contextLoaded()
+			>遍历listeners:对每个监听器：@EventPublishingRunListener.contextLoaded()
+				>再取全部监听器：遍历，对其中ApplicationContextAware类型的设置上下文：@ApplicationObjectSupport.setApplicationContext(context)	
+					>核心为初始化：@ApplicationObjectSupport.initApplicationContext(context)
+						>转调无参数的：@initApplicationContext()
+							- AbstractDetectingUrlHandlerMapping实现为例：
+								>先父类初始化：@AbstractHandlerMapping.initApplicationContext()
+									>扩展拦截器：@extendInterceptors(this.interceptors) -无事 
+									>侦查更多拦截器：@BeanFactoryUtils.beansOfTypeIncludingAncestors(applicaionContext,MappedInterceptor.class, true, false)
+										>即从context里找出所有MappedInterceptor类型的bean出来(先遍历全部name：@getBeanNamesForType()，后@getBean()的方式), context是HierarchicalBeanFactory类型还会parent递归进行获取。
+										>将拦截器加到入参列表里。
+									>初始化拦截器：@initInterceptors()
+										>遍历拦截器intercepters, @adaptInterceptor(interceptor)适配之后加到adaptInterceptors里，适配其实没有动作:仅仅转类型:HandlerInterceptor/WebRequestInterceptor-重新封装new WebRequestHandlerInterceptorAdapter()
+								>侦查拦截器注册：@detectHandlers()
+									>内容比较奇怪。
+							-SimpleUrlHandlerMapping 实现为例：
+								>也是父类@initApplicationContext()
+								>开始注册：@registerHandlers(this.urlMap)
+									>遍历urlMap而注册：@registerHandler(url, handler) 
+										>核心是：@this.handlerMap.put(urlPath, resolvedHandler)
 
 世界观： 
  >容器：具有活跃、关闭状态。
