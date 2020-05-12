@@ -235,7 +235,7 @@
 																												>获取切点的MethodMatcher：
 																													>无论是否IntroductionAwareMethodMatcher类型：都要匹配入参方法：@MethodMatcher.matches()
 																														>如果匹配到了了：取advisor的拦截器：@DefaultAdvisorAdapterRegistry.getInterceptors()
-																															>如果是Advisor是MethodInterceptor类型：自己就要加。
+																															>如果是Advisor的Advice属性是MethodInterceptor类型：自己就要加。MethodInterceptor 是 Advice的实现类。
 																															>再从List<AdvisorAdapter> adapters:DefaultAdvisorAdapterRegistry里补充：而AdvisorAdapter三种类型：AfterReturningAdviceAdapter/MethodBeforeAdviceAdapter/ThrowsAdviceAdapter
 																																>只要是这三种类型：获取拦截器：@getInterceptor(Advisor advisor) 加入拦截器列表。
 																																	>封装返回new AfterReturningAdviceInterceptor(advisor.getAdvice())
@@ -363,6 +363,12 @@
 																																			>取事务：用 用户事务 提交：
 																																				>如果状态是回滚：则回滚：@status.getTransaction().getUserTransaction().rollback() ： javax.transaction.UserTransaction
 																																				>否则是提交：执行@txObject.getUserTransaction().commit()
+																																			- 对于 JpaTransactionManager 实现： 
+																																				>txObject.getEntityManagerHolder().getEntityManager().getTransaction().commit()
+																																					> 此时进入hibernate 的TransactionImpl 类里；继续@internalGetTransactionDriverControl().commit()
+																																						>进入JdbcResourceLocalTransactionCoordinatorImpl 中，继续:@jdbcResourceTransaction.commit()
+																																							>进入 AbstractLogicalConnectionImplementor 继续@getConnectionForTransactionManagement().commit()
+																																								>这就是 java.sql.Connection.commit() 提交了。
 																																		>提交后激活：@triggerAfterCommit(status)内容类似 
 																																		>finally完成后激活：@triggerAfterCompletion()内容类似 
 																																		>finally 清除事务信息：@cleanupAfterCompletion() 内容类似 
@@ -1467,18 +1473,29 @@
 																#只要mbd非合成 且 有 实例化感知 bean后置处理器：那么就要处理：遍历所有的bean后置处理器：对每个处理器，如果是SmartInstantiationAwareBeanPostProcessor类型： 则继续处理：调用它的提前bean应用接口@getEarlyBeanReference() 应用的结果就是下一次的入参--继续代理：相等于层层代理, 对于AbstractAutoProxyCreator实现：
 																	>获取缓存key：Class或者原生beanName(FactoryBean类型要加&开头)
 																	>此key加入提前代理池earlyProxyReferences里：
-																	>有必要包装一下：@wrapIfNecessary()
+																	>有必要包装一下：@wrapIfNecessary(): AbstractAutoProxyCreator 它属于这种processor
 																		#beanName不是空 且 目标源beans池Set:targetSourcedBeans包含bn：那么没必要包装
 																		#或者通知beans Map:advisedBeans中取缓存key的值是true: 也没必要包装。
 																		#或者是不应该被代理的基础设施类：@isInfrastructureClass():Advice/Pointcut/Advisor/AopInfrastructureBean：那么通知beans Map存放这个类：值为false。同时返回不包装。
 																		#或者是应该忽略的类：即类名以.ORIGINAL结尾：@AutoProxyUtils.isOriginalInstance() 同上处理：
-																		#其他情况下的类需要包装：包装就是注入通知：@getAdvicesAndAdvisorsForBean(), 以spring aop框架下的BeanNameAutoProxyCreator为例：看实现
-																			#首先已经注入了一个需要代理的beanName的特征的集合list：beanNames, 遍历这个集合，对每个匹配模式，看是否和准备代理的beanName/class匹配，然后才代理：
-																				#如果待代理类是FactoryBean类型：但模式name不是以&开头：继续循环。否则是&开头：则取&后面的模式为新的模式
-																				>对此时的模式name和beanName进行匹配：@isMatch() 如果匹配到了，那么返回空数组：认为没有额外的拦截器，返回无需拦截器的代理标记。
-																					>内容就是看beanName是否包含模式：@PatternMatchUtils.simpleMatch()包含则匹配。
-																				#否则此时没有匹配：查bean工厂：查出beanName的别名数组：遍历别名数组：对每个别名，也看是否和模式匹配：@isMatch()，如果匹配那么也同样返回空数组：认为无需拦截器的代理。
-																			>到此：则认为无需代理：返回null 
+																		#其他情况下的类需要包装：包装就是注入通知：@getAdvicesAndAdvisorsForBean(),
+																			-以spring aop框架下的BeanNameAutoProxyCreator为例：看实现
+																				#首先已经注入了一个需要代理的beanName的特征的集合list：beanNames, 遍历这个集合，对每个匹配模式，看是否和准备代理的beanName/class匹配，然后才代理：
+																					#如果待代理类是FactoryBean类型：但模式name不是以&开头：继续循环。否则是&开头：则取&后面的模式为新的模式
+																					>对此时的模式name和beanName进行匹配：@isMatch() 如果匹配到了，那么返回空数组：认为没有额外的拦截器，返回无需拦截器的代理标记。
+																						>内容就是看beanName是否包含模式：@PatternMatchUtils.simpleMatch()包含则匹配。
+																					#否则此时没有匹配：查bean工厂：查出beanName的别名数组：遍历别名数组：对每个别名，也看是否和模式匹配：@isMatch()，如果匹配那么也同样返回空数组：认为无需拦截器的代理。
+																				>到此：则认为无需代理：返回null 
+																			-而以 AbstractAdvisorAutoProxyCreator 实现为例：其子类 AnnotationAwareAspectJAutoProxyCreator 在初始解析获取bean定义时就已经new RootBeanDefinition() 且注册了。
+																				>直接找全部的通知：@findEligibleAdvisors()
+																					>先候选通知：@findCandidateAdvisors()	
+																						>转发给：@this.advisorRetrievalHelper.findAdvisorBeans() - BeanFactoryAdvisorRetrievalHelper 的实现
+																							>直接从bf里查找所有的Advisor.class类beanNames然后getBean()方式取得实体返回:@BeanFactoryUtils.beanNamesForTypeIncludingAncestors(this.beanFactory, Advisor.class, true, false)
+																					>过滤可以应用的：@findAdvisorsThatCanApply()
+																						>直接转发：@AopUtils.findAdvisorsThatCanApply() - 已经描述：如实现了IntroductionAdvisor/PointcutAdvisor接口。
+																					>排序：@sortAdvisors()
+																						>使用@AnnotationAwareOrderComparator.sort(advisors)排序。
+																				---正如后面所将，这些advisor将会加入 AdvisedSupport.advisors属性中。而 ProxyFactory 是 AdvisedSupport的子类。
 																		#如果结果是无需代理：那么什么也不做：
 																		#否则要代理：首先advisedBeans通知beans要增加：key=cacheKey,value=true ;然后创建代理@createProxy(), 创建的代理存入map:proxyTypes属性：key=cacheKey,value=代理实例的Class。返回这个代理。
 																			#如果beanFactory是ConfigurableListableBeanFactory类型：那么需要在beanDefinition里增加一个属性kv: 具体调用@AutoProxyUtils.exposeTargetClass()
@@ -2077,6 +2094,7 @@
 																						>核心@initStrategies()
 																							>其中有各种解析器的初始化：经典的就是handlermapping的初始化@initHandlerMappings(context)
 																								>但是map是从bf里取出来的bean。
+																- 对 AbstractAutoProxyCreator 实现：和aop相关：主要目的时注入advisor
 												>事情5：提前暴露模式的缓存处理：
 													#如果前面已经确定当前bean允许提前暴露 并且 正在创建中： 需要检查
 														#仅仅从单例池或者提前单例池中获取单例：而不备选从单例工厂里取单例的引用：@getSingleton()
@@ -2404,6 +2422,17 @@
 																			>否则用户空间：则用法2：@delegate.parseCustomElement(ele)
 																				>转发为统一入参的：@parseCustomElement()
 																					>也是根据reader上下文获取名称空间解析器 根据 namespaceUri 来解析 得到 名称空间handler: NamespaceHandler:@readerContext.getNamespaceHandlerResolver().resolve(namespaceUri)。。namespaceHandlerResolver.
+																						>而对于事务标签 寻找到的 节点的namespaceURI 再查得.handlers文件得到的NamespaceHandler再名称反射实例化, 就是：TxNamespaceHandler 实例，会再立刻执行@init()方法
+																							>注册三个parser:@registerBeanDefinitionParser("advice", new TxAdviceBeanDefinitionParser())  registerBeanDefinitionParser("annotation-driven", new AnnotationDrivenBeanDefinitionParser()) registerBeanDefinitionParser("jta-transaction-manager", new JtaTransactionManagerBeanDefinitionParser())
+																								>注意：后面的advice , annotation-driven, jta-transaction-manager 都是<tx:advice> 这样的标签:后的内容，在@findParserForElement()方法调用时会解析出这个内容，然后找到对应的parser, 调用对应的@parser()方法。
+																								- 通过<>中的tx找到NamespaceHandler,再init()而注册多个parser, 而通过冒号后的内容找到对应的parser,调用@parser() ---比如对于 annotation-driven 对应 AnnotationDrivenBeanDefinitionParser 这个parser, ：
+																									>关键内容就是：@AopAutoProxyConfigurer.configureAutoProxyCreator(element, parserContext)
+																										>深远动作1：注册了bd:AnnotationTransactionAttributeSource.class 到 beanDefinationMap
+																										>深远动作2：注册了bd:TransactionInterceptor.class 到 beanDefinationMap @registerWithGeneratedName()
+																										>深远动作3：注册了bd:BeanFactoryTransactionAttributeSourceAdvisor.class 到 beanDefinationMap    。。是一个Advisor,  还有个 TransactionAttributeSource 类型属性，如果是 AnnotationTransactionAttributeSource 类型，
+																											>实际上只有 TransactionAttributeSourceAdvisor 类 这个Advisor持有了 TransactionInterceptor 属性。而这个拦截器的父类TransactionAspectSupport有 TransactionAttributeSource 属性。
+																												>而它封装为Advisor 加到了 一个ProxyFactory里，这个代理工厂又创建代理为AbstractSingletonProxyFactoryBean.proxy属性。而子类 TransactionProxyFactoryBean 没有使用。
+																										- 所有只要配置了<tx:annotation-driven> 标签，就已经注册了 TransactionInterceptor bd定义，从而会再后面实例化单例化。
 																					>使用这个namespaceHandler来解析：@NamespaceHandlerSupport.parse();
 																						>转发给@findParserForElement()来获取BeanDefinitionParser解析器。
 																							>自然是从属性map:parsers里匹配一个出来。入参为localName
@@ -2475,13 +2504,23 @@
 																													>名：@generateBeanName(beanDefinition)
 																													>注册：@registerBeanDefinition(generatedName, beanDefinition)
 																												>构造事务拦截器：new RootBeanDefinition(TransactionInterceptor):interceptorDef
+																													>后面会使用：在方法拦截器执行时，调用到它，然后会尝试找方法上的Transational注解：进行相关处理。
+																													--顺带：另一个设置 这个拦截器的地方：@AbstractSingletonProxyFactoryBean.afterPropertiesSet()
+																														>里面会创建一个代理工厂ProxyFactory：而这个pf就会加一个advisor--因为ProxyFactory继承了 AdvisedSupport 所有有advisors属性：@proxyFactory.addAdvisor()入参就是：@createMainInterceptor() - TransactionProxyFactoryBean 实现里新建了new TransactionInterceptor() 所以代理里天然就有，不是从bf里取得的。
+																														>增加代理接口：就是目标类的所有相关如继承的接口。
+																														>创建实际代理：ProxyFactory有一个属性aopProxyFacotry:默认是DefaultAopProxyFactory类型，调用它的@createAopProxy()创建实际的代理：
+																															>返回两个之一：new JdkDynamicAopProxy(config)(被代理类是接口或者是Proxy类型)/ObjenesisCglibAopProxy(config)， 这两个类的@getProxy(@Nullable ClassLoader classLoader)方法才创建真正的动态代理实例。
+																																>一方面获取更多的代理接口：SpringProxy/Advised/DecoratingProxy 这三个可能要新增：AopProxyUtils.completeProxiedInterfaces(this.advised, true)
+																																>二看这些接口里是否有equals或者hashcode方法-标记起来：@findDefinedEqualsAndHashCodeMethods()
+																																>反射机制创建接口的代理类：@Proxy.newProxyInstance(classLoader, proxiedInterfaces, this) 而 JdkDynamicAopProxy类本身就作为 InvocationHandler 类的实例。
 																												@注册事务管理器：@registerTransactionManager()	
+																													>将bd增加属性值：“transactionManagerBeanName”-TxNamespaceHandler.getTransactionManagerName(element)
 																												>拦截器的多属性值增加:"transactionAttributeSource"->new RuntimeBeanReference()										
 																												@注册这个拦截器：@registerWithGeneratedName(RootBeanDefinition)										
 																												>构造事务属性资源通知：new RootBeanDefinition(BeanFactoryTransactionAttributeSourceAdvisor.class):advisorDef
 																												>添加属性：“transactionAttributeSource”->new RuntimeBeanReference() 同时增加上一步得到的拦截器名：“adviceBeanName”-->xxname	
 																												>注册这个通知：@registerBeanDefinition(txAdvisorBeanName, advisorDef)，txname=org.springframework.transaction.config.internalTransactionAdvisor
-																												>构造复合组件： new CompositeComponentDefinition(element.getTagName(), eleSource):compositeDef将上述sourceDef/interceptorDef/advisorDef	封装到compositeDef.addNestedComponent(new BeanComponentDefinition(sourceDef, sourceName))添加进来。
+																												>构造复合组件： new CompositeComponentDefinition(element.getTagName(), eleSource):compositeDef将上述sourceDef/interceptorDef/advisorDef	封装到compositeDef.addNestedComponent(new BeanComponentDefinition(sourceDef, sourceName))添加进来。this.nestedComponents属性里。
 																												>然后用上下文注册：@parserContext.registerComponent(compositeDef)	--仅仅发布事件。
 				
 																>否则直接以下解析：delegate.parseCustomElement(root)直接根节点的客户标签解析。
@@ -3065,6 +3104,55 @@
 									>遍历urlMap而注册：@registerHandler(url, handler) 
 										>核心是：@this.handlerMap.put(urlPath, resolvedHandler)
 
+
+-----------------------------------------------------------------------spring-data 
+事务是怎么生效的：关键在 TransactionInterceptor 是在哪里注入到 某个 bean的advisors里的：
+>RepositoryFactoryBeanSupport 是个工厂bean: 
+	>子类：TransactionalRepositoryFactoryBeanSupport, 下一级子类 JpaRepositoryFactoryBean ，而这个bean的引入时机：在配置类 JpaRepositoriesAutoConfiguration 的 注解@ConditionalOnMissingBean上， 即这个配置类要求这个工厂bean要先加载。
+		>而这个配置类在spring-boot-autoconfigure jar的META-INF/spring.factories里：作为自动配置的一项内容；另一项常见的是： SecurityAutoConfiguration
+		>而这个文件是 SpringFactoriesLoader 类来解析的。
+	>还有@afterPropertiesSet()方法：这个方法里：
+		>创建几个处理器加到processors里：@createRepositoryFactory()
+			>总共加了：TransactionalRepositoryProxyPostProcessor/PersistenceExceptionTranslationRepositoryProxyPostProcessor --- 对于后面这个processor:在@setFactory()时还会给@this.advisor=new PersistenceExceptionTranslationAdvisor()赋值：
+				>实际内容：this.advice = new PersistenceExceptionTranslationInterceptor(beanFactory)
+				>实际内容2：this.pointcut = new AnnotationMatchingPointcut(repositoryAnnotationType, true) 而注入的这个 注解类型 就是： Repository.class
+					>这个类型进一步封装到了类过滤器属性里：@AnnotationMatchingPointcut.classFilter = AnnotationClassFilter() --作为过滤一个类的根据：是否要经过那个方法拦截器：PersistenceExceptionTranslationInterceptor --- 这个拦截器实际内容没有什么。
+				- 而一个proposser是可以给一个Advised 类型的bean 添加 advisor的。---把自己的加给bean的advisors里。而很明显：事务拦截器 就是 通过 TransactionalRepositoryProxyPostProcessor 赋值给各个 Advised类型的bean的。	
+				- 进一步发现 增加了事务拦截器的 processor 反而只在一个方法里 给ProxyFactory增加事务拦截器的advisor:即@RepositoryFactorySupport.getRepository()
+		>有条件再加一个processor: EventPublishingRepositoryProxyPostProcessor
+		>继续从 RepositoryFactorySupport.getRepository()开始： 
+			>核心为创建代理：new ProxyFactory()
+			>设置这个代理类要实现的接口两个：Repository/TransactionalProxy
+			>增加一些重要的如验证功能的Advice(最后还是封装为Advisor)/Advisor:
+			>调用本地处理器链处理：@postProcessors.forEach(processor -> processor.postProcess(result, information)) 处理器为 RepositoryProxyPostProcessor 类型。三种实现类型：事务、持久化异常、事件 
+				-TransactionalRepositoryProxyPostProcessor 实现为例：
+					>会新建事务拦截器：new TransactionInterceptor(null,new CustomAnnotationTransactionAttributeSource())
+					>然后加入工厂最终当作一个通知者：@factory.addAdvice(transactionInterceptor) ---就是在这里加入的事务拦截器。
+		- JpaRepositoryFactory 是 RepositoryFactorySupport 的子类
+			>
+>通过 JpaRepository 接口而获取代理：不是上面说的注解方式：
+	>在上下文重新加载事件发生时：@onApplicationEvent()里：先获取全部Repository类型的bean:@beanFactory.getBeansOfType(Repository.class) DeferredRepositoryInitializationListener  这个类在初始化的时候已经被注册为了单例：即在@RepositoryConfigurationDelegate.potentiallyLazifyRepositories()
+	- 注意看 RepositoryBeanDefinitionRegistrarSupport 的实现： @registerBeanDefinitions()	
+		>构造：@new AnnotationRepositoryConfigurationSource() 取出 全部属性放到：new AnnotationAttributes()里：this.attributes里 
+		>其中@getAnnotation()实现： 
+			>对 JpaRepositoriesRegistrar 实现类：为返回 EnableJpaRepositories.class
+		>在@registerRepositoriesIn()里：
+			>根据配置构建定义：@builder.build(configuration)
+				>核心为查和设置 工厂beanName: @configuration.getRepositoryFactoryBeanClassName()
+					>转到@configurationSource.getRepositoryFactoryBeanClassName() - AnnotationRepositoryConfigurationSource 实现
+						>核心：attributes.getClass(REPOSITORY_FACTORY_BEAN_CLASS="repositoryFactoryBeanClass").getName()  前面已经说了 attributes 属性里的内容：所以其getClass()得到的就是：EnableJpaRepositories这个注解的repositoryFactoryBeanClass属性值：：JpaRepositoryFactoryBean.class 
+				>而得到的那个类名：就会被设置到新的bd的beanClasName属性里：即：builder.beanDefinition.setBeanClassName(beanClassName)属性里。	从而在实例化的时候 实际上是工厂bean, 因此用@getObject()获得到了实际的代理 --- 这个代理就是 前面 @RepositoryFactorySupport.getRepository() 设置的代理。
+	>再看 @RepositoryBeanDefinitionRegistrarSupport.registerBeanDefinitions()方法的来源：
+		>@ConfigurationClassBeanDefinitionReader.loadBeanDefinitionsFromRegistrars()
+			>@ConfigurationClassBeanDefinitionReader.loadBeanDefinitionsForConfigurationClass()
+				>@ConfigurationClassBeanDefinitionReader.loadBeanDefinitions()
+					>ConfigurationClassPostProcessor.processConfigBeanDefinitions()
+						>@ConfigurationClassPostProcessor.postProcessBeanFactory()
+							>@PostProcessorRegistrationDelegate.invokeBeanFactoryPostProcessors()
+								>@PostProcessorRegistrationDelegate.invokeBeanFactoryPostProcessors()
+									>@AbstractApplicationContext.invokeBeanFactoryPostProcessors()
+										>@AbstractApplicationContext.refresh()
+										
 世界观： 
  >容器：具有活跃、关闭状态。
  >bean注册器中的单例: 
@@ -3079,6 +3167,7 @@
 									@DataSource数据源切换--加到服务Service级别。
 	>spring-jdbc手动数据源切换关键：AbstractRoutingDataSource继承并实现的类实例，会在每次都调用determineCurrentLookupKey()方法返回一个注册的数据源名---来从配置的数据源即左边那类型的实例(路由型数据源)的一个属性map:targetDataSources里找到数据源对象，然后才开始具体的发送sql等等，那么就可以在该方法里读取一个数据源名线程局部变量--那么外面就可以动态存放到这个局部变量里---如做一个注解切面做在一个服务bean上，每次执行方法的时候在执行切面的时候从注解中获取数据源而设置到该线程局部变量里，然后之后才执行正式的代码。
 
+	>spring-boot启动的时候：浏览包：有没有加载jar下的配置类：如spring-tx下的有配置注解的ProxyTransactionManagementConfiguration --里面就有TransactionInterceptor bean
 >重要结论：
 	>可以给任意的每个bean都增加切面：那么可以对@Entity也进行切面，切面配置为：加了某个注解的类的所有方法，或者加了某个注解的所有方法 都被切。然后获取类和获取方法。
 	>可以运行时修改类上注解的某个属性的值：同理，方法上也可以。
