@@ -1,0 +1,170 @@
+//品味：慢慢
+//spring的逻辑结构：情况-要做的事情； 数据-要做的事情：
+//流程动作> 调用方法@  分支判断# 
+//世界观：*
+//不止是为了单单为了实现这单一的功能仅此而已，必须考虑更多(情况)做更多(事情，准备；化被动为主动去做)，而不是直接仅仅只做什么。
+//考虑-决定-预防-收益/影响/后果-预测下一步要做什么(甚至下n步)
+//大的想法，具体行动。
+//出现了if-else就是因为有不同的考虑。
+//阅读文档达到直接可以看出思路编写程序的清晰逻辑的地步。
+//一个大函数功能直接看懂而描述。
+//从网上找答案变为从源码中找答案。
+//功能组织体系，而不是动作实现体系。是目标，是事情，而不是精细到实现方案的动作。
+//数据源-数据结果模式：而不是全部动作过程。
+//能够主动猜某个方法的功能和猜测它的实现。
+//情况-通用处理。
+//情况-精细结构。
+//数据结构-与处理。
+//某个时刻某个地方：所有可能用户做的事情。
+//就像是军队打仗一样：AbstractApplicationContext上下文就是总部主帅，负责整个流程，但实现个别子流程；ServletWebServerApplicationContext就是地区主帅，负责使用总部流程且根据区域情况具体化部分流程实现，同时负责分给不同的人去实现更细的子流程(用人/用器：如事件广播器、bean工厂、生命周期处理器; 向它们发号命令：调用/叫他们做什么)，层层下去到事务的精细结构。(负责事务的精细级别 就看出 和一线的和当前的距离)
+	>对一个事物类：他是有属性
+	>对一个组织类：他是有人；属性当作人。人可能是为他办事的，也可能是监听他的监听器。
+	>对一个系统类：他是有组件/器具；属性当作器具
+//为什么层次多：因为连续地向上进行了抽象，每层都分类了/拆分了不同的功能，每层连续往下拆分。
+
+
+
+>抽象队列同步器 AbstractQueuedSynchronizer ：数据模型 和 设计的算法 从而提供的服务/功能；为什么是通用的？	
+	>场景-场景中要做的事情-事情的精细结构(事情做法的精细-全面-宏观-微观度量: 每个度量及其值域)-事情中的对象和对对象进行的所有可行动作/公共操作(以形成一个通用的事情框架/模板，或者一个最佳的每个度量的取值)：若干线程并发获取资源，谁第一个获取到，谁第二个获取到...？还是每次上一个释放资源后都是重新竞争？，总共可以获取到多少？--资源量总共多少？
+	>问题方案：包含当前不好的实现。
+		>概念模型: 对象和对它的公共操作及其操作者
+			>对象：资源、线程
+			>行为：
+				>若干线程为下一个获取资源而等待/尝试获取资源：
+				>某个已经获得资源的线程完成它的任务后释放资源：
+			>业务模型(活动规则)：游戏初始化、游戏演变、游戏结束(游戏目标达成)的过程。包含游戏规则，参与方。(全局掌控，接口生成<每个操作-对象为一个方法>)
+				>初始化资源：
+				>各个线程并发地获取资源：
+				>成功获取到资源的线程开始做一些事：原本业务逻辑
+				>未获取到资源的线程开始做另一些事：无序等待/排队等待/尝试获取资源
+				>占用资源的线程完成任务释放资源：释放后可能触发某个资源空闲信号/通知各个等待线程/唤醒各个等待线程
+				>等待中的线程开始竞争获取资源：排队则一个个依次获取资源。
+		>逻辑的代码实现：业务模型的代码模型。
+			>自定义度量：
+				>同步状态：int:state
+				>尾节点：Node:tail
+				>等待状态：int:waitStatus >0表示取消Cancel
+				>下一个队列：Node:nextWaiter 在SHARD模式下 值 为 new Node()
+			>自定义API: 	
+				>尝试获取资源：获取到返回，没获取到加入队列等待：@acquireSharedInterruptibly(int)
+					>线程中断：直接抛出中断异常
+					否则尝试获取资源：@tryAcquireShared() -- 子类实现 
+					#结果>=0则表示成功获取到资源：直接返回
+					#结果<0则表示没有获取到资源：加入队列开始等待：@doAcquireSharedInterruptibly(int)
+						>加入等待队列：@addWaiter(Node.SHARED)
+							>当前线程 封装到 新建new Node(): node
+							>尾节点属性tail如果不是null: CAS方式更新为上一步新建的node
+								>更新成功：那么自然的，node和tail之间建立了双向引用，且node是新的尾元素。直接返回 
+							>如果是null: 那么开始继续尝试从队尾加入队列：因为可能因为竞争而失败，所以失败了继续竞争，直到成功@enq(Node)
+								-显然，这是一个CLH锁的实现：
+								>如果tail为null:那么还没有head: 则CAS方式设置一个new Node()空值元素给head: 成功则tail=head顺带设置。失败则有head了，那么循环添加到队尾的逻辑。
+								>否则：CAS方式更新队尾为node: 成功则双向引用，失败自然循环再次尝试，直至成功而退出。
+								-成功加入队尾，则才返回。
+							>返回这个队尾元素。
+						>开始尝试获取资源：当然是循环中：
+							>如果前驱节点是head: 
+								>那么显然轮到自己来获取资源了，因此尝试获取一下：@tryAcquireShared(int)
+								>如果结果>=0 那么成功了：这个结果当作 propagate
+									>设置head并且传播-即唤醒下一个Node的线程:@setHeadAndPropagate()
+										>将自己这个Node赋值为head, 且将自己Node的thread=null,prev=null设置，即清空。@setHead(node)
+										>如果 propagate > 0 或者 node.waitStatus < 0 即没有取消： 取Node的下一个节点 s：
+											>如果s == null 或者 s.是共享资源状态isShared(): 即nextWaiter=Node.SHARED这个条件符合：则 @doReleaseShared() 唤醒head的继任者。
+												-开启循环：
+												>如果head 不是 tail: 
+													>如果h的waitStatus==Node.SIGNAL表明需要继任者需要触发：
+														>尝试将h的waitStatus CAS更新为0: @compareAndSetWaitStatus()
+														#如果更新失败则返回循环开始处continue:
+														#如果成功：则开始唤醒继任者@unparkSuccessor(h)
+															>如果这个入参node的 waitStatus < 0也要CAS更新为0:@compareAndSetWaitStatus() 表示清空
+															>寻找node.next下一个节点：如果它==null或者 waitStatus表明已经取消：则从tail开始往回找直到node, 只要节点 waitStatus <= 0 则都赋值给s, 显然这个s 就是 node之后下一个 waitStatus <= 0 的节点。
+															>如果找到的s 不是null: 那么就找到了下一个节点：则开始唤醒它的线程：@LockSupport.unpark(s.thread)
+													>否则如果是0 那么CAS更新为 -3 @compareAndSetWaitStatus(h, 0, Node.PROPAGATE)
+														>更新失败则：继续循环。
+														>否则下一步： 
+												>如果head 没有改变：那么退出break循环；否则要继续循环检查。
+									>设置p.next=null 实际是为了解除联系，即会修改head, 这个head会被修改。
+									>直接返回 
+							>否则：需要等待被唤醒：
+								>检查是否需要等待：@shouldParkAfterFailedAcquire()
+									>如果前一个节点的 waitStatus == Node.SIGNAL 则需要等待，直接返回true 
+									>否则都要返回false不需要等待：但在此之前：需要：如果ws > 0那么说明已经取消：则需要将这些取消的节点都移除：重新整理这个等待队列。否则ws == 0 或者 -2 -3 那么：统一CAS更新为 SIGNAL :compareAndSetWaitStatus(pred, ws, Node.SIGNAL)
+								>如果上一步成立即需要等待：则启动停车方法:并且在唤醒后返回中断状态：@parkAndCheckInterrupt()	
+									>LockSupport.park(this)
+									>返回Thread.interrupted()
+								>如果上述两个条件都满足：抛出中断异常。如果第二条不满足：那么继续循环---直到自己的前驱是head(一般唤醒之后一定就是),而再次尝试获取资源--等上述逻辑。
+						>如果等待中发生了中断：则需要取消获取：@cancelAcquire(node) 
+							>动作1： node.thread=null
+							>动作2：node.pre指向上一个非取消的node
+							>动作3：node.waitStatus=Node.CANCELLED设置 
+							>如果node是尾元素：则 找到的上一个非取消node:prev CAS方式设置为尾元素
+								>如果设置成功：那么 prev的next通过CAS设置为null
+							#否则：如果 prev 不是head 且 waitStatus == SIGNAL 那么则把prev的next CAS更新为 node.next。。另一个条件下也这么做：ws<=0 且 cas更新为 SIGNAL	成功 且 prev.thread不是null。
+								#否则：表示node前面已经没有有效的node , 则需要唤醒下一个节点：@unparkSuccessor(node)
+							>最后设置node.next = node 当做垃圾。help Gc
+				>接口2：带等待时间的尝试获取资源-时间截止则不再尝试：@tryAcquireSharedNanos(int arg, long nanosTimeout)
+					>类似，也是先尝试取资源：@tryAcquireShared()子类实现：
+					>如果没有取得：则开始 入队等待取：@doAcquireSharedNanos(arg, nanosTimeout)
+						>也是入队：@addWaiter(Node.SHARED)
+						>也是循环中：看上一个元素是否是head, 是则进行 @setHeadAndPropagate()等操作，类似上。
+							>否则看等待时间有没有过：过了则返回false:没有得到资源。
+							>否则还是看是否需要等待：如果需要 且 剩余时间 > 1000ns 那么就尝试阻塞到截止时间：@LockSupport.parkNanos(this, nanosTimeout)
+						>自然的：如果时间到了 或者 中断异常：则需要取消 自己这个节点等：@cancelAcquire(node)
+				>接口3：释放资源：@releaseShared(int)
+					>尝试释放资源：@tryReleaseShared(int) 子类实现： 
+					>尝试成功：则开始真正释放：@doReleaseShared() 返回true成功 。主要工作就是唤醒 head的 继任者节点的线程。代码几乎重复。
+						-循环中：
+						>如果head != tail : 那么看head.waitStatus 如果是 SHARED 那么：尝试CAS更新为0, 没成功则continue, 成功了则唤醒继任者@unparkSuccessor(h)
+							>否则如果是0 那么 CAS更新为-3： 失败则continue
+						>如果h == head: 头没有改变：那么break;
+					#否则返回false
+				--以上总结为2大方法：1.尝试获取资源(交给子类)：成功则加入队尾并阻塞；唤醒后如果前驱是head则唤醒后继并退出；否则继续阻塞。  2.尝试释放资源(交给子类)：成功则唤醒head的继任者。失败则直接返回。显然释放资源是触发队列执行的开关。	
+>CountDownLatch: 门闩(men shuan)
+	>业务模型：主线程等待子线程完成的场景。
+		>若干个线程并发获取资源，限定队列n个: 也是任务量
+		>超过n个的新的线程尝试获取资源则直接失败返回-不加入队列，直接忽略；
+		>主线程调用非获取资源的功能为等待子线程完成的方法：则看标记值-如果为0则返回，否则阻塞，直到被唤醒。
+		>每个线程完成任务后做标记(状态值):当标记任务量为0(一般为任务完成时调用标记方法修改标记)：同时进行：唤醒主线程
+	>因为也要同步并发的线程：所以内部实现一个 同步器：Sync 
+		>可以用state表示资源数:属性来表示。
+		>同步器需要实现尝试获取资源的方法：@tryAcquireShared()
+			>从上AQS实现知：尝试成功 则 入尾等待。所以是 主线程等待方法 调用的。因此内容为查看 资源剩余量是否为0，为0不等待否则等待。
+		>同步器也要实现释放资源的方法：@tryReleaseShared(int) 自然的要实现：state自减，当state == 0 要唤醒主线程。
+			-循环中： 因为CAS更新state可能失败，所以需要自旋
+			>如果状态值== 0 ? 说明已经释放完了，直接不必要再释放，返回，且返回false 
+			>否则状态值-1得到一个数，CAS方式更新state: 如果更新成功：则返回 nextc == 0 新状态是否是0了，是0 那么就资源完全释放完了--那么执行唤醒head的继任者，否则没有--什么也不做。
+				>如果CAS更新冲突了：那么重新自旋来更新。
+		
+>Semaphore: 信号量。按照我自己独立的设计：那么可以分为两种。一种阻塞型，一种非阻塞型。
+	>业务模型1：
+		>概念：
+			>令牌允许量：
+			>线程：
+		>行为： 
+			>并发线程获取令牌：允许量减1
+			>并发线程释放令牌：允许量加1
+		>活动规则：初始化-演化-达到目标-结束
+			>初始化令牌数：n 
+			--非阻塞型：
+			>并发线程获取令牌： 还有令牌且获取到则返回成功，没有令牌了返回失败；有但获取失败则重新获取<公平队列/非公平继续竞争>
+			>线程释放令牌：释放成功返回，否则继续释放。
+			--阻塞型：
+			>并发线程获取令牌：还有令牌且获取到则返回成功--返回之前：释放令牌，没有令牌了则加入队列后等待被唤醒；唤醒后再次尝试获取令牌...。有但获取失败则重新获取。
+			>并发线程释放令牌：如上被调用。没有专门接口。
+	>业务模型2：
+	>业务模型2的代码API实现：
+		>资源量：state 表示。
+		>基本API：
+			>获取资源的接口：@acquireSharedInterruptibly()->@tryAcquireShared(int) 
+				-采用NonfairSync：
+					>转发@nonfairTryAcquireShared(int)
+					-循环内：
+						>用当前资源数-int得出 remaining：结果如果<0那么直接返回，否则还有剩余：CAS更新剩余资源数为 remaining, 如果成功那么返回remainig--也会成功；如果失败，那么继续循环。---逻辑和我的业务模型1的逻辑一致。
+				-采用FairSync：公平锁
+					>则是非每次竞争的，而是排队的：即如果head的next的Node.thread不是当前线程，那么轮不到自己，从而直接返回-1,获取资源失败，则后面会继续等待或者入队等待(前驱非head)。如果前驱就是head,自然的就是自己，则获取资源-1, CAS更新成功则返回剩余量，更新失败则循环。
+			>非中断方式获取资源的接口：@acquireUninterruptibly()-->@acquireShared()-->@tryAcquireShared()之后：@doAcquireShared(int)		
+				>这个接口的不同在于：@parkAndCheckInterrupt()即便当前线程被中断了：也不抛出中断异常；但是在轮到自己--自己的前驱是head时，则自中断：@selfInterrupt()---Thread.currentThread().interrupt() 实际上当前线程并不会中断，仅仅是 Thread.interrupted()值为true了。
+			>尝试获取：立即返回那种：@tryAcquire()
+				>仅仅直接看@nonfairTryAcquireShared()-1 的值 
+			>释放资源的接口：@releaseShared(int)->@tryReleaseShared(int) 公平同步和非公平同步共有
+				>和想象的一样：也是取 state+int来CAS更新，成功则true, 如果这个值就>最大整数，使得值溢出了，抛错误。没有更新成功则循环。
+			-其他接口：过于简单，略。

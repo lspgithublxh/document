@@ -2550,10 +2550,10 @@
 				>增加特殊依赖类的默认 绑定值：@bf.registerResolvableDependency() ServletRequest->new RequestObjectFactory(), ServletResponse->new ResponseObjectFactory(), HttpSession->new SessionObjectFactory(), WebRequest->new WebRequestObjectFactory(),, FacesContext/ExternalContext 也有匿名的对象工厂类。
 				>注册单例：到 manualSingletonNames 属性。 "servletContext"/servletConfig/contextParameters(这个值从上下文org.apache.catalina.core.ApplicationContext里取)/contextAttributes(也是上下文里取)
 		>实例化和激活部分处理器(第一次调用处理器处理)：@invokeBeanFactoryPostProcessors()
-			>先转发：@PostProcessorRegistrationDelegate.invokeBeanFactoryPostProcessors() 入参为获取的全部bfpp:beanFactoryPostProcessors属性
+			>先转发：@PostProcessorRegistrationDelegate.invokeBeanFactoryPostProcessors() 入参为上下文的全部bfpp:beanFactoryPostProcessors 属性
 				>遍历每个入参bf后置处理器：
 					#如果是 BeanDefinitionRegistryPostProcessor 类型：应用@postProcessBeanDefinitionRegistry()方法
-						-如ConfigurationClassPostProcessor实现：加到registriesPostProcessed属性，再@processConfigBeanDefinitions(BeanDefinitionRegistry registry)统一处理。
+						-如 ConfigurationClassPostProcessor 实现：加到registriesPostProcessed属性，再@processConfigBeanDefinitions(BeanDefinitionRegistry registry)统一处理。
 							>注册多个。
 						-如ServletComponentRegisteringPostProcessor 实现：和spring-boot web启动有关：
 							>在内嵌服务器模式下：@isRunningInEmbeddedWebServer()
@@ -3119,6 +3119,8 @@
 					>这个类型进一步封装到了类过滤器属性里：@AnnotationMatchingPointcut.classFilter = AnnotationClassFilter() --作为过滤一个类的根据：是否要经过那个方法拦截器：PersistenceExceptionTranslationInterceptor --- 这个拦截器实际内容没有什么。
 				- 而一个proposser是可以给一个Advised 类型的bean 添加 advisor的。---把自己的加给bean的advisors里。而很明显：事务拦截器 就是 通过 TransactionalRepositoryProxyPostProcessor 赋值给各个 Advised类型的bean的。	
 				- 进一步发现 增加了事务拦截器的 processor 反而只在一个方法里 给ProxyFactory增加事务拦截器的advisor:即@RepositoryFactorySupport.getRepository()
+					>这个方法里的核心之一：@getRepositoryInformation() 获取了baseClass=SimpleJpaRepository.class(jpa方式下)
+					>再通过@getTargetRepository()获取代理目标：就是用反射机制实例化 SimpleJpaRepository。设置到：ProxyFactory..setTarget(target)里。 --后面的就是加各种advisor如事务拦截器。
 		>有条件再加一个processor: EventPublishingRepositoryProxyPostProcessor
 		>继续从 RepositoryFactorySupport.getRepository()开始： 
 			>核心为创建代理：new ProxyFactory()
@@ -3136,17 +3138,18 @@
 		>构造：@new AnnotationRepositoryConfigurationSource() 取出 全部属性放到：new AnnotationAttributes()里：this.attributes里 
 		>其中@getAnnotation()实现： 
 			>对 JpaRepositoriesRegistrar 实现类：为返回 EnableJpaRepositories.class
-		>在@registerRepositoriesIn()里：
+		>在@RepositoryConfigurationDelegate.registerRepositoriesIn()里：
 			>根据配置构建定义：@builder.build(configuration)
 				>核心为查和设置 工厂beanName: @configuration.getRepositoryFactoryBeanClassName()
 					>转到@configurationSource.getRepositoryFactoryBeanClassName() - AnnotationRepositoryConfigurationSource 实现
 						>核心：attributes.getClass(REPOSITORY_FACTORY_BEAN_CLASS="repositoryFactoryBeanClass").getName()  前面已经说了 attributes 属性里的内容：所以其getClass()得到的就是：EnableJpaRepositories这个注解的repositoryFactoryBeanClass属性值：：JpaRepositoryFactoryBean.class 
 				>而得到的那个类名：就会被设置到新的bd的beanClasName属性里：即：builder.beanDefinition.setBeanClassName(beanClassName)属性里。	从而在实例化的时候 实际上是工厂bean, 因此用@getObject()获得到了实际的代理 --- 这个代理就是 前面 @RepositoryFactorySupport.getRepository() 设置的代理。
+			- 注意配置的：@getRepositoryInterface()方法： 实现:如果是 org.springframework.data.repository.Repository 的子类：则新建元数据：new DefaultRepositoryMetadata():否则：new AnnotationRepositoryMetadata()
 	>再看 @RepositoryBeanDefinitionRegistrarSupport.registerBeanDefinitions()方法的来源：
-		>@ConfigurationClassBeanDefinitionReader.loadBeanDefinitionsFromRegistrars()
+		>@ConfigurationClassBeanDefinitionReader.loadBeanDefinitionsFromRegistrars() - 内容就是从：ConfigurationClass.importBeanDefinitionRegistrars:map属性遍历进行：键=ImportBeanDefinitionRegistrar类型，而这个类型的子类之一就是：RepositoryBeanDefinitionRegistrarSupport ，而这个support的子类就是：JpaRepositoriesRegistrar
 			>@ConfigurationClassBeanDefinitionReader.loadBeanDefinitionsForConfigurationClass()
 				>@ConfigurationClassBeanDefinitionReader.loadBeanDefinitions()
-					>ConfigurationClassPostProcessor.processConfigBeanDefinitions()
+					>ConfigurationClassPostProcessor.processConfigBeanDefinitions() -- 里面是直接new ConfigurationClassBeanDefinitionReader()来调用， 而入参里的registry:就是：new ConfigurationClassParser().getImportRegistry():
 						>@ConfigurationClassPostProcessor.postProcessBeanFactory()
 							>@PostProcessorRegistrationDelegate.invokeBeanFactoryPostProcessors()
 								>@PostProcessorRegistrationDelegate.invokeBeanFactoryPostProcessors()
