@@ -224,6 +224,33 @@
 			>限时尝试获取锁：@tryLock(long timeout, TimeUnit unit)
 				>转发：@sync.tryAcquireSharedNanos()
 			>解锁：@unlock()
-				>转发：@sync.releaseShared(1)
-				
-				
+				>转发：@sync.releaseShared(1) - 还是看@tryReleaseShared(int)的实现：
+					>如果当前线程就是第一个读者：那么专门处理：如果hold数仅仅为1：firstReaderHoldCount==1 那么直接 firstReader=null即可：否则要先firstReaderHoldCount-- 因为还重入了其他次。
+					>否则不是第一个读者：那么直接从线程上下文里取赋值给 如果 cachedHoldCounter是null(首次)：那么看rh如果count==0 即hold次数/重入次数为1：那么readHolds.remove()移除即可。count<=0则抛出异常。最后是count--
+					-开始循环：
+					>CAS更新state 为共享数量-1：如果成功：返回 共享数量-1的这个值 == 0 的判断值，即如果已经没有共享数量，则返回true: 释放成功；从而后面会开始触发下一个节点的线程唤醒。	即也说明了：@lock()是公平锁。			
+			>新条件：@newCondition() 不支持：抛异常。	
+		>写锁：WriteLock:
+			>锁方法@lock():
+				>转发：@sync.acquire(int arg) 独占模式的操作内容不同。
+					>如果@tryAcquire(arg)失败：
+						>如果状态!=0： 如果 独占数量是0 || 当前线程不是独占线程：返回false ---因为 共享数量则一定不是0--此时也不能获取到写锁。
+							>否则如果独占数量+要增加的独占值 大于了最大int: 抛出错误 
+							>否则：直接set State= 旧值+要增加的值 --- 显然增加的是独占数量。
+							>返回true 
+						>如果写者应该阻塞：@writerShouldBlock() 或者 即不该写时 CAS更新 状态值为老值+新增 失败： 返回 false  
+						>则此时：要么上一步更新成功，独占数量增1了：设置独占线程为当前线程：@setExclusiveOwnerThread(th) 返回：true 
+					>进一步：@addWaiter(Node.EXCLUSIVE)添加到等待队列
+					>进一步：@acquireQueued(Node, int) 上述Node为入参.功能即为排队获取。
+						-进入循环：
+						>如果node的前驱是head 且 尝试获取资源@tryAcquire(arg)成功了： 那么设置head=node, 其.thread=.prev=null; 自然的，前驱的next=null, 返回线程是否中断过
+						>否则：如果@shouldParkAfterFailedAcquire() 且 parkAndCheckInterrupt()停车之后：线程中断状态为true: 则 设置中断状态变量为true
+						-退出循环：如果抛了异常：那么会@cancelAcquire()
+					>如果上述为true: 则自中断：@selfInterrupt()	
+						
+							
+						
+						
+						
+						
+			
