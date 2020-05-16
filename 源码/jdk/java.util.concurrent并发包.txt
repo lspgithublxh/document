@@ -168,3 +168,62 @@
 			>释放资源的接口：@releaseShared(int)->@tryReleaseShared(int) 公平同步和非公平同步共有
 				>和想象的一样：也是取 state+int来CAS更新，成功则true, 如果这个值就>最大整数，使得值溢出了，抛错误。没有更新成功则循环。
 			-其他接口：过于简单，略。
+
+>ReentrantReadWriteLock：读写锁 
+	>业务模型1：
+		>概念：
+			>状态：值:共享数量(次数)_独占数量(次数)
+			>第一个读者：即第一个设置共享数量的线程
+			>第一个读者hold数量：即第一个读者 共享次数 
+			>非第一个读者hold数量：即各个读者自己存的存在线程本地变量里的：共享次数：rh.count， 获取次数。
+		>行为： 
+		>规则：初始化、演化、达到目标-结束 
+			>
+	>业务模型的代码实现：
+		>读锁ReadLock:
+			>锁方法：@lock()-->@sync.acquireShared(1):依然是到尝试获取锁,<0则加入队尾阻塞 (仅仅为不抛出中断异常那种)。因此看@tryAcquireShared(int)
+				>如果独占数量：state的低16位的值不是0 且 独占线程 AbstractOwnableSynchronizer.exclusiveOwnerThread 不是 当前线程， 直接返回-1：即会入队尾等待。
+				>查出共享数量：state的高16位的值r。
+				>如果读者 不应该阻塞@readerShouldBlock() 且 r<最大int 且 CAS更新state为高16位的数+1(实际就是共享数量+1)
+					- 非公平同步 实现：NonfairSync
+						>直接转发：@apparentlyFirstQueuedIsExclusive() 显然第一个排队的是独占？
+							>直接看AQS里：head的下一个Node如果不是Shared模式且thread不是null: 则返回true, 否则返回false
+				>如果上一步更新成功：
+					>如果r是0：即之前的共享数量是0：则设置firstReader = current 第一个读者为当前线程， 同时初始化 firstReaderHoldCount=1
+					#否则如果 firstReader == current：当前线程就是第一个读者： 那么 直接firstReaderHoldCount++， 即第一个增加1---往往是同一个线程再次获取资源引起。
+					#否则：
+						>如果 cachedHoldCounter 为null 或者.tid不是当前线程的tid: 那么从 readHolds 这个线程本地变量 里get()出来 ThreadLocalHoldCounter 赋值给它
+						#否则不是null但是 .count==0 那么：readHolds.set(rh)设置进去。
+						>统一的：rh.count++ //可以当做重入次数。
+					>返回：1 那么不会入队尾。即 获取成功 	
+				#否则不满足或者没有更新成功：@fullTryAcquireShared(current)
+					-循环中： 
+					>如果独占数量 > 0： 如果当前线程不是 独占线程：返回 -1 
+					#否则独占数量 =0: 
+						#如果读者可以阻塞：@readerShouldBlock()
+							>进一步如果 当前线程 为第一个读者： 那么按照 不要重入 获取读锁的规则：
+								>直接什么也不做
+							>否则不是第一个读者：如果第一次： cachedHoldCounter的tid不是当前线程：那么 取 线程本地变量里的：readHolds.get()， 如果.count=0 即重入次数为0：移除这个局部变量readHolds.remove()
+								>否则不是第一次,rh不是null: 如果rh.count还是0: 返回-1 
+					>如果 共享数量 == 最大int: 则抛出异常new Error()
+					>CAS更新state中共享数量+1： 如果更新成功： 
+						>如果老的共享数量=0： 那么  firstReader == current 且 firstReaderHoldCount = 1 
+						>否则如果第一个读者是当前线程：firstReaderHoldCount++即可 
+						>否则：不是第一个读者：老的数量>0: 则：
+							>看 cachedHoldCounter：如果 是null 或者.tid 不是当前线程的tid:则从 readHolds.get()获取，；否则如果 .count = 0则设置到 readHolds里。
+							>最后统一：rh.count++ 即重入个数自增1；设置cachedHoldCounter=rh 
+						>直接返回 1 
+			>锁方法2：要抛出异常@lockInterruptibly()->@acquireSharedInterruptibly(1)
+			>尝试获取锁：@tryLock()
+				>转发：@sync.tryReadLock()
+					-循环里：
+						> 如果独占数量不是0 且 独占线程 不是 当前线程：返回 false  //被别的线程独占了。一旦别的线程独占，那么想获取共享也无法进行。
+						> 如果共享数量为最大整数：抛出异常。
+						>CAS更新 state 的共享数量+1： 如果成功了：则又分共享数量=0，当前读者 是当前线程，其他情形  进行处理：firstReader/firstReaderHoldCount/cachedHoldCounter同上。
+							>最后返回true 
+			>限时尝试获取锁：@tryLock(long timeout, TimeUnit unit)
+				>转发：@sync.tryAcquireSharedNanos()
+			>解锁：@unlock()
+				>转发：@sync.releaseShared(1)
+				
+				
