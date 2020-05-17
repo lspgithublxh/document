@@ -274,6 +274,63 @@
 					>直接新建返回：@new ConditionObject() --- 也是AQS里的内部类。
 		
 		>条件对象ConditionObject：
-			>
+			>业务模型1： 
+				>概念：
+					>第一个等待节点：Node:firstWaiter
+					>最后一个等待节点：Node:lastWaiter
+				>行为： 
+					>全部释放写锁的state: 	fullyRelease 
+					>
+				>规则： 
+					>创建新的条件对象：
+					>入单向waiter队-全部释放写锁的状态值-进入循环-->在同步队列中则停车：(CAS先读后写)释放失败抛出异常。节点状态更新为 CANCELLED取消。 
+					>
+					>
+			>业务模型的API实现：		
+				>非中断等待：@awaitUninterruptibly()
+					>当前线程封装到Node加入队尾：@addConditionWaiter() 类型为：Node.CONDITION
+						>如果队尾的状态不是CONDITION, 那么需要整理：@unlinkCancelledWaiters() 从头开始：把非CONDITION的Node都移除出去。
+						-注意不是双向关系：只有Node.nextWaiter=Node 单向队列关系。
+					>@fullyRelease(Node)注入的是新节点 
+						>取state:@release(state) -- 显然想一次全部释放：强于@unlock()
+						>释放失败：抛出异常：@throw new IllegalMonitorStateException() 且 finally:node.waitStatus=Node.CANCELLED取消。
+						>释放成功：返回释放的数量。
+					>循环：条件：不在同步队列中：查看是否在同步Node:@isOnSyncQueue(Node) 如果Node.waitStatus==Node.CONDITION 则false 不同步<显然直接await就会是>。前驱==null也不在同步中，next!=null则有后继，在同步中。否则next是null但prev不是null: 进一步判断：@findNodeFromTail(Node) ---从尾往前找：找到了Node则true,没找到则false
+						>直接停车：@LockSupport.park(this)
+						>记录线程中断状态：@Thread.interrupted()
+					>退出循环：	重新排队获取：@acquireQueued() 排队获取 ，如果成功：需要自中断：失败了如果之前线程中断过：也要自中断。
+				>等待：@await()
+					>当前线程已中断：抛中断异常。
+					>入队和释放全部状态值：@addConditionWaiter()-@fullyRelease()
+					>不在同步队列中则要循环：@isOnSyncQueue(node):循环内容：先停车，再查看节点中断模式：@checkInterruptWhileWaiting(Node) :如果当前线程状态为已经中断：@transferAfterCancelledWait(Node)查看： 是抛中断异常模式 还是 重新中断模式。。只要线程已经中断：都break
+						>如果Node.waitStatus状态是Node.CONDITION，CAS更新为0
+							>成功则入队：@enq(node)显然是入 写锁的队列 ，返回true 
+							>如果不在同步队列：@isOnSyncQueue(node) 简单的线程让步：Thread.yield()---让出一些时间片，然后再次醒来参与竞争；。即便因为在同步队列：而退出了，也只返回false 
+					>循环退出后：
+						>排队式获取@acquireQueued(node, savedState) ：如果成功 获取到 了， 且 中断模式不是 抛中断异常：设置： interruptMode = REINTERRUPT		
+						>如果node.nextWaiter 不是null: 即条件等待节点增加了，则要整理一下：@unlinkCancelledWaiters()
+						>中断模式表明不是无中断：则@reportInterruptAfterWait(im)处理---该抛则抛中断异常，该重新中断 则自中断。
+				>限时等待：@awaitNanos(long nanosTimeout) 和上述方法差别在：不在同步队列中要循环：这个循环里：如果到达时限了：@transferAfterCancelledWait(node)，停车时间为输入值：@LockSupport.parkNanos(this, nanosTimeout)--条件是输入时间>=1ms
+					>最后返回剩余时间。
+				>绝对时间等待：@awaitUntil(Date deadline) 内容类似。
+				>带时间单位的限时等待：@await(long time, TimeUnit unit)略。
+				>信号触发：@signal() -- 从firstWaiter开始刚好唤醒一个为止(一个执行唤醒动作一次)
+					>如果当前线程不是独占线程：抛异常：new IllegalMonitorStateException()
+					>如果firstWaiter不是null: 真正的发信号：@doSignal(first)--从first开始成功唤醒一个为止。
+						>先赋值：firstWaiter = first.nextWaiter 入参节点的下一个waiter节点赋值给firstWaiter第一个waiter
+						>设置当前节点的nextWaiter为null：first.nextWaiter = null 如果老的 nextWaiter 是 null 那么：lastWaiter也设置=null 
+						>开始传递：将一个节点入队到 写锁队列 等：@transferForSignal(Node)
+							>先CAS设置节点 等待状态从CONDIITON到0：@compareAndSetWaitStatus(node, Node.CONDITION, 0)
+							>如果失败了：则返回 false 
+							#否则成功了：则节点 等待状态为 0, 开始入队：@enq(node) 因为写锁创建的Sync, 所以是入写锁的队尾：此方法返回值是上一个队尾Node, 
+								>如果上一个 尾Node的等待状态为 CANCELLED取消, 则要唤醒入参Node.thread。否则没有取消 但如果 CAS更新这个Node的等待状态为Node.SIGNAL 失败了：也要唤醒入参Node.thread---或许是因为靠上一个不行而要自己来唤醒。
+							>返回true -- 表示 入参Node.thread已经唤醒或者将被上一个Node唤醒。
+						>如果上一步表明没有被唤醒：且first = firstWaiter 时 ，即入参first的下一个节点不是null, 即开始尝试唤醒入参first的下一个waiter	
+				>信号触发2：@signalAll() 全部都进行唤醒操作一次 
+					>如果当前线程不是独占线程：抛异常：new IllegalMonitorStateException()
+					>如果firstWaiter不是null: @doSignalAll(first) 全部都执行一次唤醒
+						>首尾waiter都清空：lastWaiter = firstWaiter = null
+						>一个个的唤醒：并且解除nextWaiter关系：唤醒同上@transferForSignal(first)。。自然会使用循环。
+					
+					
 						
-			
