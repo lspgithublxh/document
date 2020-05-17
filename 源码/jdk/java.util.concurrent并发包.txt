@@ -322,10 +322,13 @@
 						>开始传递：将一个节点入队到 写锁队列 等：@transferForSignal(Node)
 							>先CAS设置节点 等待状态从CONDIITON到0：@compareAndSetWaitStatus(node, Node.CONDITION, 0)
 							>如果失败了：则返回 false 
-							#否则成功了：则节点 等待状态为 0, 开始入队：@enq(node) 因为写锁创建的Sync, 所以是入写锁的队尾：此方法返回值是上一个队尾Node, 
+							#否则成功了：则节点 等待状态为 0, 开始入队：@enq(node) 因为写锁创建的Sync, 所以是入写锁的队尾：此方法返回值是上一个队尾Node, (入队的目的：则prev属性一定不是null，那么await()方法就一定可以退出循环)
 								>如果上一个 尾Node的等待状态为 CANCELLED取消, 则要唤醒入参Node.thread。否则没有取消 但如果 CAS更新这个Node的等待状态为Node.SIGNAL 失败了：也要唤醒入参Node.thread---或许是因为靠上一个不行而要自己来唤醒。
 							>返回true -- 表示 入参Node.thread已经唤醒或者将被上一个Node唤醒。
 						>如果上一步表明没有被唤醒：且first = firstWaiter 时 ，即入参first的下一个节点不是null, 即开始尝试唤醒入参first的下一个waiter	
+						- 唤醒动作总结为：对一个Node:更新状态-入队-唤醒。
+						- 显然：唤醒之后：对应的那个线程执行到await()方法里就会退出while循环，开始下一步：排队获取资源@acquireQueued(xxx)--队也是 写锁的队， 因为已经入队，所以只要轮到自己那么就可以触发尝试获取-全部独占数量了。 
+						- 注意一个特点：@fullyRelease(int)是为了全部减少到0，而执行@acquireQueued()则是为了全部加上-加回来(中间过程中可以改变state的值，因为最后只是累加上之前扣除的而已)。
 				>信号触发2：@signalAll() 全部都进行唤醒操作一次 
 					>如果当前线程不是独占线程：抛异常：new IllegalMonitorStateException()
 					>如果firstWaiter不是null: @doSignalAll(first) 全部都执行一次唤醒
