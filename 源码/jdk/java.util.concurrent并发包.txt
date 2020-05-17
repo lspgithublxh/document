@@ -187,24 +187,26 @@
 				>如果读者 不应该阻塞@readerShouldBlock() 且 r<最大int 且 CAS更新state为高16位的数+1(实际就是共享数量+1)
 					- 非公平同步 实现：NonfairSync
 						>直接转发：@apparentlyFirstQueuedIsExclusive() 显然第一个排队的是独占？
-							>直接看AQS里：head的下一个Node如果不是Shared模式且thread不是null: 则返回true, 否则返回false
+							>直接看AQS里：head的下一个Node如果不是Shared模式且thread不是null: 则返回true(应该阻塞), 否则返回false
+					- 公平同步 FairSync 的实现：都是@hasQueuedPredecessors() 即看 当前线程是否是head的下一个node的thread
 				>如果上一步更新成功：
 					>如果r是0：即之前的共享数量是0：则设置firstReader = current 第一个读者为当前线程， 同时初始化 firstReaderHoldCount=1
 					#否则如果 firstReader == current：当前线程就是第一个读者： 那么 直接firstReaderHoldCount++， 即第一个增加1---往往是同一个线程再次获取资源引起。
-					#否则：
+					#否则：第一个读者不是当前线程
 						>如果 cachedHoldCounter 为null 或者.tid不是当前线程的tid: 那么从 readHolds 这个线程本地变量 里get()出来 ThreadLocalHoldCounter 赋值给它
 						#否则不是null但是 .count==0 那么：readHolds.set(rh)设置进去。
 						>统一的：rh.count++ //可以当做重入次数。
-					>返回：1 那么不会入队尾。即 获取成功 	
-				#否则不满足或者没有更新成功：@fullTryAcquireShared(current)
+					>返回：1 那么不会入队尾。即 获取成功 
+					--总结读成功条件：1.没有独占数量或者独占线程是当前线程，读者不应该阻塞 且CAS更新状态共享数量成功
+				#否则不满足或者没有更新成功(同样没有独占数量或者独占线程是当前线程，且：或者读者应该阻塞 或者 CAS更新状态共享数量失败)：@fullTryAcquireShared(current)
 					-循环中： 
 					>如果独占数量 > 0： 如果当前线程不是 独占线程：返回 -1 
-					#否则独占数量 =0: 
+					#否则独占数量 =0 或者当前线程是独占线程: 
 						#如果读者可以阻塞：@readerShouldBlock()
 							>进一步如果 当前线程 为第一个读者： 那么按照 不要重入 获取读锁的规则：
 								>直接什么也不做
 							>否则不是第一个读者：如果第一次： cachedHoldCounter的tid不是当前线程：那么 取 线程本地变量里的：readHolds.get()， 如果.count=0 即重入次数为0：移除这个局部变量readHolds.remove()
-								>否则不是第一次,rh不是null: 如果rh.count还是0: 返回-1 
+								>否则不是第一次,rh不是null: 如果rh.count还是0: 返回-1  (即读者需要阻塞时 如果既不是第一个读者 且重入次数还是0直接 获取失败)
 					>如果 共享数量 == 最大int: 则抛出异常new Error()
 					>CAS更新state中共享数量+1： 如果更新成功： 
 						>如果老的共享数量=0： 那么  firstReader == current 且 firstReaderHoldCount = 1 
@@ -213,6 +215,8 @@
 							>看 cachedHoldCounter：如果 是null 或者.tid 不是当前线程的tid:则从 readHolds.get()获取，；否则如果 .count = 0则设置到 readHolds里。
 							>最后统一：rh.count++ 即重入个数自增1；设置cachedHoldCounter=rh 
 						>直接返回 1 
+					--总结读成功条件2:2.没有独占数量或者独占线程是当前线程，如果读者应该阻塞 那么要么是第一读者 要么重入次数>0,此时再 CAS更新状态共享数量，成功才返回，失败则继续循环；同样如果是上一步CAS更新失败而进入这个循环，那么继续循环。
+					--总结为应用层次上：A线程加了写锁(为独占线程)，则A可以加读锁，而线程B再加读锁则会进入等待；如果A加读锁后再次加读锁，那么重入次数+1，状态的共享数量也+1;如果此时A释放了写锁，B获得了写锁-为独占线程，那么A再次获取读锁会阻塞；而B再去获取读锁，则不是第一读者，如果读者应该阻塞，因为B是第一次入所以重入次数为0，因此会阻塞。这里AB就都阻塞了。A取写A取读，A释写，B取写，A取读(阻塞),B取读-EXCLUSIVE-count==0则阻塞
 			>锁方法2：要抛出异常@lockInterruptibly()->@acquireSharedInterruptibly(1)
 			>尝试获取锁：@tryLock()
 				>转发：@sync.tryReadLock()
@@ -230,27 +234,46 @@
 					-开始循环：
 					>CAS更新state 为共享数量-1：如果成功：返回 共享数量-1的这个值 == 0 的判断值，即如果已经没有共享数量，则返回true: 释放成功；从而后面会开始触发下一个节点的线程唤醒。	即也说明了：@lock()是公平锁。			
 			>新条件：@newCondition() 不支持：抛异常。	
-		>写锁：WriteLock:
+		>写锁：WriteLock: 有自己的同步器 Sync 
 			>锁方法@lock():
-				>转发：@sync.acquire(int arg) 独占模式的操作内容不同。
+				>转发：@sync.acquire(int arg) 独占模式的操作内容不同(主要是对state的看作不同，利用不同)。但仍然是要排队。
 					>如果@tryAcquire(arg)失败：
-						>如果状态!=0： 如果 独占数量是0 || 当前线程不是独占线程：返回false ---因为 共享数量则一定不是0--此时也不能获取到写锁。
-							>否则如果独占数量+要增加的独占值 大于了最大int: 抛出错误 
+						>如果状态!=0： 如果 独占数量是0 || 当前线程不是独占线程：返回false ---因为 共享数量则一定不是0--此时也不能获取到写锁(共享模式不能写-入队等待;独占模式独占线程非当前线程也不能写-入队等待)。
+							>否则说明是当前线程独占了，如果独占数量+要增加的独占值 大于了最大int: 抛出错误 
 							>否则：直接set State= 旧值+要增加的值 --- 显然增加的是独占数量。
 							>返回true 
-						>如果写者应该阻塞：@writerShouldBlock() 或者 即不该写时 CAS更新 状态值为老值+新增 失败： 返回 false  
+						>如果写者应该阻塞：@writerShouldBlock() 或者 即写者不该阻塞时 CAS更新 状态值为老值+新增(修改的也是独占数量) 失败： 返回 false  
+							- NonfairSync 的实现： 直接false 即写者不应该阻塞。
+							- FairSync 的实现：都是@hasQueuedPredecessors() 即看 当前线程是否是head的下一个node的thread
 						>则此时：要么上一步更新成功，独占数量增1了：设置独占线程为当前线程：@setExclusiveOwnerThread(th) 返回：true 
+						-总结：共有两种情况成功：1.状态表明有独占数量 且 独占线程 为当前线程；2.写者不应该阻塞 且CAS更新状态独占数量+int成功；顺便设置独占线程为当前线程。
 					>进一步：@addWaiter(Node.EXCLUSIVE)添加到等待队列
 					>进一步：@acquireQueued(Node, int) 上述Node为入参.功能即为排队获取。
 						-进入循环：
-						>如果node的前驱是head 且 尝试获取资源@tryAcquire(arg)成功了： 那么设置head=node, 其.thread=.prev=null; 自然的，前驱的next=null, 返回线程是否中断过
+						>如果node的前驱是head 且 尝试获取资源@tryAcquire(arg)成功了： 那么设置head=node, 其.thread=.prev=null; 自然的，前驱的next=null(双向剪除head/node联系), 返回线程是否中断过
 						>否则：如果@shouldParkAfterFailedAcquire() 且 parkAndCheckInterrupt()停车之后：线程中断状态为true: 则 设置中断状态变量为true
 						-退出循环：如果抛了异常：那么会@cancelAcquire()
-					>如果上述为true: 则自中断：@selfInterrupt()	
-						
-							
-						
-						
-						
+					>如果上述为true: 则当前线程中断过，需要执行自中断：@selfInterrupt()	-- 其实仅仅设置了中断状态。
+					--总结：应用上：A线程获取了写锁，可以继续获取写锁;此时如果非公平下则B获取写锁直接CAS更新-成功了则成功获取到了写锁；如果公平同步下则B如果是head.next.thread那么才开始CAS更新	否则阻塞
+			>带中断锁方法：@lockInterruptibly()
+				>转发：@sync.acquireInterruptibly(1)
+					>如果@tryAcquire(arg)失败时则@doAcquireInterruptibly(int)可抛中断异常的等待； 因此看前者的实现
+			>尝试获取写锁：@tryLock()  实为得写锁后再次获取可以成功
+				>转发：@sync.tryWriteLock()
+					>看状态：如果不是0：但独占数量是0则共享数量>0：那么获取失败，否则独占数量>0但当前线程不是独占线程：返回失败。独占数量超过最大int也抛错误。
+					-此时：状态=0 ， 或者 当前线程是独占线程 且 还有独占数量余地：则CAS更新state独占数量+1, 失败则返回false, 成功则更新独占线程为当前线程；返回true 
+			>带时限的尝试获取锁：@tryLock(long timeout, TimeUnit unit)
+				>转发：@tryAcquire(arg) 成功则返回成功，否则带时限继续尝试：@doAcquireNanos(arg, nanosTimeout)结果直接返回。
+			>释放锁：@unlock()
+				>转发：@sync.release(1) 
+					>还是看；@tryRelease(int releases) 的实现： 因为成功后才会唤醒继任者。
+						>如果当前线程不是独占线程：抛异常：new IllegalMonitorStateException()
+						>否则就是：状态值-int 即独占数量-1 的结果next,如果已经是0了，那么：需要释放独占线程：setExclusiveOwnerThread(null); 直接新状态值next设置：@setState(next)返回剩余数量是否==0, 为0则释放完毕。
+			>新条件：@newCondition()
+				>转发：@sync.newCondition() 
+					>直接新建返回：@new ConditionObject() --- 也是AQS里的内部类。
+		
+		>条件对象ConditionObject：
+			>
 						
 			
