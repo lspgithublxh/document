@@ -292,7 +292,7 @@
 						>如果队尾的状态不是CONDITION, 那么需要整理：@unlinkCancelledWaiters() 从头开始：把非CONDITION的Node都移除出去。
 						-注意不是双向关系：只有Node.nextWaiter=Node 单向队列关系。
 					>@fullyRelease(Node)注入的是新节点 
-						>取state:@release(state) -- 显然想一次全部释放：强于@unlock()
+						>取state:@release(state) -- 显然想一次全部释放：强于@unlock()，而由其中的@tryRelease(int)实现内容看：这样必然会state==0从而设置独占线程为null--因此其他线程可以加写锁。
 						>释放失败：抛出异常：@throw new IllegalMonitorStateException() 且 finally:node.waitStatus=Node.CANCELLED取消。
 						>释放成功：返回释放的数量。
 					>循环：条件：不在同步队列中：查看是否在同步Node:@isOnSyncQueue(Node) 如果Node.waitStatus==Node.CONDITION 则false 不同步<显然直接await就会是>。前驱==null也不在同步中，next!=null则有后继，在同步中。否则next是null但prev不是null: 进一步判断：@findNodeFromTail(Node) ---从尾往前找：找到了Node则true,没找到则false
@@ -334,6 +334,9 @@
 					>如果firstWaiter不是null: @doSignalAll(first) 全部都执行一次唤醒
 						>首尾waiter都清空：lastWaiter = firstWaiter = null
 						>一个个的唤醒：并且解除nextWaiter关系：唤醒同上@transferForSignal(first)。。自然会使用循环。
-					
-					
-						
+					--总结 写锁的 ConditionObject的好处是：await()方法会先释放所有的独占数量和释放独占线程，以及释放共享数量，(那么其他线程就可以获取读锁或者获取写锁了)，释放成功则停车等待；singal触发唤醒后退出循环等待而 排队获取 补上之前的state释放量,且设置当前线程为独占线程(@tryAcquire(int)中)
+					-- 读写锁：以方法调用的方式：包裹代码块进行同步。
+					-- 为什么不能直接 ConditionObject.await()， 因为 @fullyRelease(Node)会有个 当前线程是否是独占线程的判断。同理@signal()也是。--只能在写锁@lock()成功之后而@unlock()之前后使用。
+					-- WriteLock-ConditionObject 这一套同步 相对于 synchronized-Object这一套：好处在 前者同步是公平的，且内部可以多个ConditionObject来await(), 而后者非公平且只能用一个Object.wait()。。以下：AB同读写锁对象。
+						>第二，A读之后，B可以读,A也可以再读,A可以再写，B不可以再写
+						>第三，A写之后，A可以再读，B不可以再读;A可以再写，B不可以再写;A可以创建 条件对象X进行await()-释放独占和共享而循环停车，之后B可以再读再写，B写之后B可以使用A创建的条件对象X进行sigal()-操作一个节点即A即让A入队后唤醒A，A则退出循环而入队等待获取(非共享)，当B 释放写锁完成或者await()之后A才可以获取成功而继续独占。	
