@@ -339,4 +339,32 @@
 					-- 为什么不能直接 ConditionObject.await()， 因为 @fullyRelease(Node)会有个 当前线程是否是独占线程的判断。同理@signal()也是。--只能在写锁@lock()成功之后而@unlock()之前后使用。
 					-- WriteLock-ConditionObject 这一套同步 相对于 synchronized-Object这一套：好处在 前者同步是公平的，且内部可以多个ConditionObject来await(), 而后者非公平且只能用一个Object.wait()。。以下：AB同读写锁对象。
 						>第二，A读之后，B可以读,A也可以再读,A可以再写，B不可以再写
-						>第三，A写之后，A可以再读，B不可以再读;A可以再写，B不可以再写;A可以创建 条件对象X进行await()-释放独占和共享而循环停车，之后B可以再读再写，B写之后B可以使用A创建的条件对象X进行sigal()-操作一个节点即A即让A入队后唤醒A，A则退出循环而入队等待获取(非共享)，当B 释放写锁完成或者await()之后A才可以获取成功而继续独占。	
+						>第三，A写之后，A可以再读，B不可以再读;A可以再写，B不可以再写;A可以创建 条件对象X进行await()-释放独占和共享且而循环停车，之后B可以再读再写，B写之后B可以使用A创建的条件对象X进行sigal()-操作一个节点即A即让A入队后唤醒A，A则退出循环而入队等待获取(非共享)，当B 释放写锁unlock()完成或者await()之时(释放都会执行：unpark head的继任者)A才可以获取成功而继续独占。	
+						
+>ReentrantLock可重入锁：	
+	>业务模型：
+	>业务模型的API实现： 
+		>锁方法：@lock()
+			- 非公平同步：
+			>CAS更新状态从0到1：成功则设置 独占线程为当前线程；失败：则@acquire(1) --即 EXCLUSIVE 写锁的方式等待：尝试-失败则入队等待-唤醒后再次尝试-...。
+				>看尝试方法@tryAcquire(int acquires)
+					>非公平 锁实现：@nonfairTryAcquire(acquires)
+						>如果state=0则：CAS更新为 acquires,成功则 独占线程设置，返回true;失败返回false
+						>否则state>0则： 如果当前线程为独占线程：则 state+acquires 过界则抛出错误，否则直接设置@setState(int) 返回true 
+			- 公平同步：
+			>会考虑在状态为0时是否有前驱：有前驱则 @tryAcquire()尝试就失败；状态不是0时则看当前线程是否是独占线程-不是则失败。
+			- 总结：公平同步和非公平同步：关键在尝试获取时：是否考虑有前驱。
+		>可中断锁方法：@lockInterruptibly()类似。尝试后 仅仅等待中可以抛出中断异常。
+		>尝试锁：@tryLock()
+			>转发@nonfairTryAcquire(1) 即做一次尝试。只做尝试不做等待。
+		>限时获取：@tryLock(int, TimeUnit) 尝试后 限时等待。
+		>解锁：@unlock()
+			>转发：@sync.release(1)
+				>先尝试释放：@tryRelease(arg)
+					>也是独占线程为当前线程才可以：否则抛异常。
+					>状态值扣减后为0：则设置独占线程为空，再直接setState(),否则直接setState()
+				>成功则：唤醒head的继任者。
+				>失败返回false 
+		>条件:@newCondition() 
+			>转发：@sync.newCondition() 即创建对象： new ConditionObject()   后面的操作就类似了：直接只在AQS中。
+			
