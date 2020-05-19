@@ -21,8 +21,9 @@
 	>对一个组织类：他是有人；属性当作人。人可能是为他办事的，也可能是监听他的监听器。
 	>对一个系统类：他是有组件/器具；属性当作器具
 //为什么层次多：因为连续地向上进行了抽象，每层都分类了/拆分了不同的功能，每层连续往下拆分。
-
-
+//业务模型最好的体现：就是对ideal/eclipse开发工具的功能组织和描述。
+//源码-算法-业务-架构：看书看源码做东西。
+//自大而错误的原因：缺少验证和反馈。只是创造是不够的。
 
 >抽象队列同步器 AbstractQueuedSynchronizer ：数据模型 和 设计的算法 从而提供的服务/功能；为什么是通用的？	
 	>场景-场景中要做的事情-事情的精细结构(事情做法的精细-全面-宏观-微观度量: 每个度量及其值域)-事情中的对象和对对象进行的所有可行动作/公共操作(以形成一个通用的事情框架/模板，或者一个最佳的每个度量的取值)：若干线程并发获取资源，谁第一个获取到，谁第二个获取到...？还是每次上一个释放资源后都是重新竞争？，总共可以获取到多少？--资源量总共多少？
@@ -368,3 +369,104 @@
 		>条件:@newCondition() 
 			>转发：@sync.newCondition() 即创建对象： new ConditionObject()   后面的操作就类似了：直接只在AQS中。
 			
+>ThreadPoolExecutor线程池：
+	>业务模型：
+		>概念：
+			>线程： 
+				>线程池中线程的状态：ctl
+			>线程池：核心线程数、最大线程数
+			>非核心线程无任务时的活跃时间：非核心线程无任务时的最大idle时间。
+			>任务队列：
+			>线程工厂：
+			>拒绝执行处理器：
+			-
+			>线程+状态+首个任务等的封装类：worker
+		>行为：(包含原子行为，有必要一起表述的)
+			>向线程池一个任务：并立即执行 
+			>线程池将任务调度给线程：并返回结果获取钩子(没有计算结果阻塞，有则返回)，或者无返回。
+			>调用线程工厂创建线程：
+			>调用拒绝执行handler处理新的任务：
+			>线程的管理：线程的增删
+		>活动规则： 
+			>初始化：利用线程工厂创建corePoolSize个线程-每个线程要连带其他信息和行为所以封装到专门内部类里，放到专门的地方，比如一个数组，长期活跃。
+			>提交的任务先给核心线程：如果在执行任务则给非核心线程，如果没有则同理创建非核心线程封装在内部类容器里并将其放在专门地方。如果不能创建新的或者使用旧的非核心线程了，加入任务队列。任务队列满了，拒绝执行handler来处理。
+	>业务模型的API定义：
+		>执行任务方法：@execute(Runnable command)
+			-预备：定义了一个整数int: ctl 高3位是运行状态，低29位是workerCount工人数。可以直接二进制&计算出给定int代表的运行状态和 workerCount
+			>如果 workerCount<corePoolSize: 开始增加worker:@addWorker(Runnable, true) 添加成功，直接返回。否则没有添加成功：或者没有启动worker成功。再次取ctl的值来更新一下局部变量。
+				>进入无限循环：
+					>首先看是否需要处理这个task: 如果运行状态 runState 是 shutdown/stop/tidying/terminated, 并且 (要么不是shutdown，要么输入task不是null, 要么任务队列是空), 即后三种状态直接不处理，shutdown时task不是空不处理-任务队列空也不处理，返回false
+					-其他情况要处理：状态为run时、shutdown时且任务队列非空且入参task为空
+					>进入无限循环： 
+						>首先判断是否要执行：看 workerCount 如果 >= 29个1即最大容量，返回false不处理; 即便 < 最大容量，如果第二个入参true:则比较 workerCount >= corePoolSize 则也不处理；如果 第二个入参false: 则比较 workerCount >= maximumPoolSize 成立则也不处理。
+						>如果需要处理：那么CAS更新ctl workerCount +1 ：@compareAndIncrementWorkerCount() 如果更新成功：退出双层循环：即break retry标记。否则更新失败：则重新获取 runState 看是否和上一步计算的一样：不一样则要重新开始两层循环：continue retry;一样则内层循环即可。
+				-此时则：已经成功更新了workerCount+1: 开始 worker 的新建和封装线程。
+				>先用入参task 初始化 创建 worker: new Worker(firstTask) -继承了 AQS，实现了Runnable
+					>状态state设置为：-1 --运行中。实际上是AQS里的state
+					>设置firstTask:为了效率而有第一个任务属性。
+					>用线程工厂创建线程：@getThreadFactory().newThread(this): thread:线程属性：执行任务的线程。
+				>取 worker 的线程：如果线程不是null: 开始实际工作  
+					>使用可重入锁ReentrantLock:ThreadPoolExecutor.mainLock:进行同步：
+						>查看运行状态：ThreadPoolExecutor.ctl中，如果是run， 或者 shutdown且入参task==null:  继续操作：
+							>如果线程 仍然 活跃：抛出异常：new IllegalThreadStateException()因为表明它在运行任务。
+							>worker加入工作队列：ThreadPoolExecutor.workers, 
+							>记录workers数量：表示 出现过的最大workers数量：largestPoolSize
+					>退出同步：
+						>如果添加worker成功：那么就要启动 worker里的线程：t.start();workerStarted=true	
+						>如果worker添加失败而没有启动：那么@addWorkerFailed(w)回调处理。
+							>再次 mainLock 同步： workers.remove(w)， 然后自旋减少ctl 1直到成功:@decrementWorkerCount(),  再尝试终止：@tryTerminate():
+								>无限循环中：(自旋)
+									>是否要处理：如果run/tidying/terminated则不处理，直接返回。shutdown且非空 则也返回。
+									-则此时状态：stop 或者 shutdown且队列为空
+									>如果 worker 数量 > 0:  那么需要：中断 idle的 worker:@interruptIdleWorkers(true) --只中断一个(且idle特点没有体现)。然后直接返回(毕竟是尝试中断，所以只中断1个)。
+										>用 mainLock 同步：遍历 workers的 thread: 如果线程不是中断状态 那么 @worker.tryLock() 用worker来尝试锁：
+											>如果锁成功了：则线程中断：@t.interrupt() 最后一定 w.unlock()释放。
+											-看@tryLock()的内容：
+												>直接转发@tryAcquire(1)--<尝试的内容一般都是cas更state, 失败直接返回不入队停车>
+													>尝试CAS更新AQS的state从0到1：@compareAndSetState(0, 1) 如果成功了：设置独占线程为当前线程，并返回true,否则返回false;
+											>如果没有锁成功：而入参 为true:即确实 只中断1个，那么 直接break退出循环。否则继续遍历。
+									>此时则worker数量是0，使用 mainLock 进行同步： 
+										>先尝试ctl cas方式更新 为 tidying, 且0workercount: 如果成功： 
+											>@调用终止方法：@terminated() - 空方法：线程池继承类可以继承而实现。
+											>finally:一定做的：ctl强制set为：TERMINATED-0, 然后 条件对象 ConditionObject:termination.signalAll() 触发此条件对象的所有的等待线程(Node状态更新、入队、unpark)。	
+									-总结: 终止条件：stop / shutdown且队列为空， 且workerCount=0 ,  如果>0则中断第一个worker。 终止动作：ctl更新为终止状态，条件对象信号触发。		
+					>返回：即是否启动worker成功
+				--总结：增加worker：任务封装到worker, 后其实worker加到了workers, 最后启动了worker.start()
+			-此时则：要么添加失败，要么就是 worker数量超过了 corePoolSize, 此时都当做 新任务没有执行来看待
+			>如果 ctl状态表明 runState是 running, 那么 先将 task放到 BlockingQueue:workQueue任务队列:如果成功了，要再次检查是否ctl 是否在run, 
+				>如果再次检查出不是run：那么 就要：移除task:@remove(command) 。且@remove()成功之后：@reject(command)：即使用拒绝执行handler来处理：@handler.rejectedExecution(command, this)
+					>先对队列里移除：workQueue.remove(task)
+					>尝试中断：@tryTerminate()
+				-则此时 要么在run, 要么不在run但移除失败：查看workercount, 如果是0：则空调：@addWorker(null, false) - 即任务不加入
+			>否则：此时 不是run, 或者 是run但是添加队列失败：则开始增加worker：@addWorker(command, false) 如果还是失败，则要执行拒绝执行Handler的方法：@reject(command)	
+				
+		>查看Worker的run()方法：直接转发到@runWorker(this)
+			>取出worker的firstTask, 并立即给这个属性情况：worker.firstTask=null
+			>执行解锁：实际上是为了其他线程方便"检查独占线程":@worker.unlock(): 核心方法：@tryRelease():内容自然是对state的处理：这里是setState(0), 设置独占线程为null:返回true
+			>开始循环中：循环条件为：先看 上一步取出的 firstTask 如果不是null那么进入循环，否则是null但是 @getTask()即从队列里取出Task不是null 那么也可以进入循环：
+				>先看@getTask():
+					>直接进入无限循环：
+						>取ctl运行状态：如果 stop/tidying/terminated， 或者 shutdown 时 任务队列是空的：那么是不执行的：直接@decrementWorkerCount() 返回null
+						>退出条件2：如果 workerCount > maximumPoolSize ： 那么不用看 workQueue是否为空：都直接 CAS更新 wc-1， 如果成功了：返回null, 否则 继续循环。 
+						>从 workQueue里取任务：如果 wc > corePoolSize, 那么就 限时取：@workQueue.poll(keepAliveTime, TimeUnit.NANOSECONDS)， 没有超过那么就一直等待取：workQueue.take()  。。这个动作是最优或者比较优的。
+						>如果取出的不是null:那么直接返回。否则设置 timeOut=true, 使得下一轮循环时：只要 wc > corePoolSize:那么都会直接 cas更新 wc-1 然后返回null，如上2步。						
+				-循环里的内容：
+					>使用Worker开始同步：w.lock()
+					>判断worker的线程是否需要中断：(runState为：stop/tidying/terminated 或者 (当前线程已经中断 且 再次看 runState 也是s/t/ter)) 且  worker的线程未中断 ：那么worker的线程要中断：wt.interrupt()
+					-则此时：要么wt线程已经中断，或者没有中断 但是 runState 为 run/shutdown:
+					>执行前的钩子函数：@beforeExecute(wt, task)
+					>调用执行：@task.run()
+					>捕获相应的异常和Error处理，Throwable也捕获，最后执行 钩子函数：@afterExecute(task, thrown)
+					>最后清扫环境：task=null , worker的completedTasks++，来表明完成的任务数，w.unlock()来去除同步。
+					-则继续取任务。
+				>退出循环：则不能再获取任务来执行，则是非正常的，开始一系列的事情：@processWorkerExit(w, completedAbruptly)
+					>如果是突然中断：则@decrementWorkerCount() 调整 来 补偿。
+					>使用 mainLock 进行同步：将 w.completedTasks 值 累加到 ThreadPoolExecutor.completedTaskCount上
+					>清扫：移除worker:workers.remove(w)
+					>尝试终止：@tryTerminate()
+					>继续看ctl的运行状态：如果是 run/shutdown, 那么：
+						>如果不是突然完成：如果worker数 >= corePoolSize, 那么 直接返回 
+						-此时 是： 突然完成， 或者 wc < corePoolSize: 都需要：@addWorker(null, false)， 第一个入参为firstTask形参，显然不是第一次了，所以null, 则自然会从任务队列里取， false则自然不是 和 corePoolSize比较了。所以就是纯粹的加一个worker 并启动起来。
+				-此时则完成了：@runWorker()
+				
+						
