@@ -468,5 +468,17 @@
 						>如果不是突然完成：如果worker数 >= corePoolSize, 那么 直接返回 
 						-此时 是： 突然完成， 或者 wc < corePoolSize: 都需要：@addWorker(null, false)， 第一个入参为firstTask形参，显然不是第一次了，所以null, 则自然会从任务队列里取， false则自然不是 和 corePoolSize比较了。所以就是纯粹的加一个worker 并启动起来。
 				-此时则完成了：@runWorker()
-				
-						
+		>关闭线程池方法：@shutdown()
+			>使用 mainLock 同步锁：lock开启
+				>检查是否有权限：@checkShutdownAccess()
+					>获取SecurityManager后：调用：@security.checkPermission(new RuntimePermission("modifyThread"))
+					>再次使用 mainLock 同步开启：遍历 workers 的每个：
+						>用安全管理器查看线程是否有连接权限：@security.checkAccess(w.thread)
+					>解开同步unlock()一次
+				>尝试更新 ctl 为 shutdown:@advanceRunState(SHUTDOWN)
+					>无限循环中：
+						>如果状态 为： run 那么直接break;否则 >run 则看 CAS更新 ctl为 shutdown_当前worker数 , 如果成功了，则退出，否则继续循环。
+				>中断闲逛线程：@interruptIdleWorkers() 直接转发给：@interruptIdleWorkers(false) 则会全部 worker 都检查 试图 interrupt 一次。 
+				>钩子函数：@onShutdown()  -空实现。 
+				>finally：解开同步
+				>最后尝试状态更新为 关闭：@tryTerminate()
