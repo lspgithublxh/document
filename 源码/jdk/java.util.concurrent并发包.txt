@@ -448,8 +448,12 @@
 					>直接进入无限循环：
 						>取ctl运行状态：如果 stop/tidying/terminated， 或者 shutdown 时 任务队列是空的：那么是不执行的：直接@decrementWorkerCount() 返回null
 						>退出条件2：如果 workerCount > maximumPoolSize ： 那么不用看 workQueue是否为空：都直接 CAS更新 wc-1， 如果成功了：返回null, 否则 继续循环。 
-						>从 workQueue里取任务：如果 wc > corePoolSize, 那么就 限时取：@workQueue.poll(keepAliveTime, TimeUnit.NANOSECONDS)， 没有超过那么就一直等待取：workQueue.take()  。。这个动作是最优或者比较优的。
-						>如果取出的不是null:那么直接返回。否则设置 timeOut=true, 使得下一轮循环时：只要 wc > corePoolSize:那么都会直接 cas更新 wc-1 然后返回null，如上2步。						
+						>从 workQueue里取任务：如果 wc > corePoolSize, 那么就 限时获取：@workQueue.poll(keepAliveTime, TimeUnit.NANOSECONDS)， 没有超过那么就一直等待取：workQueue.take()  。。这个动作是最优或者比较优的。同时这个取任务是有中断异常捕获的，如果因为如@shutdownNow()方法的执行而中断了此线程，那么捕获异常而直接退出了，但是如果是@shutdown()那么只是捕获异常而还会继续尝试取任务。
+						>如果取出的不是null:那么直接返回。否则设置 timeOut=true, 使得下一轮循环时：只要 wc > corePoolSize:那么都会直接 cas更新 wc-1 然后返回null，如上2步。	
+						--总结三大导致worker退出的条件：
+						--总结：当wc>corePoolSize则限时获取，如果超时而没有获取到，则下一次看wc>corePoolSize时就直接wc-1而返回null--那么就会导致@runWorker()方法退出循环，从而整个worker都结束了。
+						--总结2： 当wc > maximumPoolSize 也会直接wc-1且返回null 而导致worker退出。
+						--总结3：线程池状态ctl是 stop/tidying/terminated;  也会退出。线程池状态是 shutdown, 且 workQueue 为空 也会 退出。(即如果是 shutdown 但是 workQueue还有任务则不会退出-继续取任务)
 				-循环里的内容：
 					>使用Worker开始同步：w.lock()
 					>判断worker的线程是否需要中断：(runState为：stop/tidying/terminated 或者 (当前线程已经中断 且 再次看 runState 也是s/t/ter)) 且  worker的线程未中断 ：那么worker的线程要中断：wt.interrupt()
@@ -477,8 +481,32 @@
 					>解开同步unlock()一次
 				>尝试更新 ctl 为 shutdown:@advanceRunState(SHUTDOWN)
 					>无限循环中：
-						>如果状态 为： run 那么直接break;否则 >run 则看 CAS更新 ctl为 shutdown_当前worker数 , 如果成功了，则退出，否则继续循环。
+						>如果状态已经为： shutdown/stop/tidying/terminated 那么直接break;否则 run 则看 CAS更新 ctl为 shutdown_当前worker数 , 如果成功了，则退出，否则继续循环。
 				>中断闲逛线程：@interruptIdleWorkers() 直接转发给：@interruptIdleWorkers(false) 则会全部 worker 都检查 试图 interrupt 一次。 
 				>钩子函数：@onShutdown()  -空实现。 
 				>finally：解开同步
 				>最后尝试状态更新为 关闭：@tryTerminate()
+				--总结：一是更新ctl为shutdown,二是workers的线程全都中断(则如果队列空了就退出)，三是尝试更新ctl为terminated
+				--总结2：中断：只有对在等待阻塞的线程执行中断才有效，没有阻塞的线程执行中断是不会让它抛出中断异常的。
+		>立即关闭线程池方法：@shutdownNow()		类似
+			>先使用 mainLock 进行同步： 
+				>检查是否有权限：@checkShutdownAccess()
+				>尝试更新 ctl 为 stop:@advanceRunState(STOP)
+					>无限循环中：
+						>如果状态 为： stop/tidying/terminated 那么直接break;否则 run/shutdown 则看 CAS更新 ctl为 stop_当前worker数 , 如果成功了，则退出，否则继续循环。
+				>中断线程：@interruptWorkers()
+				>吸干任务队列的所有任务：@drainQueue()	-- 内部靠：@BlockingQueue.drainTo(taskList) 来实现提取任务队列里的任务--如果之后还有空余，那么还会直接queue转数组后q移除而添加到 taskList。
+				>尝试更新为终止：@tryTerminate()
+				>返回任务列表：taskList
+				--总结：会导致正在阻塞的闲逛worker先中断后直接退出。(所以如果正好还没有取限时取任务时被中断，那么还是会继续等设定的idle时间；如果@showdown()同步并发的@add()任务-即便只有1个那么也可能导致有worker没有退出--并且一直阻塞在那里)---所以shutdown()时候必须确保返回之前都没有add()的执行；而@shutdownNow()则也可能会有线程或者，所以要确保关闭之后:1.没有add,2.任务队列里取出剩下的未执行任务3.没有正在执行的worker--全部都在阻塞等待任务队列处，那么就可以最安全的退出了。
+				--总结：注意worker不分core/maxi类型。
+		>限时等待终止：@awaitTermination()
+			>使用 mainLock	同步： 
+				>进入无限循环中：
+					>如果状态是 TERMINATED, 直接返回true 
+					>否则不是，看限时时间<0则也返回false 
+					>最后调用 ConditionObject 条件对象进行 释放独占和状态量而-循环等待-入队等待：@termination.awaitNanos(nanos)
+			>退出同步	
+		>结束：@finalize()
+			>带安全框架地执行@shutdown()
+			
