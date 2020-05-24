@@ -454,6 +454,8 @@
 						--总结：当wc>corePoolSize则限时获取，如果超时而没有获取到，则下一次看wc>corePoolSize时就直接wc-1而返回null--那么就会导致@runWorker()方法退出循环，从而整个worker都结束了。
 						--总结2： 当wc > maximumPoolSize 也会直接wc-1且返回null 而导致worker退出。
 						--总结3：线程池状态ctl是 stop/tidying/terminated;  也会退出。线程池状态是 shutdown, 且 workQueue 为空 也会 退出。(即如果是 shutdown 但是 workQueue还有任务则不会退出-继续取任务)
+						--根本总结退出过程：1.因为状态退出：shutdown/stop/tidying/terminated  2.因为worker多于corePoolsize正常退出：上次超时没取到任务这次看到worker数量多了直接退出。
+						--根本总结添加过程：没达到corePoolsize先addWorker-->否则加入任务队列-->任务队列满了则再addWorker--->失败了(即过限了/状态shutdown了)reject()
 				-循环里的内容：
 					>使用Worker开始同步：w.lock()
 					>判断worker的线程是否需要中断：(runState为：stop/tidying/terminated 或者 (当前线程已经中断 且 再次看 runState 也是s/t/ter)) 且  worker的线程未中断 ：那么worker的线程要中断：wt.interrupt()
@@ -482,12 +484,13 @@
 				>尝试更新 ctl 为 shutdown:@advanceRunState(SHUTDOWN)
 					>无限循环中：
 						>如果状态已经为： shutdown/stop/tidying/terminated 那么直接break;否则 run 则看 CAS更新 ctl为 shutdown_当前worker数 , 如果成功了，则退出，否则继续循环。
-				>中断闲逛线程：@interruptIdleWorkers() 直接转发给：@interruptIdleWorkers(false) 则会全部 worker 都检查 试图 interrupt 一次。 
+				>中断闲逛线程：@interruptIdleWorkers() 直接转发给：@interruptIdleWorkers(false) 则会全部 worker 都检查 试图 interrupt 一次。 真正作用：因为并发同步的关系，是有可能@addWorker()而增加的数量大于maximumPoolSize，所以需要这个@interruptIdleWorkers()方法来中断线程，这样苏醒的线程一看数量太多则立刻退出。
 				>钩子函数：@onShutdown()  -空实现。 
 				>finally：解开同步
 				>最后尝试状态更新为 关闭：@tryTerminate()
 				--总结：一是更新ctl为shutdown,二是workers的线程全都中断(则如果队列空了就退出)，三是尝试更新ctl为terminated
 				--总结2：中断：只有对在等待阻塞的线程执行中断才有效，没有阻塞的线程执行中断是不会让它抛出中断异常的。
+				--总结中断闲逛线程的目的：这个其实所有的在等待取任务的线程都会中断,来促使多的worker因为状态而退出(或者因为worker数量>maximumPoolSize)--当然可能会退出过多。还有一种：是核心线程退出而下一次变为限时核心线程而限时的获取task@allowCoreThreadTimeOut()。
 		>立即关闭线程池方法：@shutdownNow()		类似
 			>先使用 mainLock 进行同步： 
 				>检查是否有权限：@checkShutdownAccess()
@@ -509,4 +512,142 @@
 			>退出同步	
 		>结束：@finalize()
 			>带安全框架地执行@shutdown()
+		>设置线程池核心大小：@setCorePoolSize()
+			>一个是更新 corePoolSize 的值，如果 当前ctl表明的worker数量 大于 新的corePoolSize, 那么 中断 闲逛的线程：@interruptIdleWorkers()
+		>因为当new 线程池时，其实没有创建核心worker；如果非要初始化的时候就创建，那么可以调用@prestartAllCoreThreads()方法：
+			>即直接：循环调用@addWorker(null, true) 直到false 自然退出。
+		>让核心线程也超时：@allowCoreThreadTimeOut(boolean)
+			>所需要做的：自然是先 属性allowCoreThreadTimeOut=true设置，后中断无限等待中的线程：@interruptIdleWorkers()
+		>设置最大的线程数也是：@setMaximumPoolSize(int)
+			>假设调整小了，那么自然多余的线程要退出，退出办法首先就是立即中断饥饿线程：@interruptIdleWorkers()
+		>设置保持时间也是：@setKeepAliveTime()
+			>假设新的worker数量小了，那么自然多余的线程要退出，退出办法首先就是立即中断饥饿线程：@interruptIdleWorkers()
+		>移除任务：@remove(Runnable)
+			>从队列里移除：并且会尝试中断：@tryTerminate()--可能出现：((shutdown+empty)|stop)+workercount=0， 这种状态下就需要先update为tidying再为terminated
+	
+>atomic子包下：AtomicInteger类的实现：
+	>业务模型：
+		>概念：
+			>
+		>行为：
+		>规则：初始化、演化、达到目标-结束
+	>业务模型的API定义：
+		>代表的实际整数值：int:value, 及其 offset:long:valueOffset=Unsafe.getUnsafe().objectFieldOffset(AtomicInteger.class.getDeclaredField("value"))
+		>获取：@get()直接获取。设置@set(int)直接设置 
+		>原子地保证成功地CAS更新为输入值：@getAndSet(int)返回以前的值。一直CAS尝试，直到成功。
+			>转发@unsafe.getAndSetInt(this, valueOffset, newValue)
+				>循环中：先取@this.getIntVolatile(Object, long) 后用来更：@this.compareAndSwapInt(Object, long, int:get, int:set)更新成功推出循环，否则继续取-更。显然，第一个方法是可见性的获取，所以如果其他类更新了，那么读取的时候回因为失效而重新从内存中加载。
+				>返回更新成功之前的老值。
+		>原子地只尝试一次CAS更新为输入值：@compareAndSet(int expect, int update)
+			>直接@unsafe.compareAndSwapInt(this, valueOffset, expect, update)结果直接返回。 
+		>原子地保证成功地CAS更新为+1的值：@getAndIncrement() 。保证策略：循环尝试，直到成功。
+			>直接转发@unsafe.getAndAddInt(this, valueOffset, 1)
+				>循环中：同理也是先可见性地取：@this.getIntVolatile(Object, long) 后 +1后更：@this.compareAndSwapInt(Object, long, int:get, int:set)成功则返回，否则则继续取-更。
+		>原子地保证成功地CAS更新为-1的值：@getAndDecrement()。保证策略：循环尝试，直到成功
+			>类似：直接：@unsafe.getAndAddInt(this, valueOffset, -1)
+		>同上，类似要更新为增加一个增量delta:@getAndAdd(int delta)
+			>类似，直接@unsafe.getAndAddInt(this, valueOffset, delta)
+		>原子地保证成功地先增1后取：@incrementAndGet()
+			>利用@unsafe.getAndAddInt(this, valueOffset, 1)返回的是老值，显然老值只比新值小1：所以直接老值+1即可。而就不是再去读---因为可能已经被并发地修改了。
+		>原子地保证成功地先减1后取：@decrementAndGet()
+			>直接@unsafe.getAndAddInt(this, valueOffset, -1) - 1即可。 
+		>同上，原子地一定成功地更增一个增量：@addAndGet(int delta)
+			>直接@unsafe.getAndAddInt(this, valueOffset, delta) + delta即可。
+		>原子地一定成功地CAS更新为映射规则运算出的新量：@getAndUpdate(IntUnaryOperator) 入参就是映射规则：即@IntUnaryOperator.applyAsInt(int)方法返回也是一个int
+			>先取：@get()
+			>后调用运算规则运算得出要映射为的值：@IntUnaryOperator.applyAsInt(int)
+			>将此值CAS更新回去：@compareAndSet(prev, next) 如果成功了则退出，否则继续循环。返回自然是老值。
+		>同上，如果返回新值：那么@updateAndGet(IntUnaryOperator)仅仅修改返回值即可。
+		>同上类似，如果是规则是二元运算-还需要注入一个参数：那么就是@getAndAccumulate(int,IntBinaryOperator)道理类似。
+>atomic子包下：AtomicReference 类的实现：		
+	>业务模型的API定义：
+		>直接一次比较并更新为新值：@compareAndSet(V,V)
+			>直接转发：@unsafe.compareAndSwapObject(this, valueOffset, var1, var2)
+		>类似的一元运算符映射旧值得新值来更新的方法：@getAndUpdate(UnaryOperator)，循环中：先取后更：直到成功，返回老值。 
+
+>数组阻塞队列：ArrayBlockingQueue 的实现 
+	>业务模型1：我的模型：
+		>概念：
+			>对象数组：存储元素
+			>取索引：指向的位置为下一次取的位置 
+			>放索引：指向的位置为下一次放的位置
+			>同步锁：并发控制放元素与放元素动作，放元素与读元素
+			>空标记和满标记：只用满标记也可以。或者用整数：表示元素个数。
+			>满：放索引+1=取索引 
+			>空：放索引=取索引 
+		>行为：
+			>放元素：
+		>规则：初始化-演化-达到目标-结束 
+			>初始化一个空的对象数组：读索引和放索引都指向0，空标记为true，满标记为false
+			>放元素的过程：先看满标记，如果false则放，然后看放索引+1==取索引？是则表示满了，更新满标记=true，否则先加元素后将放索引+1(原子更)。
+			>取元素的过程：先看空标记，(而不是再次:放=取 比较一下看)，如果false则先取元素，然后先读索引+1，再看读索引==取索引？是则更新空标记为true。
+	>业务模型的API定义：
+		>带元素的队列的构造：@ArrayBlockingQueue(int,boolean,Collection)
+			>用可重入锁 ReentrantLock:lock来同步  
+				>迭代集合，就非常普通的将各个元素先检查非空： @checkNotNull(var7)-一个空直接抛出异常， 后放入items对象数组即可：最后更新this.count=总共增加的数量，this.putIndex=最后的元素所在的索引+1位置。
+		>满了抛异常的添加：@add(E var1)
+			>直接转发：@super.add(var1) 
+				>直接offer:@this.offer(var1) 如果成功了返回true, 否则抛出异常：new IllegalStateException("Queue full")
+		>添加元素：@offer(E var1) 显然无阻塞
+			>非空检测：@checkNotNull(var1)
+			>用 ReentrantLock.lock来同步 
+				>非满检查：this.count != this.items.length 满了就直接返回了。
+					>直接入队：@this.enqueue(var1)
+						>非常普通的实现：就是直接放：this.items[this.putIndex] 后 putIndex区间内自增处理,this.count自增1。然后非空信号的触发：@this.notEmpty.signal()让等待元素的线程唤醒一个来读取元素。
+		>满了先阻塞地添加元素：@put(E var1) 
+			>用 ReentrantLock.lock来同步：可中断的同步：@lockInterruptibly()  
+				>循环中：看是否满：this.count == this.items.length如果成立则满了，那么阻塞：this.notFull.await() 
+				-此时则没有满：于是添加元素：@this.enqueue(var1)  因为在同步中，所以此时醒来的只有一个。(其他的唤醒了但不是head的继任者所以还是继续等待)
+		>限时提供：@offer(E,long,TimeUnit)
+			>非空检测：@checkNotNull(var1)
+			>用 ReentrantLock.lock来同步 :可中断的同步：@lockInterruptibly() 
+				>循环中：看是否满：this.count == this.items.length 如果true则限时等待：this.notFull.awaitNanos(var5)
+				-此时则没有满：@this.enqueue(var1)入队添加元素 
+		>拉取元素：@poll()
+			>用 ReentrantLock.lock来同步:lock()
+				>检查是否有元素：this.count == 0 如果有：则@this.dequeue()并将值返回。否则返回null
+					>弹出元素过程也很简单：直接先取this.items[this.takeIndex] 后置空var1[this.takeIndex] = null 再 this.takeIndex 区间内自增1。非常奇怪的：是检查this.itrs != null 则会：this.itrs.elementDequeued()。 最后的事情：信号触发唤醒一个等待取的线程：this.notFull.signal()
+		>限时拉取：@poll(long, TimeUnit)
+			>用 ReentrantLock.lock来同步：可中断的同步：@lockInterruptibly()  
+				>循环中：元素为0则限时等待：this.count == 0 则 this.notEmpty.awaitNanos(var4)
+				-此时则非0了：开始获取元素：@this.dequeue()并返回。
+			-总结：和@offer()是对应的。 由它所在线程唤醒。
+		>阻塞式获取：@take()
+			>用 ReentrantLock.lock来同步 :可中断的同步：@lockInterruptibly() 
+				>循环中：如果this.count == 0则：阻塞等待@this.notEmpty.await()
+				-此时则有数量了：且唤醒了，则直接取元素@this.dequeue()返回
+		>只读元素：@peek()
+			>用 ReentrantLock.lock来同步:lock()
+				>直接取元素来返回：@this.itemAt(this.takeIndex)返回。
+		>移除指定元素：@remove(Object)
+			>用 ReentrantLock.lock来同步:lock()
+				>算法也是很平常的: 从 [takeIndex,putIndex] 逐个元素来@equals()来比较，如果相等则 移除@this.removeAt(int)
+					>定索引的移除算法：如果 索引==takeIndex 那么：直接将所在位置清空，后 takeIndex自增1，count自减1,类似可能@this.itrs.elementDequeued()调用。
+						>否则索引不是 takeIndex: 那么移除则需要整理，这个index肯定在[takeIndex,putIndex]之间，所以做法是：将index后的到putIndex为止的元素向左移动1位，然后之前的最后一位元素设置null, putIndex更新为新的，而count也自减1，也可能@this.itrs.elementDequeued()调用
+						>最后一定会做的：@this.notFull.signal()通知。
+		>是否包含：@contains(Object)
+			>元素为空直接返回：
+			>否则：用 ReentrantLock.lock来同步:lock()
+				>如果数量大于0：则开始从 [takeIndex,putIndex] 逐个元素 比较，相等则返回。
+		>转换为数组：@toArray()
+			>用 ReentrantLock.lock来同步:lock()
+				>新建一个count大小的数组：@new Object[this.count]
+				>如果this.items.length - this.takeIndex > count 那么自然要分两段来复制：否则只需要一段直接赋值： @System.arraycopy(this.items, this.takeIndex, var1, 0, var3)
+		>转移到集合里：@drainTo(Collection)
+			>直接转发到：@this.drainTo(var1, Integer.MAX_VALUE)
+				>检查集合非空：@checkNotNull(var1)
+				>用 ReentrantLock.lock来同步:lock()
+					>非常直接的，从takeIndex开始，转移count个元素到集合里：即有一个循环过程。
+					>转移了这么多个，那么this.count 也要减少这么多个。this.takeIndex也要更新设置为最后取走元素的位置。
+					>最后是非空激发：循环中，如果条件var7 > 0 && lock.hasWaiters(this.notFull)满足：那么就需要激发一次：this.notFull.signal()，同时var7也要减少
+>写时复制列表：CopyOnWriteArrayList 的实现  
+	>业务模型： 
+		>概念： 
+			>对象数组： 可见性volatile, 不序列化 trasient 
+			>同步锁：可重入锁 
 			
+	>业务模型的API定义：
+		>初始化构造：@CopyOnWriteArrayList(Collection)
+			>入参转为数组：@.toArray()
+			>复制全部元素返回一个新数组：@Arrays.copyOf(var2, var2.length, Object[].class)
+			>新数组就是 列表的数组属性：@this.setArray(var2)
