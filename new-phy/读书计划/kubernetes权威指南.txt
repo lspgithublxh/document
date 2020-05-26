@@ -12,17 +12,210 @@
 >一种新技术的学习：
  >它面对的情况和问题、它的世界观、它的方案、它的方案验证/论证/能处理的解决的所有情况及能成功处理的理由/功能边界
   >所有的软件：都可以看作是向上封装一层接口，根据自己的世界观封装底层而向上/对外提供统一的(统一的更简单的更直观的更业务的更少底层信息的)接口，底层包含一系列的第三方的插件/构件/组件；内部则去做兼容和调用(对底层)(对上层则做逻辑分解和底层实现)。
-
->举动-痛点：对spring源码优化。开源项目二次开发。
- >解法/处理思想：官方网站模块架构图。设计的机制。
- 
- 
- 
- 
- 
- 
- 
- 
- 
+>所有的情况-层次组织：对应的处理。
+  
+  
+>举动-痛点：服务治理框架、负载均衡、不限定编程接口、服务注册和服务发现、多层安全防护和准入机制、故障发现和自我修复、服务滚动升级和在线扩容、可扩展的资源自动调度机制、
+ >解法/处理思想：服务
+	>Servuce服务：分布式集群架构的核心
+		>特征：名字唯一\提供某种远程服务能力\一个虚拟ip:port
+		>标签选择器：关联到Pod，作用于所有有某个标签的Pod。
+		>
+		>
+	>Pod对象：将服务的一组进程放到里面，称为Pod中运行的一个容器。
+		>标签：name=mysql则这是一个运行了mysql的Pod
+		>运行着：一个Pause容器和其他多个容器，Pause容器的网络栈和挂载卷被其他同一个Pod的容器共享，方便容器通信和文件共享。
+		>根容器：它的状态代表了Pod的状态。
+		>Pod之间的通信:tcp/ip 协议直接通信，虚拟二层网络技术来实现；如Flannel,Open vSwitch等。
+		>静态Pod: 只在Node的某个具体文件中。
+		>一个容器停止：整个Pod都会被重新启动。
+		>Pod的Ip +容器的端口：形成一个EndPoint
+		>Pod Volume: 可以用分布式文件系统如GlusterFS实现后端存储功能。
+		>资源配额：cpu+mem设置。Requests最小，Limits最大。
+	>Node节点：Pod运行在此之上。可以是物理机，或者云虚拟机。一个Node可能运行着几百个Pod
+		>运行着：kubelet,kube-proxy 服务进程；负责Pod的创建、启动、监控、重启、销毁；以及实现软件模式的负载均衡器。
+		>宕机的时候：其上的工作负载会被转移到其他节点上。
+		>kubelet: 负载Pod对应的容器的创建、启动停止。与Master节点密切协作，实现集群管理的基本功能。向Master注册自己。定期向Master汇报自身的数据情况。不可用就会触发Master进行工作负载转移。
+		>kube-proxy: 实现服务之间的通信和负载均衡。
+		>docker-engine: 负责本机的容器的创建和管理。
+		>查看：kubectl get nodes 查看多少个节点。
+				kubectl describle node node-name 查看基本信息、运行状态、端口地址、资源总量和利用量剩余量、
+	>Master节点：
+		>运行着kube-apiserver, kube-controller-manager, kube-schedualer 进程。负责：集群的资源管理、Pod调度、弹性收缩、安全控制、系统监控和纠错。
+		>高可用部署：3台服务器。
+		>kube-apiserver: 提供增删改查操作的唯一入口。
+		>kube-controller-manager: 资源对象的自动化控制中心。
+		>kube-schedualer: 负责资源Pods的调度的进程。
+		>etcd: 保存所有资源对象的数据。
+	>单机上：还需要运行：etcd和docker进程。总共启动7个进程。
+	>扩容和服务升级问题：Replication Controller的修改。每个服务需要创建一个rc定义问价：yaml文件----内容包括：定义Pod模板。
+	>发布一个服务：
+		>编写服务描述文件：镜像、标签、选择器、外网访问模式(nodePort暴露端口)。如mysql服务：mysql-rc.yaml文件。包含用什么镜像等信息。
+		>在master节点将服务发布到集群：kubectl create -f mysql-rc.yaml 
+							查看： kubectl get rc 	
+							查看： kubectl get pods  状态先是pending，下载容器里的镜像，然后安装，运行 后转为running ，因为有个转变的过程。
+		>编写服务关联文件：确定哪些pod副本关联到本服务: mysql-svc.yaml 
+									kubectl create -f mysql-svc.yaml 
+									kubectl get svc 可以看到mysql被分配的虚Ip地址：其他Pod可以通过这个Cluster IP地址+port端口来连接和访问它。这个地址一般由k8s在服务创建之后动态分配的。
+			---通过服务名，容器可以从环境变量中获取到service对应的Cluster IP地址和端口，从而进行TCP/IP连接请求。
+			>查看创建的服务：kubectl get services 一个服务通过服务名访问另一个服务。
+	>资源对象：Node, Pod, Service,Replication Controller 都可以通过kubectl进行增删改查，并保存在etcd中持久化存储。	ConfigMap统一管理容器配置文件。
+		>给资源对象绑定Label: 实现多维度的资源分组管理功能。方便查询，这是根本目的。实现了一种对象查询机制。当然可以给一个资源打上多个标签。
+		>标签类型：版本、环境、架构、分区、质量管控。
+		>查询语言例子：name=xxx ,env!=xxx,	name in (), redis-slave , name not in (php-frontend)
+			>kube-controller:使用标签 筛选要监控的Pod的副本。
+			>kube-proxy: 建立service到pod的请求转发路由表。
+			>kube-schedualer: 实现Pod定向调度。
+	>资源定义文件：.yaml文件。
+		>kind： Pod则是一个Pod资源定义文件。
+	>事件Event: 关联到一个具体的资源对象。kubectl describle pod xxx 可以查看pod的描述信息。可以用来定位问题的原因。
+	>分片控制器：控制分片的数量的一个描述。kind=ReplicationController 。提交给Master, Master会定期巡检，停掉或新建。
+		>分片是Pod数量：所以需要指定Pod，用标签过滤器来指定Pod。
+		>Pod动态缩放：通过kubectl scale rc redis-slave --replicas=3这样来实现。
+	>平滑升级：滚动升级。
+	>Deployment: 为了解决Pod的编排问题。是RC的升级。
+	>HPA:控制Pod的扩容或者缩容。配置最大最小和触发条件。
+	>PetSet:StatefulSet,也是定义的一个Pod的集合。采用稳定的持久化存储卷。
+	>Headless Service: 	
+	>服务定义了一个Service的访问入口地址：访问最后是访问服务后的一组Pod副本构成的集群实例。通过Label Selector来实现无缝对接。kind=Service 
+		>每个Pod一个ip: 不同容器不同Port.构成一个Endpoint
+		>负载均衡器的引入：开一个端口，那么对这个端口的请求转发到上述一个服务的Pod的Endpoint上，就实现了到Pod的负载均衡。
+		>给Service一个固定的CLusterIP，不因Pod销毁重建而改变。而ServiceName---ClusterIP的映射是一个很好的服务发现机制。
+	>服务发现：通过Add-on增值包的方式引入DNS系统，服务名作为DNS域名，
+		>三种IP：NodeIP----物理网卡的ip地址, PodIP----在docker0网桥之上的二层网络IP, Service IP
+		>NodePort: Node节点暴露的对外接口，外部网络拓扑可以访问到这个端口。
+	>卷Volume: Pod中的容器共享，和Pod生命周期同，多种具体文件系统类型实现：GlusterFS,Ceph。从而可以让容器的数据可以写到宿主机上。
+		>类型：emptyDir---k8s自动分配的一个目录，Pod的移除会导致它的移除--临时的。
+				hostPath---在Pod上挂载宿主机的目录，
+				gcePersistentDisk---使用googole公有云的永久磁盘。
+				awsElasticBlockStore---使用亚马逊公有云的EBS永久存储。
+				NFS---网络文件啊系统。需要先定一个NFS Server 。。kind=PersistentVolume, PV状态：空闲、已经绑定、PVC已经删除但资源还没有被回收、Failed回收失败。
+	>命名空间：实现多租户的资源隔离。kind=Namespace 
+		>查看空间下的Pods: kubectl get pods --namespace=xxx
+	>注解：附加信息。			
+	>安装k8s:
+		>关闭防火墙
+		>setenforce 0 禁用selinux 让容器可以读取主机文件系统。	
+		>修改仓库配置：用到h t t p s ： ／ ／ 归 m r e p o . b O . u p a i y u n . c o m / c e n t o s / 7 /x86 _ 64
+		>开始安装：yum install -y docker kubelet kubeadm kubectl kubernetes-cni 
+			>kubeadm init --kubernetes-vresion=1.6.0安装好master节点。
+		>节点的启动：systemctl enable kubelet && systemctl start kubelet 
+	>基于CA的双向数字证书认证方式：指定2个证书，一个key.。。来和apiserver通信。一个server crt来加密客户端crt, 然后服务端用客户的crt加密传输，客户端key解开。。这样：请求参数看不到，返回结果也看不到。
+	>资源管理命令：kubectl 资源操作命令 资源类型 资源名 flags可选参数
+	>k8s容器编排：
+		>Pod定义：label/containers/volumes 同一个Pod里的容器之间通过localhost就能互相访问--根据端口。containers下可以配置volumeMounts配置挂载点。
+		>Pod创建： kubectl create -f xxx.yaml 
+		>Pod查看：kubectl get pods 		; kubectl describle pod xxx
+			>静态Pod:只能在Node上去删除。
+		>配置管理：
+			>ConfigMap的创建：也是yaml定义，kubectl create -f 创建， kind=ConfigMap.。甚至可以直接在yaml里定义文件名-文件内容
+			>ConfigMap的使用：
+				>Pod中使用：环境变量方式：在Pod的yaml定义中：spec/containers/env/valueFrom/configMapKeyRef/key|name 来确定环境变量name和其中的某个key
+					volumes方式：yaml定义中：spec/volumes/configMap/name  应用名然后/configMap/items/key引用环境变量里的Key
+		>在容器内获取Pod信息：使用downward api 通过环境变量和volumes挂载方式使得容器内可访问。
+			>环境变量方式：env/valueFrom/fieldRef/fieldPath:取值可以metadata.namespace  ， metadata.name  ,  status.podIP来获取Pod的名称,namespace,和ip
+							env/valueFrom/resourceFieldRef/containerName  /resource: 可以设置requests.cpu, limits.cpu, requests.memory, limits.memory 来获取请求值和限制值。
+			>挂载点方式： env/volumes/name 		/downwardAPI/items/path   /fieldRef/fieldPath: 取值可以是 metadata.labels, metadata.annotations  来挂载到一个具体的文件，	
+		>Pod状态：Pending还有容器的镜像没有创建， running---所有容器都创建，且至少一个在运行中或者启动中； succeeded---所有容器成功退出-且不会再重启；Failed--所有容器均已退出，但至少有一个退出为失败状态，Unknown--无法联系状态。
+		>Pod重启策略：Always--容器失效时自动重启该容器，默认；OnFailure-正确终止运行时重启。Never---永不重启。
+		>容器状态的诊断：使用两种探针。kubelet定期执行。探针就是一个命令。spec/containers/livenessProbe/exec/commend/   /initialDelaySeconds: timeoutSeconds
+												其他命令如：livenessProbe/tcpSocket/port:80   livenessProbe/httpGet/path|port
+		>一组Pod的调度和自动控制：
+			>Deployment/RC:全自动调度。部署副本，持续监控副本数量---维持它 。
+				>定义一个deployment的yaml文件：spec/replicas  		spec/template/spec/containers/  创建这个Deployment实际上一个RS/Deployment, 3个Pod---然后经过master/schedualer经过一系列算法的计算而得出每个Pod放在哪个节点上。
+			>手动调度：NodeSelector,NodeAffinity, PodAffinity\Pod 
+				>因为本质上都是用Master上的kube-schedualer进程来实现调度的。目的都是为了计算出一个合适的节点。但是也可以指定到哪个节点。
+					>可以给节点打标签：kubectl label nodes xxx zone=north 或者在定义kind=ReplicationController时候：spec/template/spec/nodeSelector:
+					>节点亲和性和Pod亲和性：对操作系统和磁盘的要求/或者优先要求：spec/affinity/nodeAffinity/requiredDuringSchedualingIgnoredDuringExecution/nodeSelectorTerms/matchExpressions/key|operator	
+																				spec/affinity/podAffinity/requiredDuringSchedualingIgnoredDuringExecution/labelSelector|topologyKey(节点限制)    labelSelector/matchExpressions/key|operator|values
+			>Node的Taint污点标注：让带有Toleration的Pod可能无法被Node执行。给一个Node设置Taint； kubectl taint nodes node1 key=value:NoSchedule
+					Pod必须能容忍Node上的全部的污点，才能被调度到那个Node，如果中途给Node新增污点，那么Pod继续。容忍，还可以加容忍时间。Pod增加Toleration: tolerations/key|oprator|effect|tolerationSeconds
+			>Node上只运行一份Pod的副本实例：DaemonSet	kind=DaemonSet   在每个Node上都会创建一个Pod, 且仅仅一个Pod	
+			>批处理调度：Job Template Extension 模式----一对一，不利用队列。Queue with Pod Per Work item :利用队列，启动固定数量的Pod来处理。另外一种：启动不固定数量的Pod来处理。
+				>Jod的yaml定义：kind=Job   spec/template/spec/containers/image , /spec/tempalte/spec/restartPolicy
+			>定时任务：kind=CronJob     spec/schedual: cronExpression    ,,  spec/jobTemplate/spec/template/spec/containers/image
+			>创建自己的调度器 并被其他Pod所引用：kind=Pod 				.. spec/schedualerName:my-schedualer
+				>用bash实现一个简单或者复杂的自定义调度器：
+			>依赖容器设置：初始化容器：spec/initContainers/image     ....  
+			>Pod的升级和回滚：	
+				>实现1：运行时修改Deployment的Pod定义部分：spec/replicas    spec/template/spec/container/image:值调整。 升级镜像版本：kubectl set image deployment/nginx-deployment nginx=nginx:1.9.1
+				>实现2： kubectl edit deployment/nginx-deployment  修改里面的项目；那么将触发系统对Deployment所运行的所有Pod滚动升级。查看升级过程：kubectl rollout status deployment/nginx-deployment
+					>详细过程：借助新建ReplicaSet，修改副本为1，然后修改老ReplicaSet的副本数=总-1， 接着不断调整新ReplicaSet的副本数和减少老ReplicaSet的副本数直到0
+				>查看部署的历史记录：kubectl rollout history xxx
+					撤销本次发布，回滚到上一次发布的版本：kubectl rollout undo xxx 当然可以指定版本号
+					暂定更新： kubectl rollout pause xxx
+				>通过yaml文件实现滚动升级：kubectl rolling-update xxx -f xxx.yaml 
+			>Pod的扩容和缩容：
+				>如果事先创建了一个Deployment其中replicas:3 , 那么 扩容到5个的方法就是：kubectl scale deployment nginx-deployment --replicas 5
+				>自动扩容和缩容：维持指标:用户定义的平均Pod cpu使用率， 使用Heapster周期监控，偏离则开始执行扩容或者缩容 。使用新增的HPA控制器
+					>定义一个Deployment: spec/template/spec/containers/resources/requestes/cpu:200m 来定义使用率。 创建一个Service，供客户端访问。
+						>给Deployment创建一个HPA控制器：kubectl autoscale deployment php-apache --min=1 --max=10 --cpu-percent=50
+							>或者使用yaml文件创建：kind=HorizontslPodAutoscaler
+			>StatefulSet的使用：来创建MongoDB集群。。StatefulSet级别相当于Deployment, 但各个Pod有固定的身份标识 和 独立的后端存储。也可以部署Mysql集群。
+				>创建StorageClass: kind=StorageClass  为 StatefulSet提供PVC
+				>创建Service:访问 
+				>创建StatefulSet: kind=StatefulSet	指定spec/serviceName/replicas  spec/serviceName/template/volumeClaimTemplates/spec/resources/requests/storage:100Gi
+					>登录到一个Pod 执行：kubectl exec -ti mongo-1 -- mongo 可以查看丰富的信息。
+					>也可以扩容：kubectl scale --replicas=4 statefulset mongo 
+		>Service: 可以为一组相同功能的容器提供一个统一的入口地址。将请求负载转发到后端的各个容器应用上。
+			>暴露方式1：通过建立ReplicationController, 在容器端口containerPort上指定端口；那么创建这个Rc之后，通过kubectl get pods -l app=webapp -o yaml | grep podIP 之类的语句，可以查看到对应的容器的ip, 然后结合定义的containerPort就可以访问了----但是这个ip是内部ip?但是Pod 的ip是不可靠的--Pod都可能迁移。所以最好在Pod前面加负载均衡器如Nginx, 然后Pod的选择确定以标签的方式确定。
+			>暴露方式2：kubectl expose rc webapp 创建的ip是虚ip---会指向两个实际的Pod的ip
+			>暴露方式3： 创建Service, kind=Service  spec/ports/port:8081|targetPort:8080	 spec/selector/app:webapp 
+				>甚至可以使用不同的协议：spec/seletor:k8s-app:kube-dns   spec/ports/port|protocol
+				>Service没有定义选择器，那么需要定义一个Endpoints 
+				>Headless Service: 不定义ClusterIP, 而将Pod ips 返回客户端， 让客户端定负载均衡。
+				>ReplicationController: 创建一组Pods, 而Service选定一组Pods/定义外部访问端口
+			>容器端口映射到物理机：可以spec/containers/ports/hostPort 在创建Pod的时候
+			>指定服务的端口映射到物理机：spec/type:NodePort spec/ports/nodePort
+		>DNS服务：skydns
+			>DNS存储与健康检查：
+			>服务注册与域名解析：将会解析出Service名称的ClusterIP地址： 比如 	kubectl exec busybox --nslookup redis-master 
+			>查看etcd中存储的service信息：如kubectl exec kube-dns-v8-5tpm2-c etcd --namespace=kube-system etcdctl get /skydns/local/cluster/default/redis-master 可以返回ip等信息。
+			>自定义DNS： 通过ConfigMap的方式指定自定义的存根域和上游DNS服务器。
+				kind=ConfigMap 				data/stubDomains:{("out-of.kubernates":["10.140.0.5"]}}			data/upstreamNameservers:["8.8.8.8","8.8.4.4"]    另外可以按照：dnsmasq
+		>Ingress服务：为所有的后端Service提供一个统一的入口。负载均衡器。
+			>Ingress Controller以Pod形式运行： 比如nginx实现，可以先监听api server获取所有的ingress定义而生成nginx.conf配置，再重新启动即可。
+			>以DaemonSer形式创建一批Pods: kind=DaemonSet				spec/template/spec/containers/ports/hostPort|-containerPort
+			>一个Deployment可以对外提供一个Http 路径接口：kind=Deployment spec/template/spec/containers/livenessProbe/httpGet/path|port|schema
+			>从url到服务名/服务端口/路径的映射：定义一个Ingress: kind=ingress 	spec/rules/-host|http/paths/-path|backend/serviceName|servicePort	
+				>而这个域名其实映射的是ingress controller的Node的物理机地址。
+				>对https访问：通过openssl生成证书和密钥。而利用这两个信息来创建kind=Secret对象。
+					>在kind=Ingress中引用这个安全：spec/tls/-hosts/-mywebsite.com|secretName
+		>kube-apiserver: 主要以api url形式提供访问内部资源信息的接口 为主要作用。也提供代理转发到内部Node访问该Node上的信息的作用。而对应的数据存放在etcd里，所以api-controller就是对这些etcd里的数据的展现。
+			>而kubelet上报Node节点状态也是通过api-controller提供的更新接口实现的。另外，kubelet通过apiserver的Watch接口监听etcd上的相关节点，如果kubectl更新了相关节点，那么kubelet立刻知道而进行Pod相关的处理---例如删除或者创建。
+			>利用kube-apiserver实现的各种控制器：ReplicationController, AdmissionController, ResourceQuotaController---这个则是访问etcd?
+				NamespaceController---可以定时通过apiserver 删除用户创建的Namespace信息。
+				Endpoints Controller: 监听Service和对应的Pods副本的变化。
+				Kubernates Schedualer: 尽管API创建的了Pod, 但是实际上将Pod绑定到某个Node上是schedualer做的事情。绑定信息写入etcd中。Pod列表，Node列表，调度策略。建立一个绑定binding
+		>kubelet服务进程：主要接受master节点下发的任务，管理Pod和里面的容器。在apiserver上注册节点自身信息，定期向Master汇报节点资源的使用情况，通过cAdvisor监控容器和节点资源。	
+			>资源监控：Heapster:作为一个Pod运行在k8s集群中。监控数据存储在InfluxDB等地方。cAdvisor>..	
+			>也提供REST API暴露这些聚合后的Pod资源使用的统计信息。
+		>kube-proxy原理和机制：看作是Service的透明代理 和负载均衡器。将请求转发到Pod
+			>动态创建与Service相关的本机Iptables规则。
+			>先SocketServer监听来自服务的请求，然后LoadBalancer, 挑选一个EndPoint
+		>CA证书：上的CA签名证实他人的公钥信息。从而有问题找CA..而CA本身也早下了承担责任的承诺。	
+			>私钥加密的结果，就是签名。
+		>http token: 如果只在用户注册的时候才生成token, 其他时候是直接用他的身份信息来或者这个token, 比如身份证+手机号 // 微信唯一id，获取了这个token然后 再其他接口上就可以带上这个token, 因为这个token后端关联的就是用户的真正重要的信息：就可以后端自己查出来而自己用-----前端就完全不用知道也不会知道后端的：比如userId
+			--注册-查-带  的过程。
+		>http base: 直接用户名+密码 简单 base64编码后传。
+		>授权策略：
+			>基于属性：ABAC 用户访问时，根据请求信息生成一个访问策略对象，然后和授权策略文件中所有的访问策略对象 逐条比较匹配，至少一个匹配，则该请求鉴权通过。否则终止API调用。
+			>基于角色：RBAC
+		>三种认证：CA证书、http token、http base 
+		>两种鉴权：基于属性，基于角色。
+		>准入控制：请求需要通过准入控制链	。 Admission Controller控制器列表。。修改请求参数完成一些自动化的任务。比如内部没有资源可以用了----就要拒绝服务。非法请求、不合理的任务等限制。
+			>api-server启动参数上增加--admission-control
+		>k8s上的基于属性的鉴权：api-server启动后，  地点：kubeconfig文件描述鉴权规则。	
+			>RBAC: 通过API对象完成，kubectl创建API对象。 这种授权模式，需要启动api-server时 加上 --authrozation-mode=RBAC
+				>资源对象：Role-在一个命名空间中，集群级别则是ClusterRole,   。。kind=Role  , rules/-apiGroups/resources/verbs 
+							RoleBinding 角色绑定和集群角色绑定。把角色绑定 到用户/组/Service Account 。。把角色授予某个用户，而角色本身有某个命名空间下Pods的读取/写权限。kind=RoleBinding
+		>Service Account : 给Pod提供必要的身份证明。给Pod里的进程使用。
+			>Pod中的客户端调用api-server时，header里加了token字段; 是kubernates controller进程用api server的私钥 签名生成的jwt secret 。。这个Secrete 称为Service Account Secret   
+				>Pod的描述文件可以指定serviceAccount: kind=Pod,				spec/serviceAccountName:xxx			..。Service Account 是Namespece隔离的。
+			>直接创建Secrete对象：保存token/ssh key等信息：kind=Secret 		type:Opaque 	data/password|username 		。在Pod定义中引用：spec/volumes/secret/secretName		imagePullSecret/name
+	>Kubernates 网络模型：Pod有ip, 之间通信直接通信，直接用ip通信。
+			
+			
+			
 参考资料：
 http://www.torrent.org.cn/t-56075(百度网盘搜搜)
