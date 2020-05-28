@@ -646,8 +646,74 @@
 			>对象数组： 可见性volatile, 不序列化 trasient 
 			>同步锁：可重入锁 
 			
-	>业务模型的API定义：
+	>业务模型的API定义：对于简单的基本的不叙述。
 		>初始化构造：@CopyOnWriteArrayList(Collection)
 			>入参转为数组：@.toArray()
 			>复制全部元素返回一个新数组：@Arrays.copyOf(var2, var2.length, Object[].class)
 			>新数组就是 列表的数组属性：@this.setArray(var2)
+			-总结两种数组复制：一种:利用一个数组返回第二个数组，；第二种：输入两个数组，一个赋值给另一个。
+		>复制方法的覆盖：@clone()	
+			>调用父类Oject.clone()这个native方法完成基本的复制。
+			>得到的对象调用@resetLock()来对对象的lock 可重入锁属性进行新设置：UNSAFE.putObjectVolatile(this, lockOffset, new ReentrantLock())
+		>转换为数组：@toArray()
+			>获取数组属性array:返回一个新的：@Arrays.copyOf(Object[], len)
+				>先获取输入数组的一个副本：看入参==Object[].class是否是对象数组类型，是则直接new Object[], 否则@Arrays.newInstance(var2.getComponentType(), len)
+				>然后直接调用系统的方法来给新数组赋值：@System.arraycopy(var0, 0, var3, 0, Math.min(var0.length, var1)) 这是一个native方法 
+		>设置元素方法：@set(int var1, E var2)--肯定会新建数组。为什么要新建数组，因为@get()元素方法是没有lock同步的-避免脏读(读未提交？)。但也有问题：并行设置的时候返回的元素就不一定是旧元素。
+			>使用lock:ReentrantLock属性进行同步：
+				>先查看var1位置如果是var2元素：那么什么也不改变，直接返回旧元素。
+				>如果不是：则复制该数组出一个新的数组，在var1位置设置注入的值，再将这个新数组的引用替换为原数组的引用即可。
+		>添加新元素方法：@add(E var1)
+			>同样用lock:可重入锁进行同步 
+				>对本数组复制一个长度+1的新数组：Arrays.copyOf(var3, var4 + 1)， 即最后一个位置的值是null。(因为System.arraycopy时候不会设置到这里)
+				>再对这个新数组设置var1:var5[var4] = var1
+				>再替换本数组的引用：@this.setArray(var5)
+		>指定位置添加元素方法：@add(int var1, E var2)
+			>通用用lock:可重入锁进行同步。
+				>算法类似：但是直接调System.arraycopy()来复制两半分别到新数组，中间设置新元素。如果var1是末尾，那么类似上述方法，直接Arrays.copyOf()即可。
+		>移除指定位置元素：@remove(int var1)
+			>通用用lock:可重入锁进行同步。
+				>如果是移除0位置元素：也是直接先复制原数组1...end的一个新数组设置回去。
+				>否则不是从0开始：则新建数组，而分两半进行复制进去，再将新数组设置回去。
+		>移除某个区间：@removeRange(int var1, int var2)
+			>通用用lock:可重入锁进行同步。
+				>类似也是：如果区间末尾是end,那么直接@Arrays.copyOf()前面的部分为一个新是数组设置回去。否则分两半进行复制。
+		>不存在则添加：@addIfAbsent(E var1, Object[] var2)类似， 也是先看是否和数组内元素equals，如果是的，那么直接返回，否则复制一个长度+1数组， 新元素加到末尾。当然过程要同步。
+		>批量移除：@removeAll(Collection<?> var1) 就是一个个不包含在入参集合则转移到原长新数组，然后实际添加数量从新数组复制出到一个新数组返回@Arrays.copyOf()即可。
+		>遍历满足条件则消费：@forEach(Consumer<? super E> var1)。方法很简单，就是不加锁的遍历和调用消费器@.accept(var5)。这里也说明为什么添加/删除元素等要新增数组，因为这里有消费--如果原数组直接修改而元素还没有复制完全而就开始遍历，那么就会脏读而有问题。
+		>满足条件则移除：@removeIf(Predicate<? super E> var1)：类似，但是要加锁，先将不满足的转移到新数组，然后按转移个数而复制出一个新数组，设置回去。
+		>逐个映射替换：@replaceAll(UnaryOperator<E> var1)：类似，加锁，新建数组，逐个@apply()出新的元素来设置到新数组，然后新数组设置回去即可。
+		>排序方法：@sort(Comparator<? super E> var1)
+			>使用lock:ReentrantLock进行同步：
+				>先复制一份数组副本，再排序：@Arrays.sort(var5, var1)
+					>如果没有比较器：使用默认的排序方法@sort(var0) --内部用二分排序。
+					>否则有比较器，如果@LegacyMergeSort.userRequested为true,那么使用排序：@legacyMergeSort(var0, var1)
+						>先克隆一个新数组：@var0.clone()
+						>如果比较器为空：采用归并排序：@mergeSort(var2, var0, 0, var0.length, 0)
+							>如果数量小于7：则用冒泡排序
+							>否则数量大于7：则分为两半各进行一次递归调用@mergeSort(dest, src, low, mid, 0)
+							-此时则可以认为通过分解的方式已经将两个长度<7的排序好了，那么开始归并：
+							>如果此时mid位置的元素小于mid+1位置的元素：那么说明两个窗口数组已经拍好序了，直接将这两个窗口的数组复制到一个入参dest数组@System.arraycopy(src, low, dest, destLow, length)后返回即可。
+							>否则进行归并：即用两个指针p,q分别指向两个窗口的起点，开始一次遍历，而将结果复制到dest数组里。
+						>否则：@mergeSort(var2, var0, 0, var0.length, 0, var1)
+					>否则使用：TimSort.sort(...)排序 
+						>排序的长度<2:直接返回
+						>排序长度<32: 使用二分排序：
+							>先计算@countRunAndMakeAscending()
+								>先断言：assert lo < hi 如果为false则会抛出错误：AssertionError
+								>lo/hi相邻：直接返回1
+								>如果lo+1的值小于lo的值：则进入while循环：一直往后找，找到一直减少到的位置runHi,然后反序@reverseRange(a, lo, runHi)
+								>否则值更大：也进入while循环，找到值开始减少的位置runHi
+								>则直接返回runHi - ro 相当于顺序排好的长度。
+							>将结果带入二分排序：@binarySort(a, lo, hi, lo + initRunLen, c)	
+								>显然要断言：assert lo <= start && start <= hi
+								>从start开始遍历到hi:start位置的元素是第一个未排序的，而左边的是排好序的元素，因此：
+									>先用二分查找的方式先找到当前待排序的元素应该插入的位置：用while即可找到：
+									>然后复制插入位置右边的元素：统统向右移动一位。这里有些小动作：如果右边只有1个2个元素，那么直接交换，否则用@System.arraycopy(a, left, a, left + 1, n)
+									>最后将当前待排序元素设置到插入位置：start++开始下一个待排序的元素
+						>否则是长数组：先new TimSort<>(a, c, work, workBase, workLen)
+						>计算最小长度：@minRunLength(len): 即len的最高6位的一半+ 前6位之后的值里如果有1个1则都是1否则是0
+						
+				>最后将新数组设置回去。
+				
+				
