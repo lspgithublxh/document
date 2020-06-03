@@ -657,7 +657,7 @@
 			>得到的对象调用@resetLock()来对对象的lock 可重入锁属性进行新设置：UNSAFE.putObjectVolatile(this, lockOffset, new ReentrantLock())
 		>转换为数组：@toArray()
 			>获取数组属性array:返回一个新的：@Arrays.copyOf(Object[], len)
-				>先获取输入数组的一个副本：看入参==Object[].class是否是对象数组类型，是则直接new Object[], 否则@Arrays.newInstance(var2.getComponentType(), len)
+				>先获取输入数组的一个副本：看入参==Object[].class是否是对象数组类型，是则直接new Object[], 否则@java.lang.reflect.Array.newInstance(var2.getComponentType(), len)
 				>然后直接调用系统的方法来给新数组赋值：@System.arraycopy(var0, 0, var3, 0, Math.min(var0.length, var1)) 这是一个native方法 
 		>设置元素方法：@set(int var1, E var2)--肯定会新建数组。为什么要新建数组，因为@get()元素方法是没有lock同步的-避免脏读(读未提交？)。但也有问题：并行设置的时候返回的元素就不一定是旧元素。
 			>使用lock:ReentrantLock属性进行同步：
@@ -711,9 +711,24 @@
 									>先用二分查找的方式先找到当前待排序的元素应该插入的位置：用while即可找到：
 									>然后复制插入位置右边的元素：统统向右移动一位。这里有些小动作：如果右边只有1个2个元素，那么直接交换，否则用@System.arraycopy(a, left, a, left + 1, n)
 									>最后将当前待排序元素设置到插入位置：start++开始下一个待排序的元素
-						>否则是长数组：先new TimSort<>(a, c, work, workBase, workLen)
-						>计算最小长度：@minRunLength(len): 即len的最高6位的一半+ 前6位之后的值里如果有1个1则都是1否则是0
-						
+						>否则是长数组：先new TimSort<>(a, c, work, workBase, workLen) --会进行许多初始化
+							>如：tmp=a.length处理得的<=256的数的数组，tmpBase=0,tmpLen=前面的长度。而runBase/runLen则是比较小的数<50
+						>计算最小长度minRun：@minRunLength(len): 即len的最高6位的一半+ 前6位之后的值里如果有1个1则都是1否则是0。[16,31)
+						>进入循环： 
+							>先计算@countRunAndMakeAscending(a, lo, hi, c)得出排序好的长度runLen, 如果比minRun小(如果比minRun大，那么已经很长了，则不用二分再次增加排好序的数据长度了)，那么需要用二分排序将lo,lo+minRun内的都排序好：@binarySort(a, lo, lo + force, lo + runLen, c) 排好序之后：runLen = force 来重新设置值。
+							>将起点lo和长度runLen入栈：@ts.pushRun(lo,runLen)记录本轮排好序的起点和长度。
+							>调用合并：@ts.mergeCollapse()
+								>当stackSize为1：即第一轮的时候，不做任何处理：
+								>第二轮开始：如果stackSize==2,那么如果第二轮的 runLen  >= 第一轮的 runLen, 则需要合并：@mergeAt(0)  否则什么也不做：break;
+									>合并过程,先是将：栈顶两个元素len合并，而base不变。
+									>再对base1/len1进行调整计算：入参第一个元素为第二个base起点元素，@gallopRight(a[base2], a, base1, len1, 0, c) 返回结果为k
+										>第一个返回为0:
+									>调整len1和base1: base1=base1+k, len1=len-k,如果此时len1==0则直接返回return。
+									>再对第一个base+len最右边那个元素进行调整计算：@gallopLeft(a[base1 + len1 - 1], a, base2, len2, len2 - 1, c)	
+										>算法：先第二段开始往前，从1开始，不断2倍增长，找到比key小的位置，在lastOfs,ofs之间， 然后开始往后，从宽度/2开始，不断1/2宽度增长，来找到比key小的最大的位置，比key大的第一个位置，返回这个比key大的第一个位置。
+									>所得结果作为len2: 如果len2>=len1: 则开始合并：@mergeLo(base1, len1, base2, len2)	
+							>扣减排好序的值：得出剩余需要排序的元素总长：nRemaining -= runLen， 起点也增长：lo += runLen
+							
 				>最后将新数组设置回去。
 				
 				
