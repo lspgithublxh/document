@@ -1,0 +1,29 @@
+>更简洁的业务逻辑表达：概念体系
+	>SpringApplication.run(): 启动
+		>加载ApplicationContextInitializer 类名的所有的工厂的实例：从 /META-INF/spring.factories里获取得到工厂名数组，然后实例化。添加到 SpringApplication.initializers 属性里。
+		>加载 ApplicationListener 类名的所有的工厂的实例：从 /META-INF/spring/spring.factories里 获取到对应的工厂名数组，然后实例化。添加到 SpringApplication.listeners 属性里。
+		>获取 main方法所在的类名：通过 new RuntimeException().getStackTrace() 的机制来 匹配找到。
+		-此时才new SpringApplication()完毕，开始真正执行@run()方法
+			>记录本次run的任务时间差：通过new  StopWatch()对象来实现：start()-stop()两个方法前后运行而得。
+			>配置无头属性：@configureHeadlessProperty()  即将“java.awt.headless” 设置到系统属性里， 值为 false
+			>获取运行时监听器：@getRunListeners()
+				>先获取工厂实例：@getSpringFactoriesInstances()
+					>加载工厂名列表：@SpringFactoriesLoader.loadFactoryNames() , 这里就是加载：SpringApplicationRunListener.class类型的工厂类名。加载器是当前线程上下文加载器：@Thread.currentThread().getContextClassLoader()， 因为是通过@ClassUtils.getDefaultClassLoader() 得到的加载器。后面是ClassUtils类的类加载器(也就是spring-boot.jar包的加载器)，系统加载器(一般用来加载classpath下的，比如加载SPI的实现类；而SPI的接口类如jdbc的接口类因为是核心库里的所以是启动类加载器加载的----所以当SPI的接口类在被启动类加载时，同时SPI的接口类代码中需要加载SPI实现类--此时则通过线程上下文加载器来加载)。
+						>直接从文件中加载到map里且存到本地cache里：@loadSpringFactories(classLoader)： META-INF/spring.factories这个文件里Properties方式加载。之后存放到MultiValueMap这样多值的map类型。因为本身文件里每行可能,分割的多个工厂类名。并缓存模式。
+							>注意文件的前缀的补充：@sun.misc.Launcher.getBootstrapClassPath()：BootClassPathHolder.bcp
+								>先尝试从sun.boot.class.path，通过@getClassPath()来封装到File[]里，其实就是分割，因为可能是一个复合路径;:分割。
+								>然后会路径转化为urls:@pathToURLs()  逐个：@getFileURL( )   @getCanonicalFile()--@ParseUtil.fileToEncodedURL()。。最终是封装为file协议格式的路径：new URL("file", "", path)
+						>然后从上述加载出的map里取：SpringApplicationRunListener为key的工厂的名值列表。
+					>实例化名为实例列表：@createSpringFactoriesInstances()	
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+>中间沉淀的技术：
+	>SPI服务加载机制：java1.6开始自带的jdbc4.0版本已经支持。只要mysql的jar在类路径中，就可以注册mysql驱动。---这个可以从DriverManager的代码中看到：
