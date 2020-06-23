@@ -1,0 +1,110 @@
+>sql-driver业务梳理：
+	>概念：
+	>行为：
+	>规则：概述功能
+		>预加载具体驱动类字节码：@loadInitialDrivers()  静态预先运行。
+			>第一级：从系统属性-jdbc.drivers 中获取 驱动类名，冒号分隔，分解后反射加载。
+			>第二级：从配置文件 META-INF/services/java.sql.Driver(来自各个jar)  中获取全部类名：反射加载类名为类Class, 放到 LinkedHashMap:providers 属性里(取类名顺序：一个文件自顶向下，一个文件的行遍历结束 开始下一个文件遍历)。@ServiceLoader.load(Driver.class)
+				>寻找所有的配置文件@ClassLoader.getSystemResources(fullName)				
+					>获取系统类加载器：从 系统属性 java.system.class.loader 得的类名反射实例化来得到。
+					>设置线程上下文加载器：即上述实例化的加载器。
+				>从配置文件中解析：算法简单。就是一行行读取，每行读取#之前的内容，逐个字符验证，成功则认为是一个合法的类的完全限定名。
+		>事先注册具体驱动类到DriverManager：必然在具体驱动类的静态块里。这样一加载就完成注册。例如：org.postgresql.Driver的静态块中：@register()。。注册到属性： DriverManager.registeredDrivers。。
+			>调用方法：@DriverManager.registerDriver(registeredDriver)
+			>另外:会启动负载均衡有关的：AutoBalance类。
+				>生成随机key: 设置到属性 AutoBalance.secretKey
+				>生成日志名：如jdbc_2020-06-19_15-49-07_1592552947738.log
+				>本类是个线程类：启动。先在run里循环，等待初始化@initProperties()运行而填充clusters数据。
+		>使用驱动打开连接：@Driver.connect(String url, Properties info)
+			>先加载驱动的配置属性：@loadDefaultProperties() 一个是系统属性 user.name 放到 PGProperty.USER 里。另一个是先加载 org/postgresql/driverconfig.properties 路径下的资源到Properties对象里。
+				>入参中的Properties值进行验证 而转移到新的 Properties 。。@GetProps()
+			>路径解析和验证和设置为标准属性：@parseURL(String url, Properties defaults)	   标准属性如：PGHOST/PGPORT/PGPORTURL/balance,  。也会尝试/org/postgresql/jdbcconfig.properties里加载属性。
+				>利用获取的属性先构造一个jdbc url: 形式：https://domainName/credentials?clusterName=xx&dbUser=xx&autoCreate=xx   用这个url进行一次get+json请求；@getReturn() 使用的是@apache.http工具。
+				>请求的结果json里：有cluster_credentials属性，
+			>初始化属性：调用 AutoBalance 实例对象进行。
+				>其实是看 prop里是否有 autoBalance 字段，如果有则配置clusters。如每个服务节点的连接数。
+			>开始创建连接：@Driver.makeConnection(String url, Properties props) 
+				>设置fetchSize:拉取的大小。
+				>打开连接：@ConnectionFactory.openConnection(hostSpecs, user, database, info)
+					>新建连接工厂打开连接：@connectionFactory.openConnectionImpl()
+						>构建socketFactory: @SocketFactoryFactory.getSocketFactory(info)
+						>构建主机选择器：@HostChooserFactory.createHostChooser(hostSpecs, targetServerType, info)
+						>遍历每个主机：开始尝试连接：@tryConnect(user, database, info, socketFactory, hostSpec, sslMode)
+							>创建socket并打开连接：@socketFactory.createSocket() @socket.connect(address, timeout)
+							>socket连接属性设置 并 socket输入输出流包装到自定义流类里：TCP_NODELAY:true 输入流：pg_input = new VisibleBufferedInputStream(connection.getInputStream(), 8192) 输出流：pg_output = new BufferedOutputStream(connection.getOutputStream(), 8192)
+							>发送一个ssl 启动包：@enableSSL(newStream, sslMode, info, connectTimeout)
+								>即发送：8的4个字节，1234的低2位字节，5679的低2位字节。通过调用pg_output发送实现。
+								>接收一个字节：'E' -- 返回错误。'N' -- 不支持。 'S' -- 服务端支持。
+								-如果返回了支持：'S' 那么：
+									>获取sslSocketFactory: @SocketFactoryFactory.getSslSocketFactory(info) 默认是 new LibPQFactory(info) ： 否则是 sslfactory 属性值 的实例。着重看 new LibPQFactory(info) 这个构造方法：
+										>获取 TLS 上下文：@SSLContext.getInstance("TLS")
+											>获取全部provider: @getSystemProviderList()-@Providers.getProviderList()
+												>此类静态方法：会新建一个@ProviderList() 里面的内容为：从Security.props属性里取security.provider.x的所有提供类封装到 configs 属性里。
+													>注意：Security 类静态方法有个初始化：加载 ${java.home}/lib/security/java.security文件 到 props:Properties 属性里。
+											>获取匹配的Service: 入参是 SSLContext, TLS 两个字符串：遍历 ProviderList.configs 属性进一步得到对应的 Provider, 
+												-注意：Provider也有静态方法：初始化 knownEngines 
+												>实例化一个ServiceKey: new ServiceKey(type, algorithm, false) 赋值给 previousKey 。。@Provider.getService(String type, String algorithm)
+												>合法解析：@ensureLegacyParsed() 会填充 legacyMap。填充来源：Map<String,String> legacyStrings
+												>从legacyMap里找出匹配的Service: Map<ServiceKey,Service>:legacyMap
+											>根据找到的Service: 而实例化:实例化方法@newInstance(Object constructorParameter)
+												>从 knownEngines 获取引擎描述：
+												>加载 sun.security.ssl.SSLContextImpl$TLSContext 类：执行 SSLContextImpl 静态代码块：@getCustomizedCipherSuites("jdk.tls.client.cipherSuites") @getCustomizedCipherSuites("jdk.tls.server.cipherSuites")
+													>执行 AbstractTLSContext  静态代码块：supportedCipherSuiteList-@getApplicableSupportedCipherSuiteList(supportedProtocolList) serverDefaultCipherSuiteList-@getApplicableEnabledCipherSuiteList(serverDefaultProtocolList, false)
+													>执行 CustomizedTLSContext 静态代码块：使用ProtocolVersion.availableProtocols来过滤：@getAvailableProtocols(candidates)  @getApplicableEnabledCipherSuiteList(clientDefaultProtocolList, true)
+													>最后是TLSContext的初始化：无。
+												>实例化 TLSContext 类： 反射的方式。
+												>封装到new Instance(s.getProvider(), instance)对象里。
+												>新建一个new SSLContext((SSLContextSpi)instance.impl, instance.provider,protocol)对象，
+										>获取证书、key路径：
+										>将sslpassword 封装到：new ConsoleCallbackHandler()里，然后传递给 new LazyKeyManager() 里
+										>对sslcontext初始化：@ctx.init(new KeyManager[]{km}, tm, null)
+											>转给：sun.security.ssl.SSLContextImpl$TLSContext: contextSpi.engineInit(km, tm, random)初始化：
+										>从sslcontext创建socketfactory: @ctx.getSocketFactory()  转给：@contextSpi.engineGetSocketFactory() -->则是直接的：@new SSLSocketFactoryImpl(this)
+									>创建socket： @createSocket() 转给：@sun.security.ssl.SSLSocketFactoryImpl.createSocket(socket, host, port, autoClose)创建。
+										>直接新建：@new SSLSocketImpl(context, s, host, port, autoClose)
+											>最终是 new Socket(), 而 new SocksSocketImpl()
+											>初始化各种参数：@init(context, true) 如enabledCipherSuites/enabledProtocols 都是全部。再封装输入输出流到：@input = new AppInputStream(this)	 @output = new AppOutputStream(this)
+											>开始尝试握手：@doneConnect()
+												>开始握手：@initHandshaker() 推进连接状态。直到存在一个握手。
+													>新建握手对象：@new ClientHandshaker(...)
+														>初始化一个key生成器：@JsseJce.getKeyGenerator("SunTlsExtendedMasterSecret")
+									>获取支持的ciphersuites: 并设置到socket: @newConnection.setEnabledCipherSuites(suppoertedCiphersSuites)		
+									>开始握手：@newConnection.startHandshake()
+										>初始化：@performInitialHandshake()
+										>开始激活握手：handshaker.activate(null)
+											>设置协议和cipher和handshakehash: new HandshakeHash(needCertVerify)
+											>生成握手输入/输出流：@new HandshakeInStream(handshakeHash) / new HandshakeOutStream(protocolVersion, helloVersion, handshakeHash, conn)
+											>开始构造消息对象：@getKickstartMessage() 
+												>构造一个消息对象：@new ClientHello() ：实际就是HandshakeMessage类型。 再对它增加支持的算法：@clientHelloMessage.addSignatureAlgorithmsExtension(localSignAlgs)
+											>消息对象发送给服务端：@ m.write(output)
+												>先发送消息类型：整数 1 ： 表示 hello 
+												>再发送消息长度：整数 x :分3个字节发送，低3个字节从高到低发送。
+												>再发送握手流：3,3,clnt_random32位随机byte数组,[0],发送扩展[signature_algorithms的id-algorithmsLen-algorithmsLen-每个算法的HashAlgorithm/SignatureAlgorithm]  算法类型如：SHA512withECDSA/SHA512withRSA/SHA1withRSA/SHA1withDSA
+													>注意：扩展分三个部分：signature_algorithms/extended_master_secret/renegotiation_info
+											>读取返回结果：@readRecord(inrec, false)	：@ r.read(sockInput, sockOutput)
+											>结果解密：@r.decrypt(readAuthenticator, readCipher) 第二个入参的cipher类型是：STREAM_CIPHER
+												>解密中：调用@box.decrypt(buf, offset, count - offset, tagLen)， 里面就是：@cipher.doFinal(buf, offset, len, buf, offset)熟悉的这些。
+											>结果处理：@handshaker.process_record(r, expectingFinished)
+												>复制输入数据：@input.incomingRecord(r)
+												>循环处理：@processLoop()
+													>输入长度大于4:则开始继续：先读取1字节整数，3字节整数，--先读取的是高位；来作为 消息类型 、 消息长度；
+														>处理标记的消息：@processMessage(messageType, messageLen)
+															>消息类型对应的握手状态：如果是HandshakeMessage.ht_server_hello：新建@new ServerHello(input, messageLen)--从input提取出所有的消息；再调用@serverHello(ServerHello mesg) 最后更新一下状态：@handshakeState.update(serverHello, resumingSession)
+																>第三次类型：12:K_DHE_RSA  构造 new DH_ServerKeyExchange()对象，调用 diffie-hellman key exchange @this.serverKeyExchange(dhSrvKeyExchange)
+																	>构造：@ dh = new DHCrypt()
+																	>获取服务端公钥：@mesg.getServerPublicKey()非常大的一个整数，是 new DH_ServerKeyExchange()构造时赋予的。公钥依赖检查@checkConstraints()
+																>第四次类型：13：HandshakeMessage.ht_certificate_request。。构造证书对象：@new CertificateRequest(input, protocolVersion) 更新状态：@handshakeState.update(certRequest, resumingSession); 设置对等支持的签名算法：@session.setPeerSupportedSignatureAlgorithms()
+																>第五次类型：14：HandshakeMessage.ht_server_hello_done：构造：@new ServerHelloDone(input) 更新：@handshakeState.update(serverHelloDone, resumingSession) 消费消息：@serverHelloDone(ServerHelloDone mesg)
+																	>从上下文里找出km:@sslContext.getX509KeyManager()
+																	>获取支持的证书签名算法类型：RSA/DSA/EC 
+																	>km获取别称：@km.chooseClientAlias()
+																	>获取证书链：@km.getCertificateChain(alias)
+																	>获取第一个证书的公钥：@km.getCertificateChain(alias)
+																	>根据别称获取私钥：@km.getPrivateKey(alias)
+																	>私钥设置到会话：@session.setLocalPrivateKey(signingKey) 
+																	>同时也将证书设置到会话:@session.setLocalCertificates(certs)
+																>第六次类型：13：HandshakeMessage.ht_certificate_request。。构造证书对象：@new CertificateRequest(input, protocolVersion) 更新状态：@handshakeState.update(certRequest, resumingSession); @设置对等支持的签名算法：session.setPeerSupportedSignatureAlgorithms()
+														>额外标记统计类处理：@input.digestNow()
+											>开始下一轮读取数据：@ r.read(sockInput, sockOutput)					
+												
+						>成功后构造一个查询执行器 后 执行一个初始查询：@new QueryExecutorImpl(newStream, user, database,cancelSignalTimeout, info)	 @runInitialQueries(queryExecutor, info)
