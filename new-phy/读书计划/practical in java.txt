@@ -1,0 +1,90 @@
+---------读书战略：自顶向下，从应用层到底层细节。先熟悉的常用的，后底层的不常用的。精读好书---《深入理解系列》
+--------es的处理思想都对应有 相应的“某种举动 及其导致 的问题”
+>需求背景-痛点陈述：现实开发中遇到了什么痛点导致XXX的开发？  
+>那么痛点的原因、产生的条件：分析是什么环境、什么动作 什么效果什么目的 等精准形容词的事实描述 导致了痛点的必然发生，难以避免？。条件-痛点。原因-结果。
+>则可以消除痛点的最简单的精准事实陈述是什么：修改“条件-痛点”陈述的哪一部分就可以导致没有痛点产生。 要做的根本事情是什么：
+>那么新陈述表明的解决动作是什么：
+>新情况的新痛点是什么：新举动、新环境会产生的新痛点描述出来， 继续上述4条操作。
+>学习要有战略和格局：过于零散、孤立、末支、叶子的知识点就没必要化太多时间，懂得放弃。聚焦在根节点、枢纽节点、产生分支的节点、主干知识点、枢纽知识点、关联到很多知识点的知识点上。
+ >对于主干知识点：要有全新的认识视角和进行精细的描述，大量的提问和好奇和进行必要的实验以获取支撑观点/导出观点的数据。
+ >规范是工程最独特的特征.
+ >慢慢读：
+>一种新技术的学习：
+ >它面对的情况和问题、它的世界观、它的方案、它的方案验证/论证/能处理的解决的所有情况及能成功处理的理由/功能边界
+  >所有的软件：都可以看作是向上封装一层接口，根据自己的世界观封装底层而向上/对外提供统一的(统一的更简单的更直观的更业务的更少底层信息的)接口，底层包含一系列的第三方的插件/构件/组件；内部则去做兼容和调用(对底层)(对上层则做逻辑分解和底层实现)。
+
+>举动-痛点：
+	>解法/解决方案：
+		>实践1：静态方法可以被继承，也可以被覆盖；但是final的静态方法则不允许被覆盖；编译就报错..
+		>2: == 用来比较地址, equals()用来比较类型和实质内容; instanceof 用于确定是否是该类或子类的实现
+		>3: 异常覆盖: catch{}块throw 和finally{}块throw后者就会替换前者的异常;三段不能当作流程控制.
+		>4: Hospot运行期优化策略.如方法内联;
+		>5: 编译器在编译的时候不知道一个变量的实际类型是什么,但知道这个变量的静态类型是什么;
+			>静态分派: 编译期根据参数的静态类型确定 方法的重载版本,然后把该方法的符号引用 写到 invokevirtual 指令的参数中: invokevirtual#22;调用(当前方法所在类的)常量池中第22项常量指明的方法(这个常量是方法的符号引用(包括完整限定名+方法名+参数类型名);方法内的code); 执行之前一个命令往往是 aload_1;将1号槽位的局部变量压入操作数栈; astore_1;将新建的对象压入局部变量表1号槽位;前一个 invokespecial#18;新建对象,
+				>java重载的本质实现: 编译期间的静态分派...(重载方法仅仅入参不同; 选择哪个重载方法,就看静态分派)
+				--断定: 编译期:实际上是不关系方法的实现代码中引用的类\调用的方法是否真正的存在,因为仅仅直接计算出这个方法对应的符号引用(即字符串)然后放到 当前字节码文件的常量池中而已;..例如 new#19 这个第19号常量存的仅仅是字符串-完整限定类名:所以运行期执行这个命令的时候才会加载/或直接找到对应的类来在堆区开辟空间并准备调用构造方法来初始化;
+			>动态分派: 运行期虚拟机根据 实际类型 确定 方法的 重写版本; 执行到 invokevirtual#22 时, 操作数栈顶已经有一个变量了, 则找这个变量的实际类型C, 寻找C的方法表中和常量指明的方法描述符/名称匹配的方法, 没找到则继续父类中找, 找到了然后检测访问权限,,通过则返回这个方法的直接引用;  
+				>java覆盖的本质实现: 选择哪个重写方法,看动态分派.;;因为 invokevirtual#22 执行的第一步,就是 确定 接收者 的实际类型; 被比较: 指令所属方法所在类的常量池中第22项常量, 比较者: 操作数栈的栈顶元素的类型/父类的类型/
+			>单分派和多分派: 方法的接收者是一个宗量, 方法的名参是一个宗量; 
+				>分派的分类: 根据一个宗量而对目标方法进行选择,则为单分派; 多余一个宗量来进行选择 则是 多分派;
+				>选择目标方法的问题: 编译期间, 是根据 静态类型 和 方法的名参 来确定 方法的符号引用; 因此为多分派;  执行期间, 因为指令已经表明了方法的名参,所以此时选择哪个方法来执行完全只由 实际类型决定,所以未单分派;
+					>结论: java 静态多分派 动态单分派语言.
+		>6: 方法区的虚方法表和接口方法表:
+			>虚方法表: 舍弃 动态分派过程中 从 类的方法表中 搜索 匹配的方法, 而改为 从虚方法表中 搜索；每个类都有一个虚方法表;类似 数组索引--所以效率更高;
+				>方法入口： 就是 类的方法表 中该方法描述项的地址:
+			>接口方法表:
+		>7: 动态类型语言: 运行期 进行 类型检查; 变量无类型 变量值 才有类型;
+			>java.lang.invoke.MethodHandle 和 java.lang.reflect.Method: 前者仅仅包含与执行该方法相关的信息, 后者则是全部信息--签名描述符属性表执行权限等; 前者轻量级 , 后者重量级.
+				>前者模拟字节码层次的方法调用: 虚拟机在这方面做了优化;不仅服务java语言, jvm之上的都服务;
+					>模拟1: 描述一个只用 参数表达的方法: MethodType mt = new Method(void.class, String.class);
+					>模拟2: 描述在一个类中查找 指定方法名 和 参数 的方法的过程: lookup().findVirtual(a.getClass(), "name", mt), 然后是绑定接收者-即this:.bindTo(receiver)
+						>底层实现: 如@static native MemberName resolve(...)都在 MethodHandleNatives.class里;
+				>后者模拟代码层次的方法调用: 
+		>8: 字节码处理方面Unsafe 的三个强悍方法:
+			>字节数组返回类: public native Class<?> defineClass(String var1, byte[] var2, int var3, int var4, ClassLoader var5,
+									ProtectionDomain var6);
+			>指定字节码类型而编译为匿名类:   public native Class<?> defineAnonymousClass(LambdaForm.class, byte[] var2, Object[] var3);
+			>public native Object allocateInstance(Class<?> var1) throws InstantiationException;
+		>9: methodHandle从Class定位方法的关键native方法:
+			>long offset = MethodHandleNatives.staticFieldOffset(member);
+            >Object base = MethodHandleNatives.staticFieldBase(member);
+            >return new StaticAccessor(mtype, lform, member, base, offset);
+		>10: methodHandle 执行方法的关键native方法:
+			>public final native @PolymorphicSignature Object invokeExact(Object... args) throws Throwable;
+			--总结:methodHandle方式: 查找方法是native, 执行方法也是native;
+		>11: 常见指令:
+			>nop: 空操作
+			>dup: 复制栈顶一个字长的数据,复制后将数据压栈.
+			>ldc#23 : 将常量池中第23项常量值入栈
+			>new#63 : 将常量池中第63项常量表示的类描述符对应的类 创建它的实例在堆区;
+			>aload_0 : 将局部变量表0号槽位的变量引用入栈
+			>bipush 100: 单字节整数100 入栈 
+			>sipush 200: 多字节整数 200 入栈 
+			
+		>12: 方法的符号引用: 方法名称和描述符
+			>testMethod: (Ljava/lang/String:)V   是对  void testMethod(String v)的描述
+			>Method  java/lang/invoke/MethodHandles  $Lookup.findStatic：（Ljava/lang/Class；Ljava/lang/String；Ljava/lang/invoke/MethodType；）Ljava/lang/invoke/MethodHandle；多参数和对象返回类型的描述
+		>13: 通过 参数描述字符串 来产生一个 methodType,  再加上 类.class对象,再加 方法名 来确定: MethodHandle
+			>MethodHandle mh = lookup().findStatic(类.class, 方法名, MethodType.fromMethodDescriptionString("(Ljava/lang/String;)Ljava/lang/String;"))
+			--可见  是用户 决定 从哪个类里去寻找匹配的方法,即这个分派逻辑是由用户可以动态指定的.;;而以前是由虚拟机决定的.
+		>14: 将一个MH 封装到CallSite , 然后返回这个MH:
+			>MethodHandle mh2 = new ConstantCallSite(mh).dynamicInvoker()
+		>15: 编译过程四大步骤: 词法分析->语法分析->抽象语法树生成->遍历而生成指令流水	
+			>指令集架构: 基于栈的指令集架构, 零地址指令,依赖操作数栈进行工作; 基于寄存器的指令集架构, 更快;
+		>16: 自己的类加载器是如何使用的: 除了Laucher 下的两种; 如何 和 Unsafe.defineClass()相联系?
+			>web 服务器: 要实现两个web项目 的 jar隔离; 也要实现两个web项目 的 jar共享;
+				>JSP 生成类的 热替换:
+				>基本实现: 对不同的lib/classes目录,使用自定义的不同类加载器去加载.
+				>四类目录来存放jar: 
+					>common/*: 存放 服务器+项目共享  CommonClassLoader
+					>shared/*: 存放 项目共享    .  SharedClassLoader 
+					>server/*: 存放 服务器可见       CatalinaClasLoader
+					>/WebApp/WEB-INF/* 存放 该项目可见  WebAppClassLoader (多个实例)
+					--JasperLoader(多个实例)加载专门的jsp文件, 辅助实现 JSP文件的 hotswap热替换;
+				>父类加载器加载的类,本类加载器自然可见可使用;  但是 兄弟加载器加载的,则不可使用,互相隔离.; 同类加载器不同实例加载的类,也互相不可用不可见;
+			>osgi: 精确的模块划分和可见性控制: export的包才可见; 实现模块的热插拨.; import-package是想依赖的;
+				>BundleClassLoader: 每个实例 控制对应的模块 只对外提供export-package 下的类的加载服务; 
+				>请求加载过程: Bundle1 请求加载 bundle2里的一个类A, 请求发送到 OSGI平台, osgi平台查看 A 是否在 bundle2的 export-package里,如果在则调用bundle2的BundleClassLoader实例来加载,否则直接拒绝返回不能加载-权限不足.
+				>类所在bundle的判定过程(从而用对应的加载器加载): 先认为在jdk路径下-->在import list的jar里-->在当前bundle里-->在Fragment list的jar里-->在dynamic list的jar里 (线程死锁和内存泄漏)
+		>17: jdk动态代理的实现:	sun.misc.ProxyGenerator.generateProxyClass()和我的实现类似,就是实现接口方法,但内容为直接调用this.h.invoke()..即调用handler的invoke()方法,当然try-catch, 但是i直接throw 了.
+			
