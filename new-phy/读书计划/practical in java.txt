@@ -52,16 +52,27 @@
 		>10: methodHandle 执行方法的关键native方法:
 			>public final native @PolymorphicSignature Object invokeExact(Object... args) throws Throwable;
 			--总结:methodHandle方式: 查找方法是native, 执行方法也是native;
-		>11: 常见指令:
+		>11: 常见指令:  查看一个A.class的字节码：javap -c A 
 			>nop: 空操作
 			>dup: 复制栈顶一个字长的数据,复制后将数据压栈.
+			>pop: 栈顶弹出一个字长的数据
 			>ldc#23 : 将常量池中第23项常量值入栈
-			>new#63 : 将常量池中第63项常量表示的类描述符对应的类 创建它的实例在堆区;
-			>aload_0 : 将局部变量表0号槽位的变量引用入栈
+			>new#63 : 将常量池中第63项常量表示的类描述符对应的类 创建它的实例在堆区;(还没有执行它的构造方法，但已经设置了零值缺省值)
+			>aload_0 : 将局部变量表0号槽位的引用类型值入栈
+			>iload_0 : 将局部变量表0号槽位的int类型值入栈
+			>astore_0 : 弹出栈顶引用类型值放入0号槽位
+			>istore_0 : 弹出栈顶int类型值放入0号槽位
 			>bipush 100: 单字节整数100 入栈 
 			>sipush 200: 多字节整数 200 入栈 
-			
+			>iconst_0 : 0 整数值入栈
+			>iconst_5 : 5 整数值入栈 
+			>if_icmplt 7 : 如果栈顶两个int 前小于后 则跳转到位置7 
+			>getfield#19 : 将第19号常量代表的this的属性字段入栈
+			>getstatic#25 : 将第25号常量代表的类的静态属性字段入栈
+			>invokevirtual#16: 弹出栈顶对象引用，找它的堆区的字节头的类元数据地址中方法表中和第16号常量相同描述的方法，invoke执行后将结果再次入栈
+			>iastore : 将栈顶整数放到栈接下来的两个表示array, i的数组位置上。
 		>12: 方法的符号引用: 方法名称和描述符
+			>数据类型:B,C,D,F,I; J--long, S--short, Z---boolean, V--void, L---Object;  [---一维数组, [[---二维数组
 			>testMethod: (Ljava/lang/String:)V   是对  void testMethod(String v)的描述
 			>Method  java/lang/invoke/MethodHandles  $Lookup.findStatic：（Ljava/lang/Class；Ljava/lang/String；Ljava/lang/invoke/MethodType；）Ljava/lang/invoke/MethodHandle；多参数和对象返回类型的描述
 		>13: 通过 参数描述字符串 来产生一个 methodType,  再加上 类.class对象,再加 方法名 来确定: MethodHandle
@@ -87,4 +98,16 @@
 				>请求加载过程: Bundle1 请求加载 bundle2里的一个类A, 请求发送到 OSGI平台, osgi平台查看 A 是否在 bundle2的 export-package里,如果在则调用bundle2的BundleClassLoader实例来加载,否则直接拒绝返回不能加载-权限不足.
 				>类所在bundle的判定过程(从而用对应的加载器加载): 先认为在jdk路径下-->在import list的jar里-->在当前bundle里-->在Fragment list的jar里-->在dynamic list的jar里 (线程死锁和内存泄漏)
 		>17: jdk动态代理的实现:	sun.misc.ProxyGenerator.generateProxyClass()和我的实现类似,就是实现接口方法,但内容为直接调用this.h.invoke()..即调用handler的invoke()方法,当然try-catch, 但是i直接throw 了.
-			
+		>18: java 编译器优化、JIT运行期优化(收集信息，例如热代码-直接编译为二进制指令-固定执行)	
+			>String s = new String("")； s+= "x"; 代价很高；因为编译后，对+=实际上会生成一个StringBuffer对象，且入参为new StringBuffer(String.vauleOf(s)), 然后appendOf(), 然后toString()所以消耗很大；快数百倍；+=替换为StringBuffer就非常重要;
+				>为什么StringBuffer()快： 一是因为内部采用了字符串复制到char[]的方法：str.getChars(0, len, value, count)，即复制到内部的char[]数组了---当然已经是一个new新长度的char[]。这个过程采用了同步的方法；---实际不会有冲突，所以可以消除锁--锁消除；
+		>19： 局部变量的使用，如运算，会快于使用属性或者静态属性。
+		>20: private static final 的使用： 可以inline更优。 final static 常量替换，指令更简洁
+		>21: 缺省值不用明设
+		>22: 基本类型运算速度更快
+		>23: 数组复制：System.arraycopy()
+		>24：复用对象和方法合并：尤其对set...()方法合并为多个参数其实好些；
+		>25: 不做冗余的以后永远用不到的事情和动作；只做必要的工作
+		>26: dup2 复式复制 效率更高；+= 效率更高于 = +
+		>27: new byte[] 新建数组，对应的字节码 newarray byte ; 即创建数组并且把引用入栈；而 new Object()则 三条： new#2 ;dup; invokespecial#18; 需要开辟空间和调用构造方法；
+		>28： 避免死锁，走相同的锁定顺序。A锁->B锁
