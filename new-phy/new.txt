@@ -1392,12 +1392,29 @@ Spring方面：
 	>1.8 hashmap resize() 还是会出现不安全：覆盖问题。对null元素的赋值，两个线程并发，就会覆盖前一个的。
 		>对列表和红黑树节点： e.hash & oldCap == 0 来分割出低位和高位两个链表，而分别放到新数组前后两半的原因：e.hash是高低位亦或之后的结果,已经离散在某个8000的范围内，oldCap一般是2的指数次，相与==1说明这个位为1，说明e.hash至少是大于等于它的，因此有合理性，且这个位也比较随机。都分裂为2个单向链表。
 	>1.8 hashmap: 确定索引：h ^ (h>>>16) & (n-1) 简单位运算就进行了分散；好处：entry[]每8000一个段，如果hashcode值在某个区间之内，那么它经过这个运算之后还是落在在这个区间，只是已经混肴了,分散了，区间分散了。前面是亦或的好处;相与的结果一定小于双方，可能发生碰撞(位运算更简单--取模更复杂)。
-	
+	>1.8 concurrentHashMap: 
+		>确定Node数组的大小: 大于等于 initailSize / loadFactor 的最小的2的n次方的数;
+		>size()的计算: 关键是put()方法 最后 的@addCount(1, binCount); 然后是这个方法调用的@fullAddCount(long x, boolean wasUncontended)
+			>对于@fullAddCount()方法: 对当前线程,计算随机数存储到线程的属性h:threadLocalRandomProbe 里-->从大小为2开始创建CounterCell[]数组,后续2倍扩容-->定位当前线程put新增元素的计数 应该对哪个CounterCell新增:算法(n-1)&h定位到,cas创建值为1(即位置为null),或者cas更新CounterCell.value+1(如果更新失败,h改变计算新位置;再次初始或cas+1更新还是失败则扩容2倍;但超过cpu核数则只改变h重试而不再扩容)-->特殊情况,如果cas更cellBusy来尝试新建CounterCell时cas失败了,则直接cas对baseCount+1就结束了.
+			--说明:CounterCell 这个类有@sun.misc.Contended 注解,避免伪共享;(即自己在value属性后补充6个字节达到64B--一个缓存行的大小)
 	>1.8 concurrentHashmap: 确定索引：h ^(h>>>16) & (0x7fffffff) &(n-1)
 	>arraylist: object[]数组,
 	>CopyOnwriteArrayList: Object[] 但是每次添加,都复制新数组,且使用锁同步
 	>hashset: hashmap为实质,值为new Object()
 	>TreeMap: 红黑树
+	>ConcurrentLinkedQueue:  单向链表
+		>offer(): 从tail开始,cas设置tail.next为新数据节点, 如果成功,则cas更新tail为新节点; 如果cas tail.next失败了,则循环内重试;
+		>poll(): 技巧1: 标签来避免递归...
+			>从head开始,cas更新Node.item为null, 
+				>如果成功:更新head为p.next 
+				>如果失败: 则可能被抢先了,先看p.next是否是Null,如果是,那么head更新为p; 如果不是,那么p=p.next开始下一轮
+	>阻塞队列: offer-poll(返回特殊值), add-remove(抛出异常), put-take(一直阻塞) 
+		>特征维度: 数组\有界\优先级
+		>出入同步: 可重入锁 
+		>条件等待: 可重入锁的条件对象: 等待两个条件-: empty时拉取阻塞而等待notEmtpy, full时添加阻塞而等待notFull
+		--park()使用了互斥量
+	>双端队列:LinkedBlockingDeque
+	
 ------------------------------------------------------------------------------------
 常见问题： 
 >分布式id生成方案：

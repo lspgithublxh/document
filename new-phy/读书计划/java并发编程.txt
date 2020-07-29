@@ -169,3 +169,26 @@
 				>唤醒一个: 当前线程独占的条件下(未独占抛异常),找到等待队列第一个CONDITION节点-->入等待队列-->唤醒节点的线程
 				>唤醒全部: 当前线程独占的条件下(未独占抛异常),找到等待队列每一个CONDITION节点-->入等待队列-->唤醒节点的线程
 				--等待的线程被唤醒后: 还要入同步队列等待, 直到头而恢复state才会真正从await()返回;
+		>Fork-join模型：
+			>工作窃取算法: 正常的任务从自己的队列的头部取任务, 完成的任务从别人的队列的尾部取任务; 队列是个双端队列.
+			>Task: 本身有 .fork() 开始执行, .join()等待结果 两个方法;  就像线程的 .start(), .join()方法一样;
+		>原子类:
+			>原子引用数组:AtomicIntegerArray, 可以成功cas更新某个index上的值;
+			>原子类引用: AtomicReference
+			>原子更新或获取整数属性值: AstomicIntegerFieldUpdater
+		>并发工具类:
+			>CountDownLatch: 没使用锁,直接使用sync同步器完成;cas乐观锁方式释放state ; 而等待则共享式的可中断的获取锁---重新实现获取逻辑-state==0才成功-否则失败排队阻塞再次尝试
+			>CyclicBarrier:  使用了可重入锁；每次await()则减少count-1, 如果到0，则激活所有的等待线程；否则直接Condition等待；。。可以reset重置。
+			>Semaphore: 控制同步中的线程数不超过多少，超过则阻塞；。很明显可以用尝试获取、尝试释放来实现；其中尝试释放成功之后，需要唤醒下一个节点---显然默认就会；
+				>应用：流量控制如数据库连接---总数有限制--同时连接的只能最多有这么多；
+			>Exchanger: 两个线程使用同一个Exchanger来交换数据；可以用两个数据来实现---两个线程的交换两个数据；；	
+		>线程池： cpu使用多则线程数设置cpu数，而IO多则更多可以
+		>Executor框架: 
+			>工作单元：Runnalble/Callable
+			>执行机构：Executor
+				>固定线程个数：new ThreadPoolExecutor(n,n,0,Time,new LinkedBlockingQueue()) 固定worker大小的线程池，且任务无限，不拒绝；
+				>单一线程池：也是无限队列，但只有1个worker,所以都交给这个worker来处理；那么可以保证顺序；
+				>缓存线程池：同步队列--添加元素后阻塞，直到有线程获取；所以最多只有一个任务等待执行；而worker数最大不限制，最小为0，所以都是限时60s的worker
+				>调度线程池：带优先级双向队列DelayedWorkQueue， 最大线程无限制，0等待-没有闲逛的线程，
+			>异步计算的结果： Future,FutureTask,
+			
