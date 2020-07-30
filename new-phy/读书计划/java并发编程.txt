@@ -189,6 +189,12 @@
 				>固定线程个数：new ThreadPoolExecutor(n,n,0,Time,new LinkedBlockingQueue()) 固定worker大小的线程池，且任务无限，不拒绝；
 				>单一线程池：也是无限队列，但只有1个worker,所以都交给这个worker来处理；那么可以保证顺序；
 				>缓存线程池：同步队列--添加元素后阻塞，直到有线程获取；所以最多只有一个任务等待执行；而worker数最大不限制，最小为0，所以都是限时60s的worker
-				>调度线程池：带优先级双向队列DelayedWorkQueue， 最大线程无限制，0等待-没有闲逛的线程，
+				>调度线程池：带优先级(最小堆RunnableScheduledFuture[]数组)的延迟取的队列DelayedWorkQueue(取元素可能会阻塞)， 最大线程无限制，0等待-没有闲逛的线程，
 			>异步计算的结果： Future,FutureTask,
-			
+				>FutureTask：是任务，加到队列里的任务，run()的结束的时候，一方面cas 设置state属性设置为completing/normal,一方面产生结果，放到outcome属性里，一方面唤醒事先get()而wait中的取数据线程；
+		--查询：
+			>多少台机器在端口上：netstat -nat | grep 1000 -c 
+			>查看网络流量：cat /proc/net/dev 
+			>查看系统平均负载：cat /proc/loadavg 
+			>系统内存情况：cat /proc/meminfo
+			>dump栈最简单的做法： jstack pid > a.txt 
