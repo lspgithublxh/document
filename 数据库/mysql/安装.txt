@@ -1,15 +1,16 @@
-1.ÎÊÌâ£º
-	>ÏÂÔØ£º°²×°ºÃ¡£Â·¾¶ÉÏÃ»ÓĞ¿Õ¸ñ¡£
-	>ÓÃ¹ÜÀíÔ±·½Ê½ÔËĞĞ£ºmysqld --initialize-insecure --user=mysql
+1.é—®é¢˜ï¼š
+	>ä¸‹è½½ï¼šå®‰è£…å¥½ã€‚è·¯å¾„ä¸Šæ²¡æœ‰ç©ºæ ¼ã€‚
+	>ç”¨ç®¡ç†å‘˜æ–¹å¼è¿è¡Œï¼šmysqld --initialize-insecure --user=mysql
 			mysqld -install
 			net start MySQL
 			mysql -u root -p
 			select host, user, authentication_string from mysql.user;
 			 update mysql.user set authentication_string=password("lsp") where user="root";
+			 --mysql8ä¹‹åï¼šALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'æ–°å¯†ç ';
 			flush privileges;
 			quit;
 			mysql -uroot -p lsp
-	>linuxÉÏ°²×°£ºÏÂÔØxzÎÄ¼ş£¬xz -d xx.xz ºóÖ´ĞĞtar -xvf xxx.tar
-  	 >Ô¶³ÌµÇÂ¼£º./mysql -ulishaoping -h 172.26.122.221 -p
-		°¢ÀïÔÆÄÚÄÚÍøÄÚ£ºmysql -ulishaoping -hrm-8vb8ip1jx2pxvmls058870.mysql.zhangbei.rds.aliyuncs.com -p
-		ÍâÍøĞèÒªÍâÍøµØÖ·£ºmysql -ulishaoping rm-8vb8ip1jx2pxvmls0jo.mysql.zhangbei.rds.aliyuncs.com -p
+	>linuxä¸Šå®‰è£…ï¼šä¸‹è½½xzæ–‡ä»¶ï¼Œxz -d xx.xz åæ‰§è¡Œtar -xvf xxx.tar
+  	 >è¿œç¨‹ç™»å½•ï¼š./mysql -ulishaoping -h 172.26.122.221 -p
+		é˜¿é‡Œäº‘å†…å†…ç½‘å†…ï¼šmysql -ulishaoping -hrm-8vb8ip1jx2pxvmls058870.mysql.zhangbei.rds.aliyuncs.com -p
+		å¤–ç½‘éœ€è¦å¤–ç½‘åœ°å€ï¼šmysql -ulishaoping rm-8vb8ip1jx2pxvmls0jo.mysql.zhangbei.rds.aliyuncs.com -p
