@@ -1,0 +1,138 @@
+---------读书战略：自顶向下，从应用层到底层细节。先熟悉的常用的，后底层的不常用的。精读好书---《深入理解系列》
+--------es的处理思想都对应有 相应的“某种举动 及其导致 的问题”
+>需求背景-痛点陈述：现实开发中遇到了什么痛点导致XXX的开发？  
+>那么痛点的原因、产生的条件：分析是什么环境、什么动作 什么效果什么目的 等精准形容词的事实描述 导致了痛点的必然发生，难以避免？。条件-痛点。原因-结果。
+>则可以消除痛点的最简单的精准事实陈述是什么：修改“条件-痛点”陈述的哪一部分就可以导致没有痛点产生。 要做的根本事情是什么：
+>那么新陈述表明的解决动作是什么：
+>新情况的新痛点是什么：新举动、新环境会产生的新痛点描述出来， 继续上述4条操作。
+>学习要有战略和格局：过于零散、孤立、末支、叶子的知识点就没必要化太多时间，懂得放弃。聚焦在根节点、枢纽节点、产生分支的节点、主干知识点、枢纽知识点、关联到很多知识点的知识点上。
+ >对于主干知识点：要有全新的认识视角和进行精细的描述，大量的提问和好奇和进行必要的实验以获取支撑观点/导出观点的数据。
+ >规范是工程最独特的特征.
+ >慢慢读：
+>一种新技术的学习：
+ >它面对的情况和问题、它的世界观、它的方案、它的方案验证/论证/能处理的解决的所有情况及能成功处理的理由/功能边界
+  >所有的软件：都可以看作是向上封装一层接口，根据自己的世界观封装底层而向上/对外提供统一的(统一的更简单的更直观的更业务的更少底层信息的)接口，底层包含一系列的第三方的插件/构件/组件；内部则去做兼容和调用(对底层)(对上层则做逻辑分解和底层实现)。
+
+>举动-痛点：
+	>解法/解决方案：SQL API接口 + jdbc驱动
+		>对象模型和关系模型的映射：
+		>orm框架重点认识：spring-jdbc, mybatis,jpa
+		>mybatis两大配置文件：
+			>mybatis-config.xml: 数据源配置 + 类表映射文件路径集合配置
+			>A.xml: 类和表的映射<resultMap> + 方法签名与sql模板的映射<select>/<delete>/<update><insert>
+		>mybatis的用户API:
+			>数据源配置mybatis-config.xml配置会话工厂-->SqlSessionFactory创建会话SqlSession--> 会话调用执行接口(入参为字符串指定的mapper中的sql描述名+方法参数/sql参数)
+		>mybatis架构：
+			>接口层：会话API
+			>核心处理层： sql模板解析并占位符用入参替换 后格式标准化  + 执行结果提取封装到指定类型实例
+				>mybatis初始化：加载两大类配置文件 + Mapper接口 + 配置注解， 解析后生成 形成相应的若干对象保存在Configuration对象里：Configuration对象创建 SqlsessionFactory对象；
+					>配置和java实例的映射：
+						><resultMap> 映射为 ResultMap
+						><result> 映射为 ResultMapping
+					>scripting模块：根据用户的入参，解析动态SQL，形成实际可执行的sql;
+					>初始化入口：@SqlsessionFactoryBuilder.build()
+						>BaseBuilder: 含有 类别名 仓库， 类handler仓库；
+							>XmlConfigBuilder: 对xml一个节点一个节点的解析。
+								>对<properties>节点，解析为Properties放到Configuration里
+								>对<typeAliases>节点，解析为 alias别名--class注册到 TypeAliasRegistry
+								>对<databaseIdProvider>节点，解析为 DatabaseIdProvider
+								>对<mappers>节点，调用XMLMapperBuilder解析并注册到MapperRegistry
+									>解析<cache>节点：即为二级缓存配置相应的特性。CacheBuilder建造 Cache 放到 Confuguration里。
+				>一次数据库操作的全部流程：
+					>sql语句的执行：
+						>Excutor组件：维护二级缓存，提供事务管理。
+						>StatementHandler组件： 数据库相关操作，受Executor委托执行。通过 ParameterHandler完成语句的实参绑定， 调用java.sql.Statement 对象执行sql得到结果集ResultSet，再通过ResultHandler完成结果集的映射，得到结果对象并返回。
+				>用户插件编写：如拦截SQL进行重写和修改			
+			>基础支持层：
+				>数据源: 第三方数据源组件和性能\自己的数据源实现
+					>实现的接口:javax.sql.DataSource
+						>mybatis的实现:PooledDataSource, UnPooledDataSource;  通过不同的数据源工厂创建;UnPooledDataSourceFactory, PooledDataSourceFactory;
+						>mybatis调用过程: 根据配置文件路径下的文件加载为Properties, 后取类路径而加载工厂实现,实例化注入工厂接口DataSourceFactory,调用者从容器中获取该工厂接口类型的实例/
+						>每个数据源对象:
+							>核心属性:
+								>驱动类类加载器:driverClassLoader
+								>已注册的驱动: 
+									>前提：一般是DriverManager自己静态块代码里 就从驱动jar的META-INF/services/java.sql.Driver文件里描述的驱动类名 而调用ServiceLoader反射加载实例化到ServiceLoader.providers属性里了:  registeredDrivers:Map<String,Driver>
+										>加载第三方驱动jar里的该文件:META-INF/services/java.sql.Driver,	使用当前线程上下文里的加载器.没有则使用系统加载器,否则使用根加载器.----并没有严格实现双亲委派机制.
+										>驱动的实例化: 驱动类的静态块里有 java.sql.DriverManager.registerDriver(new Driver()) 这样的代码,来注册到DriverManager. 
+									>动作：直接从DriverManager.getDrivers()来获取所注册的所有驱动， 然后放到自己的registerdDrivers属性里。
+								>获取连接时：
+									>数据库驱动的初始化：
+									>连接创建：driver.connect(url, info) 为核心代码。由驱动类创建。
+									>连接的初始化：自动提交，事务隔离级别。
+								>连接池：
+									>空闲个数：
+									>总数：连接数过多会造成数据库僵死，系统整体性能下降；
+									>连接的动态代理：PooledConnection还是动态代理的InvocationHandler
+										>close()方法：是pushConnection()即将连接从活跃池放回到空闲连接池。
+									>弹出新链接：有超时机制--空闲；
+									>forceCloseAll(): 真正的关闭连接连接前，会先对Connection.invalidate().rollback()
+				>事务管理: Transaction
+					>两种实现：JdbcTraction/ManagedTransaction
+						>JdbcTransaction: 设置属性：隔离级别、是否自动提交、数据源
+						>ManagedTransaction: 事务的提交和回滚 交给容器管理。
+				>缓存(两级): 都实现 Cache接口 
+					>装饰器：增强A类。组合优于继承。IO中，BufferedInputStream为对InputStream的装饰增强。
+					>PerpetualCache实现：底层使用HashMap实现；
+					>BlockingCache装饰器：内部新增一个锁Map: 对每个key都设置一个ReentryLock来同步地获取。
+					>LruCache装饰器：内部LinkedHashMap: 来表达最近最少使用，并一个字段记录最少使用的key, 然后put的时候清除掉。
+					>SoftCache装饰器：利用软引用的特点，利用jvm垃圾回收来清除未被引用的key-value;
+					>CacheKey对象：内容：MapperedStatement的id,查询sql,用户的传参
+				>反射模块(优化封装java底层的):
+					>每个Reflector对象封装了一个类的元数据信息：
+					>Type的子类：
+						>Class: 一般的类都有的Class对象描述
+						>ParameterizedType: 复合体。是 原始类型 + 泛型类型 + 所属类型 的总和描述体；如 Map.Entry<String, Integer> 的原始类型：Entry, 泛型类型String/Integer, 所属类型：Map
+						>TypeVariable: 类上的泛型本身的描述。是 原始类型 + 泛型名 + 上边界：如 class Test<K extends Person> ，则原始类型：Test, 泛型名：K, 上边界：Person
+						>GenericArrayType: 带泛型的数组参数的描述： 包含： 数组的组成元素
+						>WildcardType: 通配符类型，是 泛型类型的上界 + 泛型类型的下界 的容器类；如 ? super Integer, ? extends Number 。则上界：Number, 下界Integer
+					>ObjectFactory: DefaultObjectFactory 根据类型、入参类型列表和入参列表 调用构造方法创建实例。
+						>instantiateClass() : 
+							>实例化方式1： Class.getDeclaredConstructor().newInstance(); 有参或者无参
+					>xml中占位符的解析：
+						>PropertyTokenizer: 解析 属性 位置的占位符 ， 比如变量描述 ： item[0].child[2].name; 点分迭代；
+						>PropertyNamer: 方法名到属性名的解析；
+						>PropertyCopier: 实现相同类型两个对象之间的属性的拷贝；内容很简单，就是数据源的属性值复制到目标对象里，然后迭代父类；
+						>MetaClass: 实现对复杂属性表达式的解析， 类级别元数据的封装；
+						>ObjectWrapper: 定义了一系列查询对象属性信息的方法
+				>类型转换模块(jdbc类型-java类型):
+					>TypeHandler: BaseTypeHandler
+				>日志模块(集成第三方日志框架):
+					>适配器模式：解决接口不能兼容，导致类无法使用的问题；。比如某个接口的方法定义  和 某个提供类的方法定义不一样，但是这个类可以实现接口的功能，那么用户新建一个类，实现这个接口，而用那个类来提供具体的实现；
+						>即：实现了 接口(已有,不能改)  和  类(已有，不能改)(类提供了接口定义的功能) 的 适配。通过适配器，让类来实际实现接口的方法。
+					>Mybatis中使用的日志接口 和 第三方包中提供接口定义的功能的类： 使用的接口---org.apache.ibatis.logging.Log接口， 第三方包提供实现功能的独立类----Log4j,Log4j2等包中的类；
+						>使用适配器模式，适配器中注入第三方包实现类，来提供接口的实质实现；很显然，每个第三方包，都需要专门定义适配器；
+						>LogFactory负责按序尝试创建适配Log接口和第三方实现类的日志适配器；slf4j->commons-->log4j2--->log4j-->jdklogging-->useNoLog 例如：org.apache.ibatis.logging.jdk14.Jdk14LoggingImpl是个适配器，实现了Log接口，引用了java.util.logging.Logger对象，而入参字符串名就是LogFactory
+					>静态代理和动态代理：
+						>延迟加载：分为两步。一步先创建静态代理对象，二步才执行真正的查询数据库。
+							>静态代理：已有类A 要实现已有接口B, 代理类C实现B而引用A, 而在实现方法里，不仅直接调用A的实现，而且前后还增加了额外的环绕逻辑。
+						>动态代理：已有接口A, 已有的方法统一回调处理类B, 动态代理类C实现A而引用B, 而在实现方法里，直接调用B的统一方法即可。
+							>注意：方法Mehtod对象， 已经在静态块里获取好了，设置为了静态属性。
+							>注意2：动态代理类继承了Proxy类，在Proxy类里才有 handler:h属性，
+					>日志动态代理：ConnectionLogger 属于 可以创建动态代理的日志类。
+				>资源加载模块(类加载器的封装): 指定路径下的jar资源和jar里的资源都加载进来。
+					>资源查找：VFS--DefaultVFS
+					>查找指定条件指定包下的class查找工具：ResolverUtil。。使用当前上下文绑定的ClassLoader---跨包加载方便；同一个包下，则class.getClassLoader类加载器就可以。
+					>封装的类加载器：ClassLoaderWrapper .就是：几个类加载器的组合，线程上下文加载器、类加载器、系统加载器(-classpath指定的)\用户类加载器
+				>解析器模块(处理xml文件的解析):
+					>Dom方式：构造xml对应的Dom节点树。支持Xpath查询语法。
+					>SAX方式：事件对象事件流，先注册事件+handler ，后专门处理。
+					>EntityResolver实际的解析：
+						>先加载两大类xml的dtd文件：从包里或网络
+					>XPathParser: 根据DTD文件内容、加载xml文件 解析 得到Document对象。。evalNode()则返回XNode对象---解析节点的属性和内容实体；
+					>GenericTokenParser: 占位符解析器；找到占位符位置，调用TokenHandler处理得到解析结果，从新拼装为字符串返回，
+				>Binding模块：用户编写Mapper接口 和 mapper.xml的映射。
+					>Mapper接口可以不编写：自动创建动态代理对象；
+					>Mapper接口有时可以替代mapper中的配置：只是局限--因为sql动态解析问题；所以出现了jpa放在方法的注解上；
+					>全局配置对象Configuration: MapperRegistry,	MapperProxyFactory
+						>MapperRegistry: addMapper(): 增加 Mapper.class -- MapperProxyFactory()映射对；value负责为key生成它的动态代理；回调类 就是 MapperProxy 
+						>MapperProxy: invoke()
+							>核心内容：根据输入的Mapper的方法Method对象获取一个真实的MapperMethod对象，来执行.execute(sqlsession,args)
+						>MapperMethod: 内部类 MethodSignature
+							>获取mapper.xml中对应的sql描述对象MappedStatement: sql语句的名称由Mapper类和方法名构建,然后用这个名称从Configuration里获取到 MapperedStatement
+							>execute(): 分insert/update/delete/select
+								>直接用session.insert()等方法直接支持和处理。
+								>对于查询：进一步对查询的结果类型分类处理：
+						>MethodSignature: 
+							>ParamNameResolver: name:Map 来记录 方法形参 位置-值的映射对。两种类型的参数则需要过滤，而不记录：RowBounds 和 ResultHandler
+				
