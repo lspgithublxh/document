@@ -1,0 +1,176 @@
+//品味：慢慢
+//spring的逻辑结构：情况-要做的事情； 数据-要做的事情：
+//流程动作> 调用方法@  分支判断# 
+//世界观：*
+//不止是为了单单为了实现这单一的功能仅此而已，必须考虑更多(情况)做更多(事情，准备；化被动为主动去做)，而不是直接仅仅只做什么。
+//考虑-决定-预防-收益/影响/后果-预测下一步要做什么(甚至下n步)
+//大的想法，具体行动。
+//出现了if-else就是因为有不同的考虑。
+//阅读文档达到直接可以看出思路编写程序的清晰逻辑的地步。
+//一个大函数功能直接看懂而描述。
+//从网上找答案变为从源码中找答案。
+//功能组织体系，而不是动作实现体系。是目标，是事情，而不是精细到实现方案的动作。
+//数据源-数据结果模式：而不是全部动作过程。
+//能够主动猜某个方法的功能和猜测它的实现。
+//情况-通用处理。
+//情况-精细结构。
+//数据结构-与处理。
+//某个时刻某个地方：所有可能用户做的事情。
+//就像是军队打仗一样：AbstractApplicationContext上下文就是总部主帅，负责整个流程，但实现个别子流程；ServletWebServerApplicationContext就是地区主帅，负责使用总部流程且根据区域情况具体化部分流程实现，同时负责分给不同的人去实现更细的子流程(用人/用器：如事件广播器、bean工厂、生命周期处理器; 向它们发号命令：调用/叫他们做什么)，层层下去到事务的精细结构。(负责事务的精细级别 就看出 和一线的和当前的距离)
+	>对一个事物类：他是有属性
+	>对一个组织类：他是有人；属性当作人。人可能是为他办事的，也可能是监听他的监听器。
+	>对一个系统类：他是有组件/器具；属性当作器具
+//为什么层次多：因为连续地向上进行了抽象，每层都分类了/拆分了不同的功能，每层连续往下拆分。
+>SpringApplication 静态部分：
+	>日志Log实例的创建： 
+		>获取日志工厂：可能是SLF/commons-logging
+			>获取线程上下文加载器：
+			>加载配置文件："commons-logging.properties" , 使用@loader.getResources(name)来获得路径URL,然后利用@url.openStream()-->Properties.load(stream)即可实现资源流入Properties里；
+				>这个配置文件里可能有“org.apache.commons.logging.LogFactory”的key, 则取出value: 作为Class进行实例化 
+			>系统配置里取："org.apache.commons.logging.LogFactory" 为key的值，System.getProperty()	 第一个进行实例化
+			>如果上述没有找到：开始 寻找"META-INF/services/org.apache.commons.logging.LogFactory"资源，加载进来：@getResourceAsStream(contextClassLoader,SERVICE_ID), 读取首行当做工厂名，进行加载和实例化
+			>如果还是没有找到：就使用上上步骤从commons-logging.properties 里找到的工厂名，进行实例化，并且将props里的其他k-v一并设置加入；	
+			---并且有缓存模式；
+		>根据工厂获取实例：@getInstance(Class clazz)
+			---org.apache.commons.logging.impl.LogFactoryImpl的实现：直接构造方法实例化创建实现；
+			---org.apache.commons.logging.impl.SLF4JLogFactory的实现：很明显要：适配一下。。。注意不是桥梁模式(桥梁交错模式，就像”机枪+人“的交错，实现各种人持有各种抢的效果！两个维度的交错，从直角坐标系下可以直观看出)
+				>先是：Logger slf4jLogger = LoggerFactory.getLogger(name) 即slf4j独有的，后注入到：new SLF4JLog(slf4jLogger)/new SLF4JLocationAwareLog((LocationAwareLogger) slf4jLogger) 来实现
+>SpringApplication.run()开始：
+	>new SpringApplication()：主要任务：
+		>判断web应用类型(特定类加载是否成功)：webApplicationType:servlet/reactive/none
+		>加载spring.factories: 归结为一个基本问题；对于一个文件(如log4j2.component.properties)，如何找到而加载它的？
+			>加载器：(jar里的任何部分都可以寻找和加载)
+				>三级加载器(先后尝试加载xx file)：上下文加载器-->类加载器-->系统加载器
+					>具体调用：@Enumeration<URL> cl.getResources(string:resource) 实现为双亲委派;迭代的每次，返回一个要寻找的jar包；java.lang.ClassLoader类的实现；
+						>则先用 URLClassPath--Launcher.BootClassPathHolder.bcp 来加载：
+							>@Enumeration<URL> getBootstrapClassPath()
+								>@Enumeration<Resource> getResources(String var1) 内部实现就是 它的6个加载器--对应6个jar来尝试从中加载；sun.misc.URLClassPath.loaders:list 共有6种：分别对应jre/lib/下的resource.jar\rt.jar\jce.jar\jsse.jar\charsets.jar\jfr.jar
+									>封装过程: string-->new URL()-->URLConnection-->JarURLConnection-->JarFile-->new Resource()
+									>对一个name: 会先@getResource(String var1, true)尝试加载：JarLoader
+										>主线：先name的包名 匹配，MetaIndex的实例，其contents属性值里含有如“javax/crypto”字符串，为包名匹配，一旦匹配到了，进入@Resource getResource(String var1, boolean var2, Set<String> var3)详细匹配：
+											>主线：将根据csu基本属性(值如file:/C:/Program%20Files/Java/jdk1.8.0_231/jre/lib/jce.jar)构造URL, 然后构造new URLClassPath.JarLoader()，放到 lmap 属性里：
+											>这个方法里：已经解析了一个jar的完整META-INF结构：在index.indexMap属性里；
+											
+								>后直接將Enumeration<Resource>转换为 new Enumeration<URL>()返回；
+						>后用@findResources(name) 用户的实现来寻找和加载；这个就是并列于上述的@getResource(string,boolean)方法的；---加载路径不同。
+							>直接看这个方法返回new Enumeration<URL>(){}里面的@next()的实现：
+								>也是一个循环：先取下一个loader-->后用这个loader来加载资源 ..
+									>其中：第一步：@URLClassPath.this.getNextLoader(int[],int)第二个参数就是index++索引。此方法的实现：直接走@this.getLoader(var2)，里面的实现则更直接：按索引获取list中的元素-加载器即可：(URLClassPath.Loader)this.loaders.get(index) 这里的loaders有288个，各个jar的加载器都专门有---且地址不一样即使不同的加载器实例；而每个加载器都有记录它加载的是哪个jar；
+										>这样：就相当于遍历了288个jar.	
+										>loaders: 如何填满的；lmap 同理又是如何填满的。
+											>填满过程：遍历jar路径过程中：对找到的每个jar的完整路径名字，直接新建一个 加载器对象：@new URLClassPath.JarLoader(), 加载器直接放到loaders里，而name-loader 则put到lmap里！！
+												>new加载器方法正是：@URLClassPath.Loader getLoader(final URL var1)
+											>整体过程：在第一个组件请求被加载的时候，因为要寻找匹配的，所以加载的很多没有匹配的jar-实际已经先存到loaders/lmap里缓存下来了。这个依赖从urls弹出 完整的 url jar路径。
+										>urls： 初始化：
+											>初始化： 
+											>补充：@URLClassLoader.getLoader(int var1)有一次补充的过程:@push(URL[]),数据来源：@URL[] URLClassPath.JarLoader.getClassPath()，这个loader就是 @this.getLoader(var2)也就是返回new ..JarLoader()的方法；因此确实走的 JarLoader的获取URL[]实现：
+												>来源获取过程：@JarLoader.getClassPath()的实现：
+													>@ensureOpen()： 确保jar打开，设置JarLoader.jar/.index/.lmap属性； 
+														>lmap: key:file:///C:/Program%20Files/Java/jdk1.8.0_231/jre/lib/ext/access-bridge-64.jar, value=JarLoader实例
+													>@parseExtensionsDependencies()
+													>@jarFileHasClassPathAttribute() 查看jar是否有class-path属性, 有，那么就要读取出来，然后把这个jar路径也包含进来，即@push()进来；但这里十分奇怪
+														>@parseClassPath(URL var1, String var2) ： 将class-path里的jar，封装为URL时：直接替换最后的位置：new URL(URL,string)最后形成 file:/D:/mvn/repository/com/sun/xml/bind/jaxb-impl/2.2.7/jaxb-api.jar 这种奇怪的路径
+												>有个native方法：@native URL[] getLookupCacheURLs(ClassLoader var0)
+											>但是来自URLClassLoader实例为主：从 URLClassLoader 的实例化过程看，很多URL[]注入；
+												----LauncherImpl中的实例化看：
+													>是从jar属性里的JavaFX-Class-Path 属性 对应的 值 ---空格分隔的所有jar路径；封装到new File()里，然后file.getCanonicalFile().toURI().toURL()来获取URL,最终为数组；
+												----tomcat-embed-core的org.apache.catalina.startup.Tool.main()函数的实现：
+													>路径1：${catalina.home}/lib , ${catalina.home}/classes  其中，对于/lib下，会当做目录，从而寻找目录下的所有file:list()然后遍历封装为new File()加入集合；
+													>路径2：运行入参里有-common, -server, -shared ,则加入  ${catalina.home}/common/lib|classes,  common|server/shared 可见跟自己的路径有关；
+												----org.aspectj.util.Reflection.runMainInSameVM(String classpath, String className, String[] args)的实现： 
+													>直接从classpath里：split之后每个部分都封装为URL(string)
+												----javax.tools.ToolProvider.findSystemToolClass()实现： 
+													>寻找 System.getProperty("java.home")， 然后 拼接 /lib/tools.jar  来构造File().toURI().toURL()为URL对象
+												----sun.misc.Launcher()的实现： 
+													>Launcher类的静态属性：就有 @new Launcher()的一个属性。赋值给了launcher静态属性；构造方法的实现：
+														>静态方式获取一个扩展类加载器：@Launcher.ExtClassLoader.getExtClassLoader()
+															>经典的单利模式实现：双重锁定+volatile; 静态方法获取：具体内容：
+																>获取扩展路径：@Launcher.ExtClassLoader.getExtDirs()  
+																	>@System.getProperty("java.ext.dirs")为核心，进行split处理得到File[]
+																>对每个File,注册元索引数据：@MetaIndex.registerDirectory(File)
+																	>核心：@获取file/meta-index 这个子文件，如果存在，那么FileReader其内容，一行行读取：每一行提取封装为key:new File(var0, var4), value: new MetaIndex(var6, var5)  放到静态属性 MetaIndex.jarMap里；
+																>利用File[]新建扩展类对象：@new Launcher.ExtClassLoader(var1)
+																	>获取每个File下所有的文件中非meta-index名字的文件，封装到new File()里，再转URL:@getCanonicalFile(); 再路径编码@ParseUtil.fileToEncodedURL()统一为/xx/xx/格式URL,这样就获取了一个URL数组，：@getExtURLs(var1)
+																	>非常振奋的，开始调用@new URLClassLoader(URL[] urls, ClassLoader parent, URLStreamHandlerFactory factory)这个父类接口，也就是实例化父类：终于有了 URLClassLoader.ucp=new URLClassPath(urls, factory, acc)的执行；
+																	>很关键的，先回调方式保存的ucp，这里获取它：调用@ucp.initLookupCache(this)--this就是 ExtClassLoader 实例；
+																		>获取URLs:@getLookupCacheURLs(var1) 赋值给 实例 URLClassPath.lookupCacheURLs
+																			>获取的实现：这个方法是一个静态方法：@native URL[] getLookupCacheURLs(ClassLoader var0)
+																	---至此：ExtClassLoader实例创建完毕！！
+														>利用上述扩展类加载器实例，获取一个实例化的AppClassLoader:@Launcher.AppClassLoader.getAppClassLoader(ClassLoader) ,后赋值给loader属性；
+															>获取类路径配置：@System.getProperty("java.class.path")， 然后切割字符串，每个部分都直接new File(string),然后将这File[]返回； 
+															>File[]转URL[]: @Launcher.pathToURLs(var2), 也就是逐个@getFileURL()--->内容就是 v0.getCanonicalFile() 后通过@ParseUtil.fileToEncodedURL(file)来返回。
+															>进一步利用URL[],开始构造 AppClassLoader 实例：@new Launcher.AppClassLoader(var1x, var0)
+																>调用父类：@new URLClassLoader(URL[] urls, ClassLoader parent, URLStreamHandlerFactory factory)
+																>直接的：@this.ucp.initLookupCache(this) this就是 AppClassLoader实例；
+														>线程上下文加载器的设定：@Thread.currentThread().setContextClassLoader(this.loader) 就是上一步得到 的 AppClassLoader实例。
+														>安全管理器的实例化：@System.getProperty("java.security.manager")获取，后用this.loader来加载并实例化：@this.loader.loadClass(var2).newInstance() 后设置到 安全上下文：@System.setSecurityManager(var3)
+													>额外重要一点：Laucher的被使用：
+														>ClassLoader.initSystemClassLoader()里：既获取了@sun.misc.Launcher.getLauncher() 又获取了AppclassLoader 设置到了ClassLoader.scl静态属性里；
+														>ClassLoader.getSystemClassLoader()里：@checkClassLoaderPermission(scl,Reflection.getCallerClass()) 参数方法是个native方法，获取调用方法所在类Class:A, 如果A的类加载器B是 scl的父类，那么无需检查，否则需要安全检查：@ sm.checkPermission(SecurityConstants.GET_CLASSLOADER_PERMISSION)
+															>实际返回的还是：scl
+															--引用的其他地方：@ClassLoader.getSystemResources(String name)
+														>补充：scl加载一个类：@scl.loadClass(String name) 实际就是 ClassLoader的加载
+															>加锁：每个name都给一个Object()锁对象：parallelLockMap
+																>首先尝试native加载：@native final Class<?> findLoadedClass0(String name)
+																#如果null：双亲委派加载：@native Class<?> findBootstrapClass(String name)
+																#再次null: 调用自类的实现：这里就是 URLClassLoader的实现：@Class<?> findClass(final String name)
+																	>核心：即上述已经表达了的：加权方式：将name替换为xxx/xxx/xx.class形式后@ucp.getResource(path, false) 得Resource, 后：@defineClass(name, res)实现加载Class。。。自然就是从所有的urls里去寻找匹配的部分，匹配到为止；
+																		>注意后面的@defineClass(name,res)方法，因为：@java.nio.ByteBuffer bb = res.getByteBuffer()很明显，已经得到了jar的byte[]后面 大家在就很自然了；！
+																			>另外：Resource.url:URL的值是类似这样的完整类型的：protocol:jar,file:"file:/C:/Users/lonel/AppData/Local/JetBrains/IntelliJIdea2020.2/captureAgent/debugger-agent.jar!/com/intellij/rt/debugger/agent/CaptureAgent$KeyProvider.class"
+																			>涉及的：Resource获取Inputstream： 
+																				>第一种：@JarLoader.this.jar.getInputStream(this.jar.getJarEntry("com/intellij/rt/debugger/agent/CaptureAgent$InstrumentPoint.class")) 即jar+class明确
+																					>获取class名后加载：得com/intellij/rt/debugger/agent/CaptureAgent$ParamKeyProvider.class的byte[]数组，调用@native long getEntry(long jzfile, byte[] name,boolean addSlash)方法 后@new ZipFileInputStream(jzentry)实现得到流；从这个流里又可以读出数据到byte[]里；为@Resource.getBytes()方法 ，到这个地步，调用 到 @defineClass1()就很自然 了；
+																				>第二种：
+														>补充2：ClassLoader.getResource(string)里最后一步调用的@findResource(string)的实现： 
+															>加权：调用@ucp.findResource(name, true)来实现；
+																>核心：也是 @getNextLoader()---直接从loaders里按索引获取；然后 直接new URL()@URL findResource(String var1, boolean var2)
+															>出处： @org.apache.logging.log4j.core.util.Loader.getResource(final String resource, final ClassLoader defaultLoader)	
+																>出处：获取配置：测试时甚至名字是随机的：@org.apache.logging.log4j.core.config.ConfigurationFactory.getConfiguration(loggerContext, name, configLocation) 后设置配置；
+																	>出处：启动LoggerContext.start() 日志上下文的启动
+																		>出处：上下文的获取@LogManager.getContext(cl, false)
+																			>出处：获取logger:@AbstractLoggerAdapter.getLogger(final String name)
+																				>出处：@org.slf4j.LoggerFactory.getLogger(String name) 进一步出自：@getLogger(Class<?> clazz)
+																					>解析出处：@@Slf4j这个注解导致。
+												----sun.misc.Launcher的静态方法实现：
+													>出处：ClassLoader的@Enumeration<URL> getResources(String name)方法里的@getBootstrapResources(String name)方法实现：
+														>核心：@getBootstrapClassPath() 
+															>直接：sun.misc.Launcher.getBootstrapClassPath()
+																>直接返回：@auncher.BootClassPathHolder.bcp
+																	>这个静态属性采用static{}初始化的方式实现：
+																		>如果根路径存在：@bootClassPath = System.getProperty("sun.boot.class.path")
+																			>直接转File[]:@Launcher.getClassPath(Launcher.bootClassPath)
+																				>对每个的Parent进行注册一次：@MetaIndex.registerDirectory(var5)
+																			>对每个File: 常见方法转URL：@getFileURL(File var0)	
+																		>不存在：则new URL[0] 来设置，@bcp = new URLClassPath(var0, Launcher.factory, (AccessControlContext)null)；然后进行初始化：@bcp.initLookupCache((ClassLoader)null)	
+														>然后：@getResources(name) 内容就是常见的 nextloader()+load()来实现；
+													>出处的出处：最常见的就是SPI机制实现中的ServiceLoader中加载 @loader.getResources(fullName)	，而这里的fullName=如："META-INF/services/javax.management.remote.JMXConnectorServerProvider"
+														>出处： SPI机制获取 JMXConnectorServerProvider.class接口的实现类， 而实现类Provider提供的则是如：@new RMIConnectorServer(serviceURL, environment, mbeanServer)这样的货物；
+															>出处：@JMXConnectorServerFactory.newJMXConnectorServer(var4, var0, var3) 
+																>出处： @ConnectorBootstrap.startLocalConnectorServer()
+																	>出处：@sun.management.Agent.startAgent()
+																	...
+																		>出处：@PostVMInitHook.run()直接调用@trackJavaUsage() 实现内容：@new UsageTrackerClient().run("VM start", System.getProperty("sun.java.command"))
+									>第二步：@var1x.findResource(var1, var2) 其中 var1x 就是上一步获取的某个序号对应的加载器实例；
+										>调用@Resource getResource(String var1, boolean var2)：就是从jar里加载 路径var1 匹配的部分：但是对一个name 只有固定的urls个数，仅仅在urls里所有的jar路径匹配完了就不再寻找；找到了则可以@defineClass(name, res)定义了，但是没有找到则：
+											>核心：@JarEntry var3 = this.jar.getJarEntry(var1)很明显是尝试获取匹配的内容；这个var1如"META-INF/log4j-provider.properties"；(也包括初始化加载--获取META-INF内的索引内容结构内容)
+												>成功例子：输入org/apache/logging/log4j/core/selector/ContextSelector.class， 在 file:/D:/mvn/repository/org/apache/logging/log4j/log4j-core/2.12.1/log4j-core-2.12.1.jar 里寻找；
+												>成功之后的验证：构造new URL(), 封装到new Resource(){}里返回。@Resource checkResource()
+							>扩展类加载器：ext路径下，12个jar
+							>应用类加载器：Launcher$AppClassLoader ：就是6+12+工程的target/classes+ pom仓库路径如288个。这些信息在.ucp.path|lmap|loaders都有记录；
+						>另外：URLClassLoader.findClass(final String name)也是利用 URLClassPath.getResource(path, false)来实现，且内部依然使用URLClassPath的@getNextLoader()+@getResource(var1, var2)来实现加载目标类的；
+							>当用@URLClassPath.getResource("xx/xx/xx/xx.class", false)没有找到,也直接退出，返回null;找到了Resource,则@defineClass(name, res)定义了--加载byte[]数据...native方法调用；
+							
+					>然后遍历这个枚举的所有可能寻找jar包路径：从URL 封装为new UrlResource();则返回 Collection<UrlResource> @Collection<UrlResource> findUrlResources(final String resource)。。为 org.apache.logging.log4j.util.LoaderUtil的实现；
+				>完成后往往：重新将 Collection<UrlResource> 转为 Collection<Url>, 而此时可以遍历url，然后利用url.openStream():InputStream-->Properties	从而被加载；典型为@PropertiesPropertySource.loadPropertiesFile(final String fileName)的实现；(这个类的目的：然后将Properties里的kv放到System.setProperty(key, value))。。所在PropertiesUtil类 ，则又利用SPI机制来加载实现类。
+					>SPI机制加载接口类的实现类：@ServiceLoader.load(PropertySource.class, classLoader)  就是加载 PropertySource 接口的实现类；注入的cl就是三级加载器的依次；
+						>返回的ServiceLoader是个迭代器： new的同时还 new LazyIterator(service, loader) 另一个迭代器。外层迭代--是直接先调用providers属性的迭代--没有了则以LazyIterator的迭代进行补充；重点为 LazyIterator的迭代：
+							>hasNext(): 主线逻辑就是@Enumeration<URL> loader.getResources("META-INF/services/" + service.name);加载这个文件；然后获取这个文件内容按行构成的集合的迭代器：name-value
+							>next(): 主线逻辑就是加载 上述 的最后的 name(某行的name-类名)： @Class.forName(cn, false, loader)，后实例化且强制转换为目标接口类service.cast(c.newInstance())， 再放到providers里；
+						--是通过 jdk里的接口加载classpath目录下jar里的实现类；而 显然 AppClassLoader实例可以---因为里面的urls里包含了java.class.path里的每个jar的路径，但不能直接获取，但因为设置到了线程上下文里，所有直接无需新接口，而直接可以线程隔离地、内部不同地方又共享/分时共享的前后共享的获取到这个 AppClassLoader 实例。
+					>非SPI机制但也加载了实现类：通过遍历jar寻找目标文件，然后解析文件而得：
+						>先@getResourceAsStream(contextClassLoader, "META-INF/services/org.apache.commons.logging.LogFactory")
+							>出处：
+						>然后读取第一行：接着直接当做类名加载：@classLoader.loadClass(factoryClass)然后实例化@.newInstance()
+			>加载jar: jar的路径封装到URL里后openConnection() JarURLConnection	
+				>路径例子：jar:file:/D:/mvn/repository/org/apache/logging/log4j/log4j-slf4j-impl/2.12.1/log4j-slf4j-impl-2.12.1.jar!/org/slf4j/impl/StaticLoggerBinder.class
+				>一般(转换)过程：文件名-->URL-->
