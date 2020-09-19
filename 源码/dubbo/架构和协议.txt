@@ -1,0 +1,275 @@
+//品味：慢慢
+//spring的逻辑结构：情况-要做的事情； 数据-要做的事情：
+//流程动作> 调用方法@  分支判断# 
+//世界观：*
+//不止是为了单单为了实现这单一的功能仅此而已，必须考虑更多(情况)做更多(事情，准备；化被动为主动去做)，而不是直接仅仅只做什么。
+//考虑-决定-预防-收益/影响/后果-预测下一步要做什么(甚至下n步)
+//大的想法，具体行动。
+//出现了if-else就是因为有不同的考虑。
+//阅读文档达到直接可以看出思路编写程序的清晰逻辑的地步。
+//一个大函数功能直接看懂而描述。
+//从网上找答案变为从源码中找答案。
+//功能组织体系，而不是动作实现体系。是目标，是事情，而不是精细到实现方案的动作。
+//数据源-数据结果模式：而不是全部动作过程。
+//能够主动猜某个方法的功能和猜测它的实现。
+//情况-通用处理。
+//情况-精细结构。
+//数据结构-与处理。
+//某个时刻某个地方：所有可能用户做的事情。
+//就像是军队打仗一样：AbstractApplicationContext上下文就是总部主帅，负责整个流程，但实现个别子流程；ServletWebServerApplicationContext就是地区主帅，负责使用总部流程且根据区域情况具体化部分流程实现，同时负责分给不同的人去实现更细的子流程(用人/用器：如事件广播器、bean工厂、生命周期处理器; 向它们发号命令：调用/叫他们做什么)，层层下去到事务的精细结构。(负责事务的精细级别 就看出 和一线的和当前的距离)
+	>对一个事物类：他是有属性
+	>对一个组织类：他是有人；属性当作人。人可能是为他办事的，也可能是监听他的监听器。
+	>对一个系统类：他是有组件/器具；属性当作器具
+//为什么层次多：因为连续地向上进行了抽象，每层都分类了/拆分了不同的功能，每层连续往下拆分。
+//抽象到具体的描述。自然推理出来。才是架构。才是原本的架构。
+
+>正向看：
+	>org.apache.dubbo.container.Main类 @main(String[] args) 入口
+		>
+	>从@AbstractApplicationContext.refresh()开始：
+		>先：@AbstractApplicationContext.invokeBeanFactoryPostProcessors(ConfigurableListableBeanFactory beanFactory) 里面的代码直接有一行：@PostProcessorRegistrationDelegate.invokeBeanFactoryPostProcessors(beanFactory, getBeanFactoryPostProcessors());来调用
+			>先：@PostProcessorRegistrationDelegate.invokeBeanDefinitionRegistryPostProcessors()
+				>先： @ConfigurationClassPostProcessor.processConfigBeanDefinitions(BeanDefinitionRegistry registry) 中使用 reader来调用。@this.reader.loadBeanDefinitions(configClasses) 这里的配置类Class包括：所有的service的Class, 名字就是类的首字母小写；
+					>先：@ConfigurationClassBeanDefinitionReader.loadBeanDefinitions(Set<ConfigurationClass> configurationModel)-->@loadBeanDefinitionsFromImportedResources()
+						>先：@AbstractBeanDefinitionReader.loadBeanDefinitions(String location) --> @loadBeanDefinitions(Resource... resources) 
+							>核心：开始转到@XmlBeanDefinitionReader.loadBeanDefinitions(Resource resource)
+								>进一步：@doLoadBeanDefinitions(InputSource inputSource, Resource resource)
+									>@XmlBeanDefinitionReader/DefaultBeanDefinitionDocumentReader.registerBeanDefinitions(Document doc, Resource resource)
+										>再次到@DefaultBeanDefinitionDocumentReader.doRegisterBeanDefinitions(Element root)
+											>@DefaultBeanDefinitionDocumentReader.parseBeanDefinitions(Element root, BeanDefinitionParserDelegate delegate) 这里就会遍历xml的所有节点：开始遍历的解析ele并且注册；
+												>@BeanDefinitionParserDelegate.parseCustomElement(Element ele)
+													>@parseCustomElement(Element ele, @Nullable BeanDefinition containingBd): 开始实质的解析：获取解析器开始解析：@his.readerContext.getNamespaceHandlerResolver().resolve(namespaceUri) 这里的名称空间uri就是："http://dubbo.apache.org/schema/dubbo" 类似。
+														>先获取名称空间uri:@getNamespaceURI(ele)
+														>然后用这个名称空间解析出 NamespaceHandler: @this.readerContext.getNamespaceHandlerResolver().resolve(namespaceUri) 
+															>通过handerMappings(uri-handler类名)可以找到名称空间对应的解析处理器名："org.apache.dubbo.config.spring.schema.DubboNamespaceHandler" 或者实例Class对象---首次是string ,所以需要加载初始化，第二次就已经是Class对象了，所以直接返回即可。
+															>会执行初始化方法：@DefaultNamespaceHandlerResolver::namespaceHandler.init()
+															-----org.apache.dubbo.config.spring.schema.DubboNamespaceHandler 实现的@init()
+																>注册分别解析xml配置文件里的各个标签的解析器：application/module/registry/config-center/metadata-server/monitor/metrics/ssl/provider/consumer/protocol/service/reference/annotation
+																	>解析器：如 application标签---@new DubboBeanDefinitionParser(ApplicationConfig.class, true)
+																		>基本流程：还是 获取 标签 里的 name 属性的值：当做类名，如果bf里已经定义了，那么 加后缀2/3/4/5/..数字以示区别。这个名称 就是 BeanDefinition 的名字，放入bdmap;。。例如 ServiceBean/ReferenceBean
+																			>特别注意：ReferenceBean 是实现了 FactoryBean 接口的：所以这个bean的获取是@getObject() 获取ref ，但是开始ref为null 需要初始化。
+																				>最终转到父类 ReferenceConfig 的 @init()： 最终抽象层次具体到：
+																					>获取@DubboBootstrap.getInstance()单例；然后执行初始化@bootstrap.init()
+																						>
+																					>检查和更新子配置：@checkAndUpdateSubConfigs()
+																					>获取服务工厂：@ApplicationModel.getServiceRepository() 并且注册消费者：@repository.registerConsumer()
+																					>创建代理：@createProxy(map) 值就是赋值给 ref 
+																						>先一系列配置：其次，静态属性方式已经获取了代理工厂：@ExtensionLoader.getExtensionLoader(ProxyFactory.class).getAdaptiveExtension()
+																							>开始实质的获取代理：@PROXY_FACTORY.getProxy(invoker)
+																								>包装类获取代理：@StubProxyFactoryWrapper.getProxy(Invoker<T> invoker)
+																									>@org.apache.dubbo.rpc.proxy.AbstractProxyFactory.getProxy(Invoker<T> invoker, Class<?>[] types)
+																										>中间代理方：@JavassistProxyFactory.getProxy(Invoker<T> invoker, Class<?>[] interfaces)
+																											>最终进行: 则是通过 org.apache.dubbo.common.bytecode.Proxy 来获取实例的过程： 通过javassist.jar来实现的：类名：org.apache.dubbo.common.bytecode.Proxy0/1/2/3/4/5等自增数字结尾；而利用 javassist 中的 javassist.CtClass 类可以设置增加方法、field、构造方法、设置父类等；返回Class,然后使用class的newInstance()直接实例化。
+																								>通过获取invoker.getInterface()的nam + "Stub"/"Local" 之类形成类名 反射加载 用构造方法 实例化：	proxy再次，而上次那个proxy则注入。
+																								>最后输出代理实例-url关联：@export(T instance, Class<T> type, URL url)
+																									>转到@protocol.export(proxyFactory.getInvoker(instance, type, url))
+																									---以 org.apache.dubbo.rpc.protocol.dubbo.DubboProtocol 实现为例： 
+																										>拼装服务key:@ProtocolUtils.serviceKey()
+																										>构造exporter:@new DubboExporter<T>(invoker, key, exporterMap) 且会最终返回。
+																										>创建并打开服务器：@openServer(url)
+																											>创建服务器：@createServer(url) 缓存模式
+																											>url添加参数而格式化出str: 
+																											>url和回调绑定：@Exchangers.bind(url, requestHandler)
+																												--其中注意 requestHandler 这个属性：是 new ExchangeHandlerAdapter(){}的匿名实现。
+																													>实现@CompletableFuture<Object> reply(ExchangeChannel channel, Object message)方法 
+																														>先通过通道获取invoker:@getInvoker(channel, inv)
+																														>后执行invoker:@invoker.invoke(inv) 获取结果 Result 返回前运用：@.thenApply(Function.identity()) 里面纯粹是 result的实现。
+																												>先获取信息交换者：@getExchanger(url)
+																													>扩展加载器方式加载：@ExtensionLoader.getExtensionLoader(Exchanger.class).getExtension(type)
+																												>后进行实际的绑定：@bind(url, handler)
+																													>url绑定new DecodeHandler() :@Transporters.bind()
+																														>再次扩展加载器方式加载Transporter:@ExtensionLoader.getExtensionLoader(Transporter.class).getAdaptiveExtension()
+																														>然后再次@bind(): 
+																															---以netty4 实现为例：@org.apache.dubbo.remoting.transport.netty4.NettyTransporter
+																																>直接新建服务器：@new org.apache.dubbo.remoting.transport.netty4.NettyServer(url, listener)
+																																	>从父类开始：@AbstractServer()
+																																		>设置绑定ip和地址：
+																																		>打开连接：@doOpen() 由子类实现；
+																																			>开始全面的调用Netty api: @new io.netty.bootstrap.ServerBootstrap()
+																																			>事件循环组：@new NioEventLoopGroup()
+																																			>服务回调处理器：@new NettyServerHandler(getUrl(), this)
+																																			>开始分组配置：@bootstrap.group(bossGroup, workerGroup).....@.childHandler(new ChannelInitializer<NioSocketChannel>() {});之类的初始化通道等；
+																																			>创建执行器：@createExecutorIfAbsent(URL url)即 java的 ExcutorService;
+																													>新建交换服务器：new HeaderExchangeServer()
+																														>启动一个检查任务：检查闲逛的服务器Server---然后将它的通道关闭：@startIdleCheckTask(getUrl());
+																											>绑定完成之后：直接返回服务器 @new DubboProtocolServer(server)		
+																										>最优化的序列化：@optimizeSerialization(url)
+																					>寻找引用的服务：@repository.lookupReferredService()
+																					>分发一个引用配置初始化事件：@dispatch(new ReferenceConfigInitializedEvent(this, invoker))
+																						>分发器分发：@EventDispatcher.getDefaultExtension().dispatch(event) 实际上是发布订阅模式；让所有的listener执行.onEvent(event)方法;
+														>最后用这个NH实例进行解析：@NamespaceHandlerSupport.parse(Element element, ParserContext parserContext)
+															>解析转发：寻找具体的BeanDefinitionParser 实现类：@parse(Element element, ParserContext pc)
+																
+																
+>反向看：使用方向
+	>调用一个方法开始：
+	>被请求一个方法开始：
+	>spring-boot启动开始：从@AbstractApplicationContext::refresh()开始
+		>实例化所有剩余的非懒初始化的单例：@finishBeanFactoryInitialization(beanFactory)
+			>最后交给bf实现：@beanFactory.preInstantiateSingletons();
+				>获取全部的beanDefinitionNames:  里面包含 service/config/dataSource/processor/advice等等全部，如308个。
+				>遍历每一个：如果是 FactoryBean 则按工厂方式获取，否则按照普通方式获取: 都是@getBean(beanName)  其中如果有构造方法来实例化：会最终走：sun.reflect.NativeConstructorAccessorImpl 的@native Object newInstance0(Constructor<?> var0, Object[] var1)---->从这里开始，就转到具体类的构造方法上了：如  org.apache.dubbo.config.spring.ServiceBean()
+					>注意在@AbstractAutowireCapableBeanFactory::initializeBean()阶段会：执行 初始化方法@invokeInitMethods(beanName, wrappedBean, mbd) 内部即@InitializingBean::afterPropertiesSet()
+						>而在这里：往往有的类就会执行自己的初始化方法：有的还会发事件：new MappingContextEvent<>(this, entity))
+							>而发事件会进一步找广播器来广播事件给匹配的listener:@getApplicationEventMulticaster().multicastEvent(applicationEvent, eventType)
+								>而接受者 listener一定有：DubboBootstrapApplicationListener
+					--这里看 "com.ihuaben.dubbo.api.iservice.manager.IChapterAuditService" 这个beanName的实例化创建过程：同样的那308个都是一样被实例化的。
+						>获取 RootBeanDefinition 对象: 而其中有个属性 resolvedTargetType = "org.apache.dubbo.config.spring.ServiceBean" beanClass="org.apache.dubbo.config.spring.ServiceBean"
+							>回调方式创建：解析出beanClass= ServiceBean 
+								>在@doCreateBean()之前走processor: 共有14个。过滤出 InstantiationAwareBeanPostProcessor 实现类
+									>org.springframework.context.annotation.ConfigurationClassPostProcessor实现了：InstantiationAwareBeanPostProcessor @postProcessBeforeInstantiation(beanClass, beanName)方法
+									>org.springframework.aop.aspectj.annotation.AnnotationAwareAspectJAutoProxyCreator 
+									>org.springframework.context.annotation.CommonAnnotationBeanPostProcessor
+									>org.apache.dubbo.config.spring.beans.factory.annotation.ReferenceAnnotationBeanPostProcessor
+									>org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor
+								>后在@createBeanInstance()中再次走processor: 过滤出：SmartInstantiationAwareBeanPostProcessor 实现类 
+									>...再次没有应用出有意义的。
+								>后在@instantiateBean()方法中对 ServiceBean 用构造方法 方式 实例化： 得到 了 ServiceBean的实例。
+								>后再在@doCreateBean()中应用processor: 过滤出 MergedBeanDefinitionPostProcessor 实现类 
+									>org.springframework.context.annotation.CommonAnnotationBeanPostProcessor ： @postProcessMergedBeanDefinition()方法的执行
+										>先调用父类同名方法：InitDestroyAnnotationBeanPostProcessor.postProcessMergedBeanDefinition()
+											>查出初始化方法@org.apache.dubbo.config.AbstractConfig.addIntoConfigManager()
+									>org.apache.dubbo.config.spring.beans.factory.annotation.ReferenceAnnotationBeanPostProcessor: 
+										>寻找注入 的Field+Method元数据：AnnotatedInjectionMetadata  后以元数据检查beandefinition:@metadata.checkConfigMembers(beanDefinition);
+									>org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor	
+										>寻找自动绑定的元数据：没有则构建：@buildAutowiringMetadata(clazz) 后用来检查成员：@metadata.checkConfigMembers(beanDefinition)
+									>org.springframework.context.support.ApplicationListenerDetector：	
+								>开始@populateBean(): 开始属性注入
+									>再次先走processor: 过滤出 InstantiationAwareBeanPostProcessor 实现类： 
+									>再走processor: 过滤出 InstantiationAwareBeanPostProcessor 实现类：走 @postProcessProperties()方法 ：属性处理--串联方式；不断包裹filter。
+										>org.springframework.context.annotation.CommonAnnotationBeanPostProcessor:
+											>最终7个属性：id/ref/interface/version/delay/async/timeout
+											>最后应用属性：@applyPropertyValues()
+												>id: 值为 接口名： com.ihuaben.dubbo.api.iservice.manager.ITopSprintService 通过评估方式 @evalute() 结果还是字符串名。
+													>转换服务之后：convertService 还是 字符串。
+												>ref: 值为 org.springframework.beans.factory.config.RuntimeBeanReference 对象,其name="topSprintService" 。所以当做引用来解析：@resolveReference(argName, ref)
+													>评估方式获取ref的beanName，还是 topSprintService 字符串值。
+													>开始用beanFactory.getBean("topSprintService") 来获取 实例。发现单例池里面已经有了这个名字的单例： com.ihuaben.dubbo.service.manager.TopSprintService 的实例---即一个自己编写的service实例。
+													>最后注册依赖：@this.beanFactory.registerDependentBean(resolvedName, this.beanName) ： resolvedName="topSprintService" , beanName="com.ihuaben.dubbo.api.iservice.manager.ITopSprintService"
+													>返回这个 单例 bean。
+												>interface：值为 接口 字符串； 解析的时候就直接走评估了；	valueResolver.resolveValueIfNecessary(pv, originalValue)--->@evalute();从而结果还是字符串。
+													>解析：走评估 返回原值。
+													>转换服务：直接还是 原值。
+												>version: 空。	
+													>解析：空 
+													>转换：空。 
+												>delay: 空。 
+													>解析：空 
+													>转换：空。 
+								>开始@initializeBean（）： 开始激活意识方法：
+									>实现了 BeanNameAware 接口： 则注入 beanName 
+									>再次应用 processor: 不做过滤：直接执行每一个的@postProcessBeforeInitialization()
+										>org.springframework.context.support.ApplicationContextAwareProcessor: 核心内容为：
+											>激活感知接口：注入相关全局工具/上下文。@invokeAwareInterfaces(bean) EnvironmentAware/EmbeddedValueResolverAware/ApplicationEventPublisherAware/ApplicationContextAware
+										>com.alibaba.spring.beans.factory.annotation.ConfigurationBeanBindingPostProcessor:	
+											--说明：在对 "org.apache.dubbo.config.ApplicationConfig#0" 实例化构建 时，在@initializeBean()里的首先应用processor时：对当前这个配置processor进行处理：。。对 “org.apache.dubbo.config.RegistryConfig#0” 构建也是；
+												>获取定义：beanDefinition
+												>绑定定义：bindConfigurationBean(bean, beanDefinition)
+													>直接获取bf里的attribute属性里的"configurationProperties" 属性的值：就是配置：例如zk的配置："address" -> "zookeeper://39.105.71.50:2181" ，"client" -> "curator" "timeout" -> "15000" 之类，在一个map里
+													>开始实质的绑定：@org.apache.dubbo.spring.boot.autoconfigure.BinderDubboConfigBinder.bind()
+														>再次：@org.springframework.boot.context.properties.bind.Binder.bind("", bindable, bindHandler);  @bindObject()
+															>实现的效果：从上下文获取属性，后绑定属性到对象：@bindProperty(target, context, property)
+															>没有属性则绑定数据对象：@bindDataObject(name, target, handler, context, allowRecursiveBinding)
+																>核心：遍历属性：dataObjectBinders:DataObjectBinder 逐个绑定：实现类：
+																	>ValueObjectBinder:
+																	>JavaBeanBinder:.bind() 工作逻辑：获取全部Bean的属性，一个个遍历绑定：@bind(beanSupplier, propertyBinder, beanProperty) ，值是回调获取的supplier方式：从上下文获取属性。
+												--效果：就将bf里的属性设置到了bean实例里。这个实例是：RegistryConfig#0”			
+												>客户端定制化：@customize(beanName, bean)
+													>遍历已经得到的customizer: 第一个是 DubboConfigBeanCustomizer ，对每一个，进行 定制化：@customizer.customize(beanName, configurationBean) 所以看 dubbo的这个实现：
+														>最终到了：@NamePropertyDefaultValueDubboConfigBeanCustomizer.customize(String beanName, AbstractConfig dubboConfigBean)
+															>反射获取getName()这个方法的Method, 反射执行：得到值 就是 <dubbo:application > 的 name 值：
+										>org.springframework.context.annotation.CommonAnnotationBeanPostProcessor: 即获取生命周期元数据，执行 指定的 初始化方法
+											>反射方式获取Method且执行：@public void org.apache.dubbo.config.AbstractConfig.addIntoConfigManager()方法，@element.invoke(target)  target=ApplicationConfig
+										>org.springframework.beans.factory.annotation.InitDestroyAnnotationBeanPostProcessor
+											>找到指定的初始化方法：反射方式执行：@this.method.invoke(target, (Object[]) null) 方法名：addIntoConfigManager()
+									>再次外层执行初始化方法：@invokeInitMethods(beanName, wrappedBean, mbd)	此次这是找到 是否 实现了 InitializingBean 接口： 
+										>实现了，则执行：@.afterPropertiesSet()
+									>再次应用processor: 不做过滤：直接执行每一个的@postProcessAfterInitialization()
+										>org.springframework.aop.framework.autoproxy.AbstractAutoProxyCreator: 可能会执行缓存：
+											>执行必要的包装：@wrapIfNecessary()
+												>最经典的：获取切点：@getAdvicesAndAdvisorsForBean(bean.getClass(), beanName, null)
+													>寻找合格的通知者：@findEligibleAdvisors(beanClass, beanName) 类=org.apache.dubbo.config.spring.ServiceBean， name=com.ihuaben.dubbo.api.iservice.manager.ITopSprintService
+														>获取候选：
+															>缓存有2个：org.springframework.transaction.config.internalTransactionAdvisor   , defaultPointcutAdvisor
+																>遍历这两个name: 对每个从bf里获取 实例：并确保是 Advisor 的实现类：@this.beanFactory.getBean(name, Advisor.class)
+																	>实际实例：org.springframework.transaction.interceptor.BeanFactoryTransactionAttributeSourceAdvisor  和  org.springframework.aop.support.DefaultPointcutAdvisor
+														>从aspectJ里补充：@this.aspectJAdvisorsBuilder.buildAspectJAdvisors()
+													>过滤出能应用的：即用ClassFilter/PointCut来匹配 过滤：@AopUtils.findAdvisorsThatCanApply(candidateAdvisors, beanClass)
+														>如果是 IntroductionAdvisor 类型 ： 那么用 ClassFilter.matches(targetClass);
+														>如果是 PointCutAdvisor 类型： 那么用 .getPointCut().getMethodMatcher().matches(method, targetClass) 来对 targetClass 的全部声明方法 进行匹配。有一个能应用都说明是可以应用的。
+													>进行对Advisor通知者排序：	比较器：AspectJPrecedenceComparator  先用 AnnotationAwareOrderComparator 比较。Ordered类的.getOrder()
+														>获取Advisor的序号：
+												>如果Advisors不是空：那么就要利用目标类Class\bean实例\Advisor来创建代理：@createProxy()
+													>创建代理比较固定：new ProxyFactory() 
+													>设置要代理的目标类：
+													>构建Advisor组：@buildAdvisors(beanName, specificInterceptors)
+														>主要目的：对每个Advsior进行一次包装：@this.advisorAdapterRegistry.wrap()
+															>如果是Advisor实例：直接返回 
+															>如果不是 Advice: 封装到   UnknownAdviceTypeException
+															--此时一定是Advice了：
+															>如果是方法拦截器：MethodInterceptor 实例，那么 封装到 	new DefaultPointcutAdvisor(advice) 里。
+															>否则遍历 adapters： 对每个 AdvisorAdapter， 如果其中一个 支持 advice ：@adapter.supportsAdvice(advice) 那么直接封装到new DefaultPointcutAdvisor(advice) 返回了。
+													>设置到 proxyFactory里：proxyFactory.addAdvisors(advisors)
+													>构建：@proxyFactory.getProxy(getProxyClassLoader())
+														>创建AOP代理：@createAopProxy()
+															>分如果目标类targetClass是接口：那么用jdk动态代理：new JdkDynamicAopProxy(config)
+																>最后就是常见的动态代理：@Proxy.newProxyInstance(classLoader, proxiedInterfaces, this)
+															>否则用cglib的aop代理：new ObjenesisCglibAopProxy(config)
+																>最后就是：Enhancer enhancer = createEnhancer() 设置@enhancer.setCallbacks(callbacks) 回调。
+														>获取代理：@getProxy(classLoader)
+													>直接返回这个代理：proxy 
+												>是空：则返回bean即可。		
+									>返回包装的bean
+								>注册销毁接口：@registerDisposableBean()   DisposableBean		
+						>创建完成：返回。								
+		>最后发送通信事件：@finishRefresh()	
+			>发送上下文刷新事件：@publishEvent(new ContextRefreshedEvent(this))
+				>采用广播模式发送事件：@getApplicationEventMulticaster().multicastEvent(applicationEvent, eventType)
+					>寻找匹配上下文事件类型的 全部 ApplicationListener： @SimpleApplicationEventMulticaster.getApplicationListeners(event, type)
+						>其中就有：DubboBootstrapApplicationListener 监听器， 开始激活：@invokeListener(listener, event)
+							>转到@doInvokeListener(listener, event) 执行核心的：@listener.onApplicationEvent(event)
+								>转到上下文事件响应方法：@onApplicationContextEvent(ApplicationContextEvent event)
+									>执行@onContextRefreshedEvent(ContextRefreshedEvent event)
+										>核心：@dubboBootstrap.start() 这个 dubboBootstrap 也是单例获取：@DubboBootstrap.getInstance()
+											>先初始化：@initialize()
+												>框架扩展初始化：@iniFrameworkExts()
+												>启动配置中心：@startConfigCenter()
+													>获取配置中心集合：ConfigCenterConfig ; <dubbo:config-center ...>
+													>遍历每个配置中心：
+														>先刷新：@ConfigCenterConfig.refresh()
+														>获取 ConfigCenterConfig的所有方法：逐个遍历：判定为设置 类型方法：@
+															>很神奇：从@CompositeConfiguration.getInternalProperty(String key) 来获取值，然后又set值：---但获取的值有过滤处理。
+																>CompositeConfiguration有配置属性：@configList:Configuration 遍历，如果其中一个配置包含key这个键，那么取它的值：。。所以这个configList就是属性值的来源。
+													>验证配置和添加动态配置：@compositeDynamicConfiguration.addConfiguration(prepareEnvironment(configCenter))	
+													>配置管理刷新所有：@configManager.refreshAll()
+														>ApplicationConfig::refresh MonitorConfig::refresh  ProtocolConfig::refresh RegistryConfig::refresh ProviderConfig::refresh ConsumerConfig::refresh
+													>有必要配置中心用registry：@useRegistryAsConfigCenterIfNecessary()
+													>启动元数据报告：即生成一个 MetadataReport: url=“zookeeper://39.105.71.50:2181/org.apache.dubbo.metadata.report.MetadataReport”
+													>检查全局配置：@checkGlobalConfigs()
+													>初始化元数据服务：@initMetadataService() 
+														>getExtensionLoader(WritableMetadataService.class)获取来配置：metadataService属性。
+													>初始化元数据服务exporter；@initMetadataServiceExporter()类似上。
+													>初始化事件监听器：@initEventListener()
+														>就是addEventListener(this)；就是将 DubboBootstrap 直接注册到listerner: 一般的事件分发。只注册到：org.apache.dubbo.event.AbstractEventDispatcher
+											>后执行输出全部服务：@exportServices()
+												>获取全部配置：ServiceConfig, 对于某个sc, 其 beanName="com.ihuaben.dubbo.api.iservice.manager.IApplyRecommendationService"是用户写的。
+												>逐个遍历：放到线程池执行：@sc.export()
+													>如果bootstrap null：会实例化并初始化@init()
+													>继续检查子配置：@checkAndUpdateSubConfigs()
+													>开始真正的输出：@doExport() 
+														>核心输出：@doExportUrls()
+															>获取服务仓库：@ApplicationModel.getServiceRepository()
+															>使用仓库注册服务：@repository.registerService(getInterfaceClass())
+															>使用仓库注册提供者：@repository.registerProvider()
+															>遍历每个协议配置：再次执行注册服务，后进行实质的输出url for 协议：@doExportUrlsFor1Protocol()。。协议配置就是：<duboo:protocol ...>的实体映射。
+																>核心为获取全部的方法：对方法进行输出：@getMethods()  获取到的是方法配置，后处理放到map里 
+																>找到host和port: 构造url:其格式如："dubbo://192.168.3.32:20883/com.ihuaben.dubbo.api.iservice.manager.IApplyRecommendationService?accepts=500&anyhost=true&application=ihuabenservice-server&bind.ip=192.168.3.32&bind.port=20883&deprecated=false&dubbo=2.0.2&dynamic=true&generic=false&interface=com.ihuaben.dubbo.api.iservice.manager.IApplyRecommendationService&methods=saveOrUpdateApplyRecommendation,getApplyRecommendationById,getApplyRecommendations,executeApplyRecommendation,getLastApplyRecommendation&pid=10724&qos.enable=false&release=2.7.5&retries=0&side=provider&threadpool=fixed&threads=500&timeout=30000&timestamp=1600167916197"
+																>获取Invoker并且包装：后使用协议 输出：@protocol.export(wrapperInvoker) 得到 Exporter  后面的实现类似上面。
+																#对于本地：会使用另一个方式输出：@exportLocal(url) 但是执行之后还是会执行上述：@protocol.export(wrapperInvoker)
+																	>协议的url变为：“injvm://127.0.0.1/com.ihuaben.dubbo.api.iservice.manager.IApplyRecommendationService?accepts=500&anyhost=true&application=ihuabenservice-server&bind.ip=192.168.3.32&bind.port=20883&deprecated=false&dubbo=2.0.2&dynamic=true&generic=false&interface=com.ihuaben.dubbo.api.iservice.manager.IApplyRecommendationService&methods=saveOrUpdateApplyRecommendation,getApplyRecommendationById,getApplyRecommendations,executeApplyRecommendation,getLastApplyRecommendation&pid=10724&qos.enable=false&release=2.7.5&retries=0&side=provider&threadpool=fixed&threads=500&timeout=30000&timestamp=1600167916197”
+																	>再次用协议对象输出：@ protocol.export(ROXY_FACTORY.getInvoker(ref, (Class) interfaceClass, local)) 具体实现上述已有，不再陈述。
+														>发送服务配置输出事件：@dispatch(new ServiceConfigExportedEvent(this))
+											>后可能输出元数据服务：@exportMetadataService()
+											>可能注册服务实例：@registerServiceInstance()
+											>引用全部服务：@referServices()
+											

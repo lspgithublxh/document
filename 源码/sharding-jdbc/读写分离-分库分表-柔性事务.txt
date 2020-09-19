@@ -1,0 +1,179 @@
+
+
+
+
+
+
+
+
+
+
+
+>配置类：
+	>主从规则配置：用户自己写的，数据源新建时 就注入了：@new ShardingDataSource()需要入参：
+		>分片规则实例 new ShardingRule()
+			>ruleConfiguration:ShardingRuleConfiguration 属性；就是用户自己编写的规则实例；master数据源名，slave数据源名集合。
+			>shardingDataSourceNames 属性：就是用户写的数据源map的key集合；处理后，只选ms 这种 名称， 封装到new ShardingDataSourceNames()对象；
+			>tableRules 属性： 用户配置了tableRuleConfigs则有；。。根分库分表有关；
+			>广播表/绑定表规则bindingTableRules： 配置了才有；
+			>默认分库/分表/键生成策略： 配置了才有； 
+			>masterSlaveRules ： 主从规则。直接根据用户配置的 masterSlaveRuleConfigs 设置；主库数据源名，从库数据源名集合， 负载均衡策略(也是配置的如round_robin/随机)：
+		
+>路由类：
+	>默认数据库路由：ShardingDefaultDatabaseRoutingEngine  根据路由规则路由选择出 数据源名；几乎直接从 ShardingDataSourceNames 里 获取；
+	>包含最终使用的数据源名+sql+参数： ExecutionUnit  
+	>执行sql-从sharding-jdbc转到driud的边缘处： SQLExecuteCallbackFactory 执行sql语句， 转调入参即 DruidPooledStatement 的 executeUpdate()方法；
+	>获取结果-从sharding-jdbc转到driud的边缘处：ShardingPreparedStatement.@getResultSets() 转调入参即 DruidPooledStatement 的 getResultSet()方法； 
+	
+>SPI加载类：
+	>存储仓库：NewInstanceServiceLoader.SERVICE_MAP 记录了，SPI接口--实现类集合 的映射；	  
+		>存储接口1： interface org.apache.shardingsphere.spring.boot.datasource.DataSourcePropertiesSetter
+			>实现类： class org.apache.shardingsphere.spring.boot.datasource.TomcatDbcp2DataSourcePropertiesSetter 等
+		>存储接口2：RouteDecorator
+		>存储接口3： org.apache.shardingsphere.spi.keygen.ShardingKeyGenerator
+			>实现类：org.apache.shardingsphere.core.strategy.keygen.SnowflakeShardingKeyGenerator
+		>存储接口4：org.apache.shardingsphere.spi.masterslave.MasterSlaveLoadBalanceAlgorithm
+			>实现类： org.apache.shardingsphere.core.strategy.masterslave.RoundRobinMasterSlaveLoadBalanceAlgorithm 、 org.apache.shardingsphere.core.strategy.masterslave.RandomMasterSlaveLoadBalanceAlgorithm
+	>SPI加载启动入口类： DataSourcePropertiesSetterHolder 静态方法 ， 第一步就是 启动SPI加载 DataSourcePropertiesSetter 实现类；第二步，转移 具体实现 到 其属性 .DataSourcePropertiesSetterHolder.DATA_SOURCE_PROPERTIES_SETTER_MAP里	
+		>入口代码1：DataSourcePropertiesSetterHolder 内 @NewInstanceServiceLoader.register(DataSourcePropertiesSetter.class)
+		>入口代码2：ShardingDataSource 内 @NewInstanceServiceLoader.register(RouteDecorator.class);NewInstanceServiceLoader.register(SQLRewriteContextDecorator.class)；NewInstanceServiceLoader.register(ResultProcessEngine.class);
+		>入口代码3：ShardingKeyGeneratorServiceLoader 内 @NewInstanceServiceLoader.register(ShardingKeyGenerator.class)
+		>入口代码4： MasterSlaveLoadBalanceAlgorithmServiceLoader 内 @NewInstanceServiceLoader.register(MasterSlaveLoadBalanceAlgorithm.class)
+>普通数据源加载的时机：
+	>创建bean: org.apache.shardingsphere.shardingjdbc.spring.boot.SpringBootConfiguration	
+		>@initializeBean()阶段：@applyBeanPostProcessorsBeforeInitialization(bean) 步骤：使用 ApplicationContextAwareProcessor 这个processoer.postProcessBeforeInitialization()时候：又在@invokeAwareInterfaces()方法的调用：
+			>因为实现了 EnvironmentAware ， 所以执行注入环境：@SpringBootConfiguration.setEnvironment(final Environment environment)
+				>从环境里获取 spring.shardingsphere.datasource.names 的值，并list化：如 user-master,user-slave 
+				>逐个遍历name，来获取数据源，并放到map里：k=user-master,v=DataSource
+					>获取数据源：利用@PropertyUtil.handle()来获取 spring.shardingsphere.datasource.user-master 下级所有属性-值，放到的一个map里；相当于配置整理；
+					>如果有jndi-name下级：走jndi
+					#否则普通方式：
+						>根据type配置 反射加载这个数据源并实例化、然后将前面获取的数据库配置设置进去：@DataSourceUtil.getDataSource()实现；
+						>开始静态调用：@DataSourcePropertiesSetterHolder.getDataSourcePropertiesSetterByType()方法，所以会执行其 static{}代码；显然，查找类路径加载所有可能的数据源后如果没有发现 匹配的，那么就返回空；找到了 实现类 DataSourcePropertiesSetter ， 那么就从环境里取出更多的数据源属性：spring.shardingsphere.datasource.user-master.data-source-properties这个key的所有下级k-v并之前的一起设置到 数据源 DataSource 里。
+						
+>ShardingDataSource的创建：new ShardingDataSource()
+	>先创建分片规则： new ShardingRule()
+	>遍历用户创建的普通数据源：对每个数据源
+		>获取它的类型：DatabaseType， 通过打开这个数据库连接， SPI机制加载 DatabaseType 的实现类：Mysq/oracle/h2/postgrelsql/sql92等； 然后和 这个数据源的url逐个匹配，如果匹配，那么就是该数据源；
+		>然后会监测，如果这个数据源类型和上一个数据源类型不一样，则是不支持的！！！！不支持跨不同类型的数据源；
+	>同时也会监测：用户创建的数据源，不能是 MasterSlaveDataSource 类型；
+	>通过父类：设置 dataSourceMap 属性； 
+ 	>设置runtimeContext ： @new ShardingRuntimeContext()
+		>递归到祖类：
+			>设置 properties = new ConfigurationProperties() --> 父类为 TypedProperties 设置 操作数据库属性 如sql.show 等的记录 ；cache 属性； 
+			>设置 databaseType
+			>executorEngine: new ExecutorEngine()
+				>executorService=new ShardingSphereExecutorService(executorSize) 大小为3
+					>executorService=实际是Executors.newFixedThreadPool()创建后的，再装饰一下：new ListeningDecorator(delegate)
+					>60s后注册一个线程到jvm摧毁：执行内容 service.shutdown();service.awaitTermination(terminationTimeout, timeUnit);
+			>sqlParserEngine: 根据数据库类型获取： mysql--new SQLParserEngine(databaseTypeName)  后实例化，放到 engines map里；
+			--打印数据库主从配置规则
+			--打印配置的操作属性
+		>设置元数据：
+			>打开每个数据源的连接：直接@connection.getMetaData()获取数据元信息，封装到 new DatabaseAccessConfiguration()  map而返回
+			>通过数据库类型DatabaseType而 解析出hostname/db/port等之类：到 @new MySQLDataSourceMetaData()里 
+			>这样：元数据的dataSourceMetaDataMap 属性就是解析后的数据源信息map;
+		>设置模式信息：
+			>需要表分片规则：
+				>有：
+					>获取针织的默认数据源名：@findActualDefaultDataSourceName()
+						>获取默认的数据源名：@getDefaultDataSourceName() 其实就是 上述的 ms, 即name;
+						>过滤的方式找到ms的主数据源名：master 
+					>从默认数据源获取schema信息：@SchemaMetaDataLoader.load()	即用master数据源进行；
+						>打开连接：获取全部表名；对每个表，又获取全部列定义；ColumnMetaData - TableMetaData
+					>将表列元数据封装到：@new SchemaMetaData(tableMetaDataMap)
+					>元数据装饰：@SchemaMetaDataDecorator.decorate()
+					>直接封装到 @new ShardingSphereMetaData()
+				>没有则直接@new SchemaMetaData(tableMetaDataMap)
+		>设置事务管理器引擎并初始化：
+			>shardingTransactionManagerEngine= new ShardingTransactionManagerEngine()
+				>SPI机制加载 ShardingTransactionManager 的实现类： 设置到 transactionManagerMap属性；
+			>shardingTransactionManagerEngine.init(databaseType, dataSourceMap) 就是对每个 事务管理器实现类 初始化；
+			-- 事务隔离级别/事务传播级别 描述接口：TransactionDefinition
+
+>含有mapper调用的服务方法的执行过程：代理执行中：
+	>首先proceed找到advice为：TransactionInterceptor 事务拦截器；因为 它 是 MethodInterceptor 的实现者；所以 执行它的invoke()方法：
+		>核心方法为：@invokeWithinTransaction()
+			>核心语句：@TransactionInfo txInfo = createTransactionIfNecessary(ptm, txAttr, joinpointIdentification)创建事务 
+				>使用事务管理器获取事务：@tm.getTransaction(txAttr)
+					>检查当前是否有事务、事务传播级别：
+					>开启新事务：AbstractPlatformTransactionManager@startTransaction()
+						>真正开始：DataSourceTransactionManager@doBegin(Object transaction, TransactionDefinition definition)
+							>普通方式获取数据源：DataSourceTransactionManager@obtainDataSource() 后利用来获取连接：@new ShardingConnection()   事务类型的设置：唯一--是local
+							>设置事务同步：true 
+							>准备连接：获取隔离级别
+							>设置不自动提交：
+							>设置事务超时时间：
+							>数据源-连接的绑定：
+		>事务info获取之后：进一步proceed: 此时会转到 proceed到 PersistenceExceptionTranslationInterceptor 开始的执行；	@openSession(ExecutorType execType)之类地方；
+	>第一个proceed找到的advice为： PersistenceExceptionTranslationInterceptor 
+		>毫无内容：直接proceed()
+	>第二轮直接走连接点：@invokeJoinpoint()
+		>执行@AopUtils.invokeJoinpointUsingReflection(this.target, this.method, this.arguments)
+			>惊人的直接进行：@method.invoke(target, args) 其中方法就是mapper方法，target则是代理了--org.apache.ibatis.binding.MapperProxy--有invoke()方法。这个类实例化：就sqlSession + mapperInterface+methodCache
+			...后面跟反射有关：最后直接@native Object invoke0(Method var0, Object var1, Object[] var2)本地方法了；还是调用的是MapperProxy 
+				>到了代理类，则mapper方法是明确了：调用@mapperMethod.execute(sqlSession, args) 这里的会话就是 MapperProxy的；
+					>分增删改查：如果是查：用会话进行：@sqlSession.selectOne(command.getName(), param)
+						>终将转到：DefaultSqlSession@selectList(String statement, Object parameter, RowBounds rowBounds)
+							...执行Plugin.invoke()的回调。
+								>转用拦截器进行：@interceptor.intercept(new Invocation(target, method, args)) --拦截器为  com.github.pagehelper.PageHelper
+							>终将用executor来执行：BaseExecutor@query()   后 @queryFromDatabase()
+								>到 SimpleExecutor@doQuery(ms, parameter, rowBounds, resultHandler, boundSql)
+									>语句准备时获取连接：@transaction.getConnection() 通过事务获取；SpringManagedTransaction 	
+										>打开连接方式：@DataSourceUtils.getConnection(this.dataSource)
+											>通过threadlocal方式从 @TransactionSynchronizationManager.resources() 的 DataSource-Connection映射中找到；		
+									>语句的实例化等：		
+									>语句设置参数：
+								...
+									>终将使用 @ShardingPreparedStatement.execute()来执行：
+										>执行准备：最关键的：BasePrepareEngine@prepare(final String sql, final List<Object> parameters)
+											>路由执行：@executeRoute(final String sql, final List<Object> clonedParameters) org.apache.shardingsphere.underlying.pluggble.prepare.BasePrepareEngine
+												>创建路由上下文：@createRouteContext()
+													>核心：调用解析引擎解析 sql: @parserEngine.parse(sql, useCache)
+														>核心解析：SQLParserEngine@parse0(sql, useCache)	
+															>核心：sql解析审查visit：@ParseTreeVisitorFactory.newInstance(databaseTypeName, VisitorRule.valueOf(parseTree.getClass())).visit(parseTree)
+																>到AbstractParseTreeVisitor解析：@visit(ParseTree tree) 再到 MySQLStatementVisitor 的解析 
+																	>最终到：MySQLStatementVisitor 审查sql的每个部分：@MySQLDMLVisitor.visitSelect()或者@MySQLDMLVisitor.visitSelectClause(final SelectClauseContext ctx) 
+																		>这里就会：分 where/from/groupby/orderby/limit/lock 进行审查：
+																		>但是如果没有lock 子句：那么就会返回null!!所以根本不会设置 lock !!!  获取lock子句即：@ctx.lockClause()
+												>获取SPI注册的路由装饰器：@NewInstanceServiceLoader.newServiceInstances(orderAwareClass)
+												>注册装饰器到路由器router:DataNodeRouter：一般2个；shardingrule, masterslaverule 
+												>执行路由： 
+													>先创建路由上下文：@new RouteContext()包括解析sql;
+													>遍历两个装饰器：进行装饰；
+														>第一个装饰器：ShardingRouteDecorator 														
+															>创建分区条件：ShardingConditions 
+															>创建分区路由引擎：@ShardingRouteEngineFactory.newInstance()
+																>默认则是：即没有分库分表规则，不是广播表，且逻辑表名不是空：则 new ShardingDefaultDatabaseRoutingEngine()
+															>执行路由： 
+																>对于 ShardingDefaultDatabaseRoutingEngine, 具体做法 就是 逻辑表名=实际表名，封装到 RouteMapper里；进一步到 new RouteUnit()里；封装到  RouteResult 里 返回，这个就是路由结果；
+														>第二个装饰器： MasterSlaveRouteDecorator
+															>(只要主从规则name和mapper的name一样ms)则构建new MasterSlaveDataSourceRouter(masterSlaveRule)执行路由： @route()
+																>非常经典：先看是否是 主路由：@isMasterRoute(sqlStatement) 是主路由，那么直接返回主数据源名！！！！同时设置@MasterVisitedManager.setMasterVisited(); 从而同一个线程，下次访问的时候，直接就走master了；！
+																	>主路由条件：
+																		>第一种：SelectStatement 且带上锁段；但是发现 lock属性一般是null,设置为一个值 在：
+																		>第二种：不是 SelectStatement ;
+																		>第三种：当前线程访问过主数据源@MasterVisitedManager.isMasterVisited(); 
+																		>第四种：hint机制@HintManager.isMasterRouteOnly() 查询到 线程局部变量 HINT_MANAGER_HOLDER  HintManager.masterRouteOnly = true  
+																>不是则查看负载均衡算法执行选择一个slave数据源名：@masterSlaveRule.getLoadBalanceAlgorithm().getDataSource()
+																	>例如：使用了 round_robin算法：RoundRobinMasterSlaveLoadBalanceAlgorithm  就是采用 自增i % slave.size方式选择一个slave名；
+																--此时返回的如果是slave数据源名，那么增加的@RouteUnit() 中的logciName--acturalName就是：ms -- slave  找到真正的数据源名 就成功了；！
+														---后面的装饰器，会删除前面的装饰器设置的 ms--数据源名 映射 对 ；增加自己的；强制设置到 RouteContext 上下文里；		
+											>双写开始：@executeRewrite() 然后增加到 新建的执行上下文：	new ExecutionContext().executionUnits里； 
+												>注册重写装饰器：@registerRewriteDecorator()
+													>再次以SPI机制加载 SQLRewriteContextDecorator 的全部实现类：如 ShardingSQLRewriteContextDecorator 
+													>遍历、逐个实例化、注册到 decorators :@registerDecorator()
+												>遍历每个装饰器：执行装饰：@decorator.decorate(rule, properties, sqlRewriteContext)	
+													>主要可能：执行 参数 重写：@ParameterRewriter
+											>打印Logic SQL/ Actual SQL: @SQLLogger.logSQL()
+										>初始化一些工作：
+										>语句执行器的执行：@PreparedStatementExecutor.execute()
+											>创建回调：方便回调方式执行：SQLExecuteCallbackFactory@getPreparedSQLExecuteCallback()
+												>回调内部就是：@ ((PreparedStatement) statement).execute()
+													>分回调方式：串行、并行：一次执行是非常精细的，所以层层进行；
+														>串行：ExecutorEngine.serialExecute()为串行执行框架；
+													>实际调用：@DruidPooledPreparedStatement.execute() 从而进入了数据源层！！	
+										>此时返回：是成功标记而已；
+									>获取结果：@resultSetHandler.handleResultSets(ps) DefaultResultSetHandler
+										>最终通过@ShardingPreparedStatement.getResultSet()获取到结果！！ResultSet
+									--最后就是关闭会话了。	

@@ -2710,7 +2710,7 @@
 																	>或者再次转发：@processSocket(socketWrapper, event, true) 开始分发：
 																		>先从AbstractEndpoint.processorCache.pop()弹出。否则new SocketProcessor(socketWrapper, event)预备。
 																		>调用Executor执行这个sc 
-																			>从run()直接转发到@SocketProcessor.doRun()
+																			>从run()直接转发到@SocketProcessor.doRun() ：spring-boot内嵌服务器：从 SocketProcessorBase 的run()。最终来自 org.apache.tomcat.util.threads.TaskThread.run()
 																				>取AbstractEndpoint.handler调用.process(socketWrapper, event)
 																					>此时从ConnectionHandler.connections.get(socket)得到合适的Processor	， 也可能从UpgradeProtocol.getProcessor()获取
 																						>调用这个Processor的.process(wrapper, status):此时已经转发到了AbstractProcessorLight类 
@@ -2726,17 +2726,21 @@
 																														>@doForward()
 																															>包装：@wrapRequest()为 ApplicationHttpRequest 
 																															>再次转发：@ApplicationDispatcher.processRequest(request,response,state)
-																																>再次转发@invoke()
+																																>再次转发@invoke()   spring-boot从：@StandardWrapperValve.invoke() 到过滤器链, 最终来自 StandardHostValve 
 																																	>开始构建过滤器链：@ApplicationFilterFactory.createFilterChain(request, wrapper, servlet) 得到ApplicationFilterChain
-																																		>内部实际上 就是直接 new ApplicationFilterChain()
+																																		>内部实际上 就是直接 new org.apache.catalina.core.ApplicationFilterChain()
 																																		>另外，补充Filter: 先从上下文取FilterMap: @context.findFilterMaps() - StandardContext.filterMaps 
 																																		>遍历这个FilterMap: 对每个@matchDispatcher() @matchFiltersURL()过滤之后：再利用@context.findFilterConfig()找到对应的配置：ApplicationFilterConfig- 来自 StandardContext.filterConfigs
 																																		>过滤之后开始加入过滤器：@filterChain.addFilter(filterConfig) 
-																																			>即加入了ApplicationFilterChain.filters
+																																			>即加入了 ApplicationFilterChain.filters
 																																		>再来一次过滤添加：但是过滤逻辑稍微不一样。
 																																	>执行过滤：@filterChain.doFilter(request, response) 层层递归过滤器链过滤完成后：
 																																		>带安全框架地@internalDoFilter()
 																																			>取出过滤器执行：@ filter.doFilter(request, response, this)
+																																				- spring-boot典型使用了：org.springframework.web.filter.OncePerRequestFilter 过滤器；  
+																																										org.springframework.web.filter.CharacterEncodingFilter
+																																										org.apache.tomcat.websocket.server.WsFilter  	和websocket有关
+																																										com.github.xiaoymin.swaggerbootstrapui.filter.SecurityBasicAuthFilter  是 与 swagger有关的 过滤器。
 																																			>如果没有过滤成功：则继续：@servlet.service(request, response) ， 此时已经开始 javax.servlet.Servlet 类
 																																				- 以 HttpServlet 实现为例： 
 																																					>直接将强转ServletRequest为HttpServletRequest等 后转发给@service()
@@ -2760,7 +2764,7 @@
 																																																>其他方式：@getPathWithinServletMapping()略。 
 																																															>根据上一步的路径匹配 handlerMethod 有多个实现：@lookupHandlerMethod(lookupPath, request)				
 																																																- AbstractHandlerMethodMapping 实现为例
-																																																	>先从mapping仓库里取出对应的PathMatches:@this.mappingRegistry.getMappingsByUrl(lookupPath)
+																																																	>先从mapping仓库里取出对应的PathMatches:@this.mappingRegistry.getMappingsByUrl(lookupPath)::。注意：这里：mappingRegistry.registry=hashmap: key=本web项目的所有方法级别的"/xx/x"url匹配，value=HandlerMethod(记录了beanType,method即controller和方法)；那么自然就可以根据请求的uri而找到匹配的HandlerMethod
 																																																		>内容为：@MappingRegistry.urlLookup.get(urlPath)而这个MultiValueMap:urlLookup 就是关键。它的值在初始化的时候被赋值了。所以还看它的初始化。搜索本类，发现有一个@register(T mapping, Object handler, Method method)注册方法，所以这是突破口。
 																																																			>往上，是@AbstractHandlerMethodMapping.registerMapping(T mapping, Object handler, Method method)
 																																																				>再往上，是@AbstractWebMvcEndpointHandlerMapping.registerLinksMapping()	
