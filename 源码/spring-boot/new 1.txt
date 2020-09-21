@@ -1,0 +1,57 @@
+get 
+GET vipreadchapter.18338745.2525819
+-- 登录积分
+LLEN UserScoreQueue
+type UserScoreQueueclass org.apache.dubbo.config.spring.ReferenceBean
+LRANGE UserScoreQueue 0 10
+-- 免体力值次数
+type userExchanges
+HGET userExchanges 20013732
+HLEN userExchangescom.ihuaben.config.DataSourceConfig
+hscan userExchanges 4 match *5
+hscan userExchanges 1 match *5
+hscan userExchanges 1 * 10
+hmget userExchanges 20013732 2OnWebApplicationCondition
+org.springframework.beans.factory.support.DefaultListableBeanFactory#registerBeanDefinition
+UserPowerAcountMap
+ab0ca8882c5d178d95243743010c3a68
+org.springframework.beans.factory.xml.DefaultBeanDefinitionDocumentReader#parseBeanDefinitions
+org.springframework.context.support.PostProcessorRegistrationDelegate
+org.springframework.context.support.PostProcessorRegistrationDelegate
+-- 今天免费体力值
+get userExchanges.20013732.2020-09-10org.mybatis.spring.mapper.MapperScannerConfigurer
+-- 
+keys userExchanges.20013732.2020-09-11org.springframework.beans.factory.xml.XmlBeanDefinitionReader
+dbsize  
+ab0ca8882c5d178d95243743010c3a68
+type userExchangesAll
+
+ApplicationModel.getConfigManager().getApplicationOrElseThrow()
+
+org.apache.dubbo.config.spring.context.DubboBootstrapApplicationListenerclass org.apache.dubbo.config.AbstractConfigaddIntoConfigManager
+
+public void org.apache.dubbo.config.AbstractConfig.addIntoConfigManager()
+
+ size = 3
+ "address" -> "zookeeper://39.105.71.50:2181"
+"client" -> "curator"
+"timeout" -> "15000"
+
+过滤器
+org.apache.dubbo.config.spring.beans.factory.annotation.DubboConfigAliasPostProcessor
+ 实时查询到本月末有多少体力值过期的测试接口：http://39.105.71.50:8002/app/power/overdue?planType=%22ios%22&userId=1008&tokenId=MTAwODoxNjAwMjIyNTMzOjdiZDEwODI3YWFhYTFjZDQ=
+ 
+ tomcat如何获取所有的实现 Filter的类的？
+	org.apache.catalina.core.StandardWrapperValve 创建 filterchain:ApplicationFilterChain
+	
+ jar里的类如何加载进来的？
+ 其他项目里的类如何加载进来的？
+	>根据包路径在classpath里寻找后将.class加载；或者编译阶段已经将编译的第三方的.class放到了target/目录下：例如RedisService这个其他项目下的类；则还会从其他项目的target下加载----就像从自己的target目录下加载一样；
+	
+		
+	从开始：
+	org.springframework.beans.factory.support.DefaultListableBeanFactory#registerBeanDefinition
+	
+	
+	com.alibaba.dubbo.config.annotation.Service
+	com.alibaba.dubbo.config.annotation.Service

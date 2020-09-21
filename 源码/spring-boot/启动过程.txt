@@ -258,7 +258,25 @@
 				>上下文bf里获取 ApplicationRunner/CommandLineRunner的所有实现类：逐个运行它的方法：@(runner).run(args)
 					>典型例如：org.springframework.cloud.task.batch.handler.TaskJobLauncherCommandLineRunner
 												org.springframework.cloud.task.batch.partition.DeployerStepExecutionHandler
-												
+
+>spring-boot启动过程总结：概括：
+	>第一：加载资源： 应用加载器 加载classpath下的所有spring.factories文件里的名值并选出 ApplicationContextInitializer 实现 来new实例化；再加载classpath下所有jar里的spring.factories里的名值 过滤出 ApplicationListener 的实现：来设置到属性里。
+	>第二： 创建上下文、准备上下文并刷新上下文：
+		>创建上下文： 两件事 
+			>A: 反射加载 上下文类
+			>B: 实例化上下文类：
+				>创建 注解解析bd reader/类路径bd scanner 实例: new AnnotatedBeanDefinitionReader(this)/new ClassPathBeanDefinitionScanner(this) 
+					>创建reader过程中: 有向bf里注册多个beanPostProcessor的bd
+		>准备上下文：一件事 
+			>A: load加载资源的名义注册了 启动类Class的bd到bf
+		>刷新：三件事
+			>A: 注册所有的bd : 
+				>以bean工厂处理器的名义 来加载bd: 处理器来源bf/application
+					>配置类处理器ConfigurationClassPostProcessor为例：来自bf: invoke内容；构造配置类解析器 解析bf中的配置型bean--往往就是启动类Class的bd所代表的Class: 解析内容就是它的四大注解@Component/ComponentScan/PropertySource/,如 加载包下路径通过 PathMatchingResourcePatternResolver加载器加载资源方式加载；。。后面还有@Import/@ImportReSource 解析加载  
+			>B: 实例化所有的bd
+			>C: 新增new Tomcat(),封装到new TomcatWebServer()并启动服务器。
+	>第三： 发布一个上下文准备好的事件。	
+-----------------------------------------------------------------------------------------------------------------												
 -------专项问题：
 >spring-boot如何获取所有的beanDefinition的？-->哪些地方调用了@beanFactory.registerBeanDefinition(beanName, beanDefinition)
 	>第一批：beanprocessor  来源：spring-boot 启动 创建上下文：AnnotationConfigUtils.registerAnnotationConfigProcessors(this.registry)  具体如：
@@ -274,11 +292,13 @@
 				>处理1：对上述init阶段注册的4个processor遍历处理：如果是BeanDefinitionRegistryPostProcessor 类型，就调用它的@postProcessBeanDefinitionRegistry(registry) 注册部分的 bean:
 					>1：org.apache.dubbo.spring.boot.beans.factory.config.OverrideBeanDefinitionRegistryPostProcessor ：这个则注册infrastructionBean---DubboConfigBeanCustomizer:名字为"namePropertyDefaultValueDubboConfigBeanCustomizer" 注册方式：@com.alibaba.spring.util.BeanRegistrar#registerInfrastructureBean()
 					>2: org.springframework.boot.autoconfigure.SharedMetadataReaderFactoryContextInitializer: 如注册 名字 为 org.springframework.context.annotation.internalConfigurationAnnotationProcessor 的实例：org.springframework.context.annotation.ConfigurationClassPostProcessor 实例 
-				>处理2：对上树获取的configProcessor 处理：@invokeBeanDefinitionRegistryPostProcessors()  内部就是调用每个processor的@postProcessBeanDefinitionRegistry(registry)
+				>处理2：对上述获取的configProcessor 处理：@invokeBeanDefinitionRegistryPostProcessors()  内部就是调用每个processor的@postProcessBeanDefinitionRegistry(registry)
 					>核心：新建一个解析器：@new ConfigurationClassParser().parse(candidates)来解析 过滤出来的：主processor： myApplication 这个bean
 						>认为是源类，继续调用解析源类/启动类的各种配置注解：@doProcessConfigurationClass(configClass, sourceClass, filter)来解析 
+							>寻找源类的@Component注解 ： 有则先进行@processMemberClasses(configClass, sourceClass, filter)：一般无动作
+							>寻找源类的@PropertySources 注解：有则@processPropertySource(propertySource);处理 ：一般也无动作
 							>寻找源类的@ComponentScan注解： 找到之后：开始遍历：这个注解有11个属性；对每个注解(一般就一个)：
-								>先解析11个属性：this.componentScanParser.parse(componentScan, sourceClass.getMetadata().getClassName()):org.springframework.context.annotation.ComponentScanAnnotationParser 这个类的解析方法。
+								>先解析11个属性并返回basePackages属性匹配到的类集合：this.componentScanParser.parse(componentScan, sourceClass.getMetadata().getClassName()):org.springframework.context.annotation.ComponentScanAnnotationParser 这个类的解析方法。
 									>对于 excludeFilters 属性： 先封装@typeFiltersFor()为TypeFilter,再 加到scanner.addExcludeFilter(typeFilter)
 									>对于 basePackages 配置项 ：字符串内容；分号分隔每个包；提取出来；放到list;
 									>对于 basePackageClasses 配置项： 提取其package出来：即上一级路径；
@@ -300,8 +320,165 @@
 												>非常关键：includeFilters 其实有三个默认的：都是 org.springframework.core.type.filter.AnnotationTypeFilter ，内部注解类型分别是："org.springframework.stereotype.Component"  "javax.annotation.ManagedBean" "javax.inject.Named"
 													>包含上述山歌注解：就是true；匹配！！再看是否有@Conditional注解，专门处理一下；是否依赖其他条件表明的类？
 														>具体有@ConditionalOnClass时：
-										>找到的bd集合：遍历，生成每个bd的名字：@org.springframework.context.annotation.ClassPathBeanDefinitionScanner.beanNameGenerator.generateBeanName(candidate, this.registry) 名字一般是 Class类的名字的首字母小写；如 "dataSourceConfig" "bookShelfShardingService"
-										>再次经过一些例常处理 如代理 后：封装到@new BeanDefinitionHolder()里；然后调用工具注册到bf:@BeanDefinitionReaderUtils.registerBeanDefinition(definitionHolder, registry) 后面就是常见的了。
-						
-		
-												
+										>找到的bd集合：遍历，对 AbstractBeanDefinition/AnnotatedBeanDefinition 的实例，专门处理；剩下的：
+											>生成每个bd的名字：@org.springframework.context.annotation.ClassPathBeanDefinitionScanner.beanNameGenerator.generateBeanName(candidate, this.registry) 名字一般是 Class类的名字的首字母小写；如 "dataSourceConfig" "bookShelfShardingService"
+											>再次经过一些例常处理 如代理 后：封装到@new BeanDefinitionHolder()里；然后调用工具注册到bf:@BeanDefinitionReaderUtils.registerBeanDefinition(definitionHolder, registry) 后面就是常见的了。
+											--从而把 basePackage 注解包路径下的所有匹配的 bean 层层解析 一一注册到容器bf里了。
+								>对于上一步解析到的basePackages等包路径下的所有类定义集合：遍历：
+									>检查这个Class是否是配置类：即有@Configuration注解 是，则进一步解析--获取里面的@Bean: 转调用@org.springframework.context.annotation.ConfigurationClassParser#processConfigurationClass()
+										--检查是否是配置类的条件：@Configuration注解为条件1；条件2：@isConfigurationCandidate() --->即这个类的元数据里是否有 5个注解之一：Import/Component/ImportResource/ComponentScan/Bean  条件很弱；所以几乎全部都会进入解析！：
+										>核心为递归解析：将这个Class当作配置类参数注入，调用@doProcessConfigurationClass() ，则会将这个配置类里的所有@Bean也或取到，加到 beanMethods属性里。 因为这个方法里，会分三种类型：即直接@Component注解类型：@PropertySources 注解类型， @ComponentScan注解类型
+									#不是配置类：那么这里直接忽略；
+							>寻找@Import注解来处理：@processImports()
+								>先是递归方式获取 类上的注解的注解...含有@Import注解的：把这个注解里配置的Class解析出来：如@MapperScan注解的@Import注解里的MapperScannerRegistrar.class， @EnableTransactionManagement注解的@Import注解里的 TransactionManagementConfigurationSelector.class 类 
+								>然后遍历这个Import类集合：对每个分 ImportSelector/ImportBeanDefinitionRegistrar/other 实现类专门处理：
+									>对 ImportSelector 实现类： 则直接实例化+ 感知 属性注入：@ParserStrategyUtils.invokeAwareMethods()
+									>对 其他：
+										>获取全部输入类名：手动写死：@org.springframework.transaction.annotation.TransactionManagementConfigurationSelector#selectImports() : 返回：AutoProxyRegistrar 和 ProxyTransactionManagementConfiguration 的类名；
+										>反射加载：
+										>加载后处理：@processImports()  遍历分：ImportSelector/ImportBeanDefinitionRegistrar/其他 实现类 来处理：
+											>对于 ImportBeanDefinitionRegistrar 实现类： 直接实例化并 注入 感知属性：@ParserStrategyUtils.instantiateClass()
+												>然后存到内部的map里：org.springframework.context.annotation.ConfigurationClass::importBeanDefinitionRegistrars
+											>对于其他 实现类： 先注册：@importStack.registerImport()
+												>然后开始处理解析类：@processConfigurationClass(candidate.asConfigClass(configClass), exclusionFilter)
+													>先用评估器评估是否应该过滤：@conditionEvaluator.shouldSkip()
+														>获取这个类的@Conditional 注解中的类，加载并实例化：放到一个list里：遍历，对每个条件：匹配判断：@org.springframework.boot.autoconfigure.condition.SpringBootCondition#matches() 这里比如WebSocketServletAutoConfiguration类的2个条件：一个是@ConditionalonClass注解--定义声明的@Conditional注解条件OnClassCondition条件，web..这个注解的值则是：(Servlet,ServletContainer);;;另一个是@ConditionalOnWebApplication注解---这个注解定义上的@Conditioanl条件 OnWebApplicationCondition
+															>outcome匹配：@getMatchOutcome() 不同的条件有不同 的实现： 
+																---OnClassCondition条件的实现：
+																	>查找要求有的候选Class: 即这个类上的@ConditionalOnClass注解里的Class列表: @getCandidates(metadata, ConditionalOnClass.class)
+																	>过滤：加载这条件要求有的Class 列表: 加载方法1：@classLoader.loadClass(className) ，其次加载方法：@Class.forName(className)  在@org.springframework.boot.autoconfigure.condition.FilteringSpringBootCondition#resolve()有描述。入口匹配方法：@org.springframework.boot.autoconfigure.condition.FilteringSpringBootCondition.ClassNameFilter.matches()
+																		>加载成功说明匹配：如果没有成功，那么记录下来，直接封装信息到@ConditionOutcome.noMatch()里返回了。陈宫了也要封装信息到一个@ConditionMessage()对象里
+																	>再次查找 要求没有的Class:	@getCandidates(metadata, ConditionalOnMissingClass.class)  同理再次过滤，信息封装处理。
+																---OnWebApplicationCondition 条件的实现：
+																	>直接看有无@ConditionalOnWebApplication注解，
+																	>再看是否web应用：@isWebApplication()
+																		>核心看bf里注册的scope是否包含session: @getBeanFactory().getRegisteredScopeNames()
+																		>是包含： 则返回@ConditionOutcome.match(message.foundExactly("'session' scope"))匹配	
+															>尝试打日志：@logOutcome(classOrMethodName, outcome)
+															>记录一下评估情况：@org.springframework.boot.autoconfigure.condition.ConditionEvaluationReport#recordConditionEvaluation()
+															>返回是否匹配：就是 条件有的有了，条件不应该有的没有；则true;
+													>开始循环到父类的解析配置类：@doProcessConfigurationClass(configClass, sourceClass, filter)		
+							>寻找@ImportResource注解来处理：获取三个属性：尤其是 locations 属性 的值： 即是资源文件的地址：String[], 如“classpath:dubbo-consumer.xml”
+								>遍历每个资源路径：解析填充 占位符：最终使用@org.springframework.util.PropertyPlaceholderHelper#replacePlaceholders()来解析；几乎没改变；直接放到 ConfigurationClass.importedResources属性里。
+							>对类的@bean方法处理：如对 ProxyTransactionManagementConfiguration 这个类解析，因为里面有三个方法上有@Bean注解，所以返回了3个；实际处理中，还会有一个过滤：
+								>后遍历转换为new BeanMethod()加到ConfigurationClass里；比如  com.ihuaben.config.DataSourceConfig 配置类里就有8个bean方法, 都会加到 org.springframework.context.annotation.ConfigurationClass::beanMethods 属性里；
+							>处理类的接口上是否有@Bean注解方法：有则还需要加入：@processInterfaces():	
+							>返回父类：继续递归@doProcessConfigurationClass()
+							-没有：则配置类会加到 org.springframework.context.annotation.ConfigurationClassParser::configurationClasses  属性里：
+						>在第一级@parse()下，最后进行一个import选择器的handle@deferredImportSelectorHandler.process()
+							>最后一步：@handler.processGroupImports()  也是 ConfigurationClassParser 的方法。
+								>转调用@processImports() 而入参里的候选类只有一个：org.springframework.boot.autoconfigure.context.MessageSourceAutoConfiguration 这个类一个直接的@Conditional即要求有指定的bean在bf中(这里是要求有ResourceBundleCondition这个类)， 一个@ConditionalOnMissingBean--即要求bf里不能有某个bean --这里是要求不能有 "messageSource"名字的bean，内部又有2个@Bean方法。 
+					>核心2：利用上一步填充的 configurationClasses 配置bean , 使用reader来加载注册bd:@reader.loadBeanDefinitions(configClasses) : org.springframework.context.annotation.ConfigurationClassBeanDefinitionReader  这种 configClasses可能达99个之多--但是有第一步的过滤@shouldSkip()：@org.springframework.context.annotation.ConditionEvaluator#shouldSkip()来过滤。
+						>第一步：注册配置bean自己：条件：@configClass.isImported()为true: 从而会注册它自己：@registerBeanDefinitionForImportedConfigurationClass(configClass) --包括生成它的名字、bdh信息等；
+						>第二步：注册配置bean里的beanMethods里的bean: 遍历每个BeanMethod:调用@loadBeanDefinitionsForBeanMethod(BeanMethod beanMethod)来注册：
+							>专门封装到：@new ConfigurationClassBeanDefinition(configClass, metadata)对象里
+							>后进行一系列级别属性的设置：通用的一批由@AnnotationConfigUtils.processCommonDefinitionAnnotations(beanDef, metadata)来处理。
+							>最后还是 DefaultListableBeanFactory@registerBeanDefinition(String beanName, BeanDefinition beanDefinition)来注册。
+							---注意：比较奇怪：对于 org.springframework.web.servlet.config.annotation.DelegatingWebMvcConfiguration 这个配置bean的bean: 不是直接在类定义上写死的，而是外部注入的20个bean: 名字不同，但类型都是：org.springframework.web.servlet.config.annotation.WebMvcConfigurationSupport
+						>第三步：注册importResource注解的类：@loadBeanDefinitionsFromImportedResources(configClass.getImportedResources())
+							>当有配置@ImportResource注解时：就会执行：最终是执行@reader.loadBeanDefinitions(resource)来加载。reader:org.springframework.beans.factory.xml.XmlBeanDefinitionReader 这个。
+								>后面的流程几乎同spring的加载和解析注册bean: 如先用：@((ResourcePatternResolver) resourceLoader).getResources(location)转换为Resource对象；后@loadBeanDefinitions(resources)
+									>加载资源文件到流里：@getResource().getInputStream()， 然后解析为Document: @doLoadDocument(inputSource, resource) 
+									>遍历整个Document文档所有的节点： org.springframework.beans.factory.xml.DefaultBeanDefinitionDocumentReader#parseBeanDefinitions() 对每个节点：分default/custom进行分别的解析：@parseDefaultElement(ele, delegate)/delegate.parseCustomElement(ele) 例如对 <dubbo:custom> 就是后者来解析。<dubbo:import>则是按前者---：因为会继续加载指定的xml配置来解析。
+										>对<dubbo-reference> 则是使用 org.apache.dubbo.config.spring.schema.DubboBeanDefinitionParser 类来解析：
+											>最后直接@new RootBeanDefinition()封装，而设置它各个属性：
+												>beanClass="org.apache.dubbo.config.spring.ReferenceBean"
+												>id=节点的name配置, 即当做beanName
+											>然后就直接注册了：@getRegistry().registerBeanDefinition(id, beanDefinition)
+											>最后还会遍历ReferenceBean的所有方法-给bd增加属性：从节点里配置取出的：设置包括：@setApplicationContext()/protocol/url/consumer
+										>解析注册bean：@registerBeanDefinitions(doc, resource)
+											>通过获取文档的名称空间的handler来进行解析：@readerContext.getNamespaceHandlerResolver().resolve(namespaceUri) ，自然得到了dubbo的xml名称空间handler:org.apache.dubbo.config.spring.schema.DubboNamespaceHandler  @parse(Element element, ParserContext parserContext)
+												>此时有注册listeners： @registerApplicationListeners(registry)
+												>正式解析：parse()
+													>注册别名工具：DubboConfigAliasPostProcessor
+													>注册consumer配置：org.apache.dubbo.config.ConsumerConfig
+													>嵌套解析：@parseNested()
+													>设置这个ConsumerConfig的各个属性：值从xml里提取。反射的方式进行的。
+													>最后返回这个bd: 这样，就解析好了一个xml节点。
+						>第四步：注册仓库里的类：获取 configClass 里的importBdRegistrars仓库，注册这些仓库里的bean: 这里共有2个registrar
+							>org.springframework.context.annotation.AspectJAutoProxyRegistrar: 跟 aspectj 有关。 一般为空
+							>org.mybatis.spring.annotation.MapperScannerRegistrar： 跟mybatis加载mapper文件有关：
+								>先是获取配置类的@MapperScan注解：
+								>生成仓库代理的名字："com.ihuaben.config.DataSourceConfig#MapperScannerRegistrar#0"
+								>开始构建bean的过程：先是beanclass 类型：@BeanDefinitionBuilder.genericBeanDefinition(MapperScannerConfigurer.class)
+									>然后是：各种属性的添加：从@ManagedBean里取的beanName从bf获取的实例：属性包括：annotationClass/markerInterface/nameGenerator/factoryBean/sqlSessionTemplateRef/sqlSessionFactoryRef/basePackages/basePackageClasses/
+									>最后还是用bf来注册这个建造者模式生成的bd:@registry.registerBeanDefinition(beanName, builder.getBeanDefinition())
+						----myApplication 也是一个配置bean: 它的四步：
+							>在
+				>处理3：激活其他的 BeanDefinitionRegistryPostProcessor ： 从bf里取出来，过滤掉已经处理过的。再次调用@invokeBeanDefinitionRegistryPostProcessors()		
+					>此时往往三个processor： @postProcessBeanDefinitionRegistry()
+						>org.mybatis.spring.mapper.MapperScannerConfigurer 
+							>事情1： 设置属性占位符替换holders: 配置 sessionFactory,sessionTemplate等到
+							>事情2： 新建new ClassPathMapperScanner(registry)同理设置各种sessionFactory/template属性，资源记载器等之后；进行浏览：@scanner.scan()
+								>真正的scan: 先调用父类的org.springframework.context.annotation.ClassPathBeanDefinitionScanner@doScan(basePackages) 前面已经表达。浏览包下所有的类；
+									>这里浏览的就是：Mapper类；生成的名字也是“bookShelfCountMapper”首字母小写；所以就注册了mapper的beanDefinition
+									>上述发现的所有的bd: 本类doscan()会进一步的处理：@processBeanDefinitions(Set<BeanDefinitionHolder> beanDefinitions)
+										>关键1： 设置bd的beanClass=org.mybatis.spring.mapper.MapperFactoryBean.class
+										>关键2： 设置bd.属性值map新增sessionTemplate：@.getPropertyValues().add("sqlSessionTemplate",new RuntimeBeanReference(this.sqlSessionTemplateBeanName))
+								>注册注解配置proccessor: @AnnotationConfigUtils.registerAnnotationConfigProcessors()
+						>org.apache.dubbo.config.spring.beans.factory.annotation.DubboConfigAliasPostProcessor
+						>org.apache.dubbo.config.spring.beans.factory.annotation.ServiceAnnotationBeanPostProcessor
+							>事情1：注册 DubboBootstrapApplicationListener 类。实现方式：@new AnnotatedBeanDefinitionReader(registry).register(Class)
+								>最后还是封装到new AnnotatedGenericBeanDefinition(beanClass)--> new BeanDefinitionHolder(abd, beanName)-->@BeanDefinitionReaderUtils.registerBeanDefinition(definitionHolder, this.registry)
+							>事情2： 包浏览和占位符解析：即注解中的dubbo服务类所在包： "com.ihuaben"	@registerServiceBeans(resolvedPackagesToScan, registry)
+								>浏览包下类必须有浏览器scanner: 这里新建@new DubboClassPathBeanDefinitionScanner(registry, environment, resourceLoader)； 后增加过滤器：注解过滤器类型：@new AnnotationTypeFilter(Service.class)//这里两种Service:org.apache.dubbo.config.annotation.Service/com.alibaba.dubbo.config.annotation.Service
+								>开始浏览：@scanner.scan(packageToScan) 注册@Service注解的类
+									>先转调@doScan(basePackages)
+										>转到父类：@doScan(basePackages) 即前面已经讲述：org.springframework.context.annotation.ClassPathBeanDefinitionScanner
+									>注册可能的注解配置处理器：@AnnotationConfigUtils.registerAnnotationConfigProcessors()
+								>注册具体的@Service注解 bean并且进行详细的配置：dubbo自己的专门的设置配置。后也一一注册到 bf;
+				>处理4：开始beanFactory处理器的激发：@invokeBeanFactoryPostProcessors()				
+					>此时7个往往processor:@postProcessBeanFactory(beanFactory)
+						>org.springframework.context.annotation.ConfigurationClassPostProcessor 的实现处理：使用cglib增强子类的方式处理：
+							>对注入的bf: 生成bfid,然后开始增强：@enhanceConfigurationClasses(beanFactory)
+								>遍历bf里面的所有beanDefinition: 对于其中的配置类：开始解析了---即反射加载：@ClassUtils.forName(className, classLoader) 然后收集配置bd起来
+								>遍历配置bd: 对于每个，进行增强@new ConfigurationClassEnhancer().enhance() ；
+									>先包装适配一层：@org.springframework.cglib.proxy.Enhancer()后用来创建其增强类：@enhancer.createClass()
+										>动态类的byte[]的生成：@org.springframework.cglib.core.DefaultGeneratorStrategy#generate()
+											>新增classVisitor:@DebuggingClassWriter()
+											>获取目标类的所有方法：进行过滤：@CollectionUtils.filter(methods, new RejectModifierPredicate(Constants.ACC_STATIC))
+											>实际生成类的方法：@org.springframework.cglib.proxy.Enhancer#generateClass()
+												>使用new ClassEmitter(v)完全从0开始生成Class的byte[]: 
+												>开始部分：@e.begin_class()
+													>如类定义信息：@Lcom/ihuaben/config/JdbcTemplateDataSourceConfig$$EnhancerBySpringCGLIB$$639cdd09;
+													>开始详细的设置：@org.springframework.asm.ClassWriter#visit()
+												>属性部分：@e.declare_field() 私有公有/静态final/
+													>终使用@org.springframework.cglib.core.ClassEmitter#visitField()来设置 
+												>方法部分：@org.springframework.cglib.proxy.Enhancer#emitMethods()开始一个字节码字一个节码的的写入。CodeEmitter	/se.dup()/e.invoke_constructor()/se.putfield()等；
+												>结束部分：@e.end_class()
+										>最后在轻量级的反射中加载了byte[]表达的新类：@org.springframework.cglib.core.ReflectUtils#defineClass() ，反射方法就是clasloader的 defineClass()  生成之后的类似名就是：com.ihuaben.config.DataSourceConfig$$EnhancerBySpringCGLIB$$be17c634
+										>最后普通反射实例化：@ReflectUtils.newInstance(type)
+									>后将bd.beanClass=新的这个生成的Class:	如像 com.ihuaben.MyApplication$$EnhancerBySpringCGLIB$$9d3f8c25
+							>bf增加处理器：@beanFactory.addBeanPostProcessor(new ImportAwareBeanPostProcessor(beanFactory))	
+						>org.springframework.boot.context.config.ConfigFileApplicationListener.PropertySourceOrderingPostProcessor 的实现： 给环境增加一些属性：@reorderSources()
+				>处理5：获取bf里的剩下的 BeanFactoryPostProcessor 来处理： 	过滤之后再次：@invokeBeanFactoryPostProcessors()
+					>org.springframework.boot.context.properties.ConfigurationPropertiesBeanDefinitionValidator 的实现：	
+						>从bf里的bd遍历中过滤出：ConfigurationPropertiesValueObjectBeanDefinition 类型且不在单例池中的 ：验证：@BindMethod.forType(beanClass) == BindMethod.VALUE_OBJECT
+							>本质上：就是 有 @EnableConfigurationProperties注解的一定要有@ConstructorBinding 注解。 
+					>org.springframework.context.event.EventListenerMethodProcessor 的实现： 
+					>org.springframework.boot.autoconfigure.web.servlet.error.ErrorMvcAutoConfiguration.PreserveErrorControllerTargetClassPostProcessor 实现：
+						>bf里获取 ErrorController 实现： 取bd设置 org.springframework.aop.framework.autoproxy.AutoProxyUtils.preserveTargetClass 新属性。
+		---后续注册beanPostprocessor：refresh()-->@registerBeanPostProcessors(beanFactory)
+			>核心：PostProcessorRegistrationDelegate.registerBeanPostProcessors(beanFactory, this)	
+				>直接获取bf里全部processor: 分类：之后开始注册：@registerBeanPostProcessors(beanFactory, priorityOrderedPostProcessors)
+					>即：加到 bf里。
+				>额外增加了2个processor: new BeanPostProcessorChecker() . new ApplicationListenerDetector(applicationContext)		
+		--增加消息资源时：refresh()-->@initMessageSource() 注册了一个单例：@beanFactory.registerSingleton(MESSAGE_SOURCE_BEAN_NAME, this.messageSource)	名字为：“messageSource”		
+		--增加上下文广播器也是：@refresh()-->@initApplicationEventMulticaster()  核心： @beanFactory.registerSingleton() 名字“applicationEventMulticaster”
+		--启动tomcat：@onRefresh() 
+			>对org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext实现： 
+				>调用父类onRefresh()之后：@createWebServer()
+					>从bf里获取 org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory 实现： 开始创建webServer：@factory.getWebServer(getSelfInitializer())
+						>内部new Tomcat()之后封装到new TomcatWebServer(tomcat, getPort() >= 0) 内部大量的实现和初始化。
+		--注册listeners: 将上下文监听器+bf里的listener增加到：上下文广播器里：.applicationEventMulticaster
+		--实例化所有非懒初始化的单例 bean:@finishBeanFactoryInitialization(beanFactory)	此时已经说明没有再注册bd了。
+			>核心：@beanFactory.preInstantiateSingletons()
+				>遍历全部的bd: 对每个，分是factoryBean还是普通Bean：来分别 @getBean()
+					>是工厂bean: 则 @getBean(FACTORY_BEAN_PREFIX + beanName)
+					#否则： @getBean(beanName)
+				>再次遍历遍历bd: 对每个，取单例，如果单例是 SmartInitializingSingleton 实现： 
+					>调用单例的：@afterSingletonsInstantiated()完成其他工作。
+		--完成刷新：@finishRefresh()
+			>对 org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext 的实现： 
+				>父类的finishRefresh()后启动webserver:@startWebServer() 后发布启动事件：@publishEvent(new ServletWebServerInitializedEvent(webServer, this))
+		---附加：spring-boot最后：还会发布一个事件：@context.publishEvent(new ApplicationReadyEvent(this.application, this.args, context)) 应用准备好事件。run()就完成了。所以run（）不会阻塞，从而继续执行main()后面的内容。			
