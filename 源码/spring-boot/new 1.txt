@@ -31,7 +31,7 @@ ApplicationModel.getConfigManager().getApplicationOrElseThrow()
 org.apache.dubbo.config.spring.context.DubboBootstrapApplicationListenerclass org.apache.dubbo.config.AbstractConfigaddIntoConfigManager
 
 public void org.apache.dubbo.config.AbstractConfig.addIntoConfigManager()
-
+org.springframework.web.servlet.config.annotation.DelegatingWebMvcConfiguration
  size = 3
  "address" -> "zookeeper://39.105.71.50:2181"
 "client" -> "curator"

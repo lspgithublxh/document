@@ -267,13 +267,17 @@
 			>B: 实例化上下文类：
 				>创建 注解解析bd reader/类路径bd scanner 实例: new AnnotatedBeanDefinitionReader(this)/new ClassPathBeanDefinitionScanner(this) 
 					>创建reader过程中: 有向bf里注册多个beanPostProcessor的bd
-		>准备上下文：一件事 
+		>准备上下文：二件事 
 			>A: load加载资源的名义注册了 启动类Class的bd到bf
+			>B: 初始化上述找到的 ApplicationContextInitializer 实例。
 		>刷新：三件事
 			>A: 注册所有的bd : 
 				>以bean工厂处理器的名义 来加载bd: 处理器来源bf/application
-					>配置类处理器ConfigurationClassPostProcessor为例：来自bf: invoke内容；构造配置类解析器 解析bf中的配置型bean--往往就是启动类Class的bd所代表的Class: 解析内容就是它的四大注解@Component/ComponentScan/PropertySource/,如 加载包下路径通过 PathMatchingResourcePatternResolver加载器加载资源方式加载；。。后面还有@Import/@ImportReSource 解析加载  
+					>配置类处理器ConfigurationClassPostProcessor为例：来自bf: invoke内容；构造配置类解析器 解析bf中的配置型bean--往往就是启动类Class的bd所代表的Class: 解析内容就是它的五大注解@Component/ComponentScan/PropertySource/ImportResource,如 加载包下路径通过 PathMatchingResourcePatternResolver加载器加载资源方式加载；。。后面还有@Import/@ImportReSource 解析加载  
+						>又有配置Class专门额外解析：如方法上的@Bean/ 类上@Import要求的类 的bd注册。例如org.springframework.web.servlet.config.annotation.DelegatingWebMvcConfiguration配置类的父类里有个方法上有@Bean注解：requestMappingHandlerMapping 这个名bean：实例：RequestMappingHandlerMapping类型。
+						>又如import资源xml的专门解析：dubbo
 			>B: 实例化所有的bd
+				>注意：mapper的bd实例化时候：会加载对应的xml资源：就在@afterPropertiesSet()初始化方法执行阶段--->实际执行了 @org.mybatis.spring.mapper.MapperFactoryBean#checkDaoConfig() 里面-->MapperAnnotationBuilder 类里做的。
 			>C: 新增new Tomcat(),封装到new TomcatWebServer()并启动服务器。
 	>第三： 发布一个上下文准备好的事件。	
 -----------------------------------------------------------------------------------------------------------------												
