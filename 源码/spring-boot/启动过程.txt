@@ -21,6 +21,7 @@
 	>对一个组织类：他是有人；属性当作人。人可能是为他办事的，也可能是监听他的监听器。
 	>对一个系统类：他是有组件/器具；属性当作器具
 //为什么层次多：因为连续地向上进行了抽象，每层都分类了/拆分了不同的功能，每层连续往下拆分。
+//行为模式目的：代码一般化。
 >SpringApplication 静态部分：
 	>日志Log实例的创建： 
 		>获取日志工厂：可能是SLF/commons-logging
@@ -271,7 +272,7 @@
 			>A: load加载资源的名义注册了 启动类Class的bd到bf
 			>B: 初始化上述找到的 ApplicationContextInitializer 实例。
 		>刷新：三件事
-			>A: 注册所有的bd : 
+			>A: 注册所有的bd : (包路径大部分A+遍历A滤配置类而专门新增(@Import/@ImportResource/@Bean方法指定(registar/selector)))
 				>以bean工厂处理器的名义 来加载bd: 处理器来源bf/application
 					>配置类处理器ConfigurationClassPostProcessor为例：来自bf: invoke内容；构造配置类解析器 解析bf中的配置型bean--往往就是启动类Class的bd所代表的Class: 解析内容就是它的五大注解@Component/ComponentScan/PropertySource/ImportResource,如 加载包下路径通过 PathMatchingResourcePatternResolver加载器加载资源方式加载；。。后面还有@Import/@ImportReSource 解析加载  
 						>又有配置Class专门额外解析：如方法上的@Bean/ 类上@Import要求的类 的bd注册。例如org.springframework.web.servlet.config.annotation.DelegatingWebMvcConfiguration配置类的父类里有个方法上有@Bean注解：requestMappingHandlerMapping 这个名bean：实例：RequestMappingHandlerMapping类型。
@@ -297,6 +298,14 @@
 					>1：org.apache.dubbo.spring.boot.beans.factory.config.OverrideBeanDefinitionRegistryPostProcessor ：这个则注册infrastructionBean---DubboConfigBeanCustomizer:名字为"namePropertyDefaultValueDubboConfigBeanCustomizer" 注册方式：@com.alibaba.spring.util.BeanRegistrar#registerInfrastructureBean()
 					>2: org.springframework.boot.autoconfigure.SharedMetadataReaderFactoryContextInitializer: 如注册 名字 为 org.springframework.context.annotation.internalConfigurationAnnotationProcessor 的实例：org.springframework.context.annotation.ConfigurationClassPostProcessor 实例 
 				>处理2：对上述获取的configProcessor 处理：@invokeBeanDefinitionRegistryPostProcessors()  内部就是调用每个processor的@postProcessBeanDefinitionRegistry(registry)
+					---对 ConfigurationClassPostProcessor 的实现： 
+						>核心：转发给@processConfigBeanDefinitions(registry)
+							>先解析@new ConfigurationClassBeanDefinitionReader()来加载通过@new ConfigurationClassParser()来获取的classes：：：@reader.loadBeanDefinitions(configClasses)
+								>对每个class: @loadBeanDefinitionsForConfigurationClass()专门 的解析每个配置类型的class:
+									>@Bean方法+输入资源importResource+输入仓库：而对于启动类myApplication的输入仓库里就有一个特殊的输入仓库ImportRegistrar：AutoConfigurationPackages$Registrar;;;另外还有 DubboComponentScanRegistrar/DubboConfigConfigurationRegistrar/DubboLifecycleComponentRegistrar/AspectJAutoProxyRegistrar ; 
+										>上述: 就是@EnableDubbo 和 @EnableAspectJAutoProxy引入的。而@SpringBootApplication会引入的：配置注解@SpringBootConfiguration  自动注解@EnableAutoConfiguration---进一步import:AutoConfigurationImportSelector+AutoConfigurationPackages.Registrar  因此启动类作为配置类在被解析的时候，就会加载import仓库--即：AutoConfigurationPackages.Registrar这个仓库。
+									>在解析import仓库的时候：@loadBeanDefinitionsFromRegistrars() 获取了myApplication的仓库，调用它的注册方法@registrar.registerBeanDefinitions() 这个仓库即上述；看它的注册实现：	
+										>转到@AutoConfigurationPackages.register()：直接新建@new GenericBeanDefinition()封装：设置beanClass=BasePackages ;然后注册了一个名为"org.springframework.boot.autoconfigure.AutoConfigurationPackages"的bd
 					>核心：新建一个解析器：@new ConfigurationClassParser().parse(candidates)来解析 过滤出来的：主processor： myApplication 这个bean
 						>认为是源类，继续调用解析源类/启动类的各种配置注解：@doProcessConfigurationClass(configClass, sourceClass, filter)来解析 
 							>寻找源类的@Component注解 ： 有则先进行@processMemberClasses(configClass, sourceClass, filter)：一般无动作
@@ -309,11 +318,19 @@
 									>如果此时仍然为空：即上述没有配置；那么就获取 myApplication 类的上一级路径 ； 加到list
 									>开始用scanner.doScan()浏览 包下类：org.springframework.context.annotation.ClassPathBeanDefinitionScanner 。
 										>对每个package: 调用父类@findCandidateComponents(basePackage)来获取所有的BeanDefinition；
+											--对 ClassPathScanningCandidateComponentProvider 实现： 直接走@scanCandidateComponents()
+												>构造包路径加载全部class: @getResources(packageSearchPath)
+												>遍历过滤：
+													>第一层：filter过滤： includeFilters/excludeFilters
+														>excludeFilters: 和过滤器声明的类名同，则过滤--启动类过滤；2.是@Configuration配置注解类 又在spring.factories里的EnableAutoConfiguration类型配置项的实例里；3.是TypeExcludeFilter本身；
+														>includeFilters: 1.类上有@Component注解 2.主类 3.
+													>第二层： 独立而坚固 或者 抽象且有@Lookup注解；
+													---所以：项目里没有任何注解的类是不会在浏览包的过程中被实例化的--除非被动--直接new后添加到容器。
 											>先构造包的完整路径：如 "classpath*:com/ihuaben/**/*.class"
 											>使用资源模式解析器解析这个路径：PathMatchingResourcePatternResolver
 												>最终使用@org.springframework.core.io.support.PathMatchingResourcePatternResolver#getResources(path)来解析：分模式来寻找匹配的资源。classpath*开头就是一类：
 													>再分：如果 classpath*: 后面部分包含{}或者* ，则模式拆解：调用@findPathMatchingResources(locationPattern)解析，否则调用@findAllClassPathResources()
-														>@findPathMatchingResources(locationPattern): 将路径拆截取分为：路径+类模式字符串 两部分；对于路径部分，递归得获取资源@getResources(path)	
+														>@findPathMatchingResources(locationPattern): 将路径拆截取分为：路径+类模式字符串 两部分；对于路径部分，递归得获取资源@getResources(path)	---这种方式取的是“com.ihuaben”包下所有的.class--包括没有任何注解的类；且对于项目来说--资源路径都是file://D:/xxx/target/classes/下的.class
 															>此时没有了类模式：所以直接走了@findAllClassPathResources():
 																>此时核心来了：直接采用 应用类加载器AppClassLoader 对 该路径加载：@cl.getResources(path)  ，其中遍历的一个结果是：如： URL: protocol="file", file="/D:/document/%e5%b7%a5%e4%bd%9c%e6%96%87%e6%a1%a3/workspace/shardingutil/target/classes/com/ihuaben/config/"   。。这样的信息封装到 new Resource()里，即路径资源，还不是实际的文件资源；
 															>利用上述路径资源：判断路径的类型：jar/file?, 整理得到完整路径“D:/document/工作文档/workspace/shardingutil/target/classes/com/ihuaben/config”	， 再封装为匹配类字符串：“D:/document/工作文档/workspace/shardingutil/target/classes/com/ihuaben/config/**/*.class”
@@ -399,6 +416,7 @@
 													>嵌套解析：@parseNested()
 													>设置这个ConsumerConfig的各个属性：值从xml里提取。反射的方式进行的。
 													>最后返回这个bd: 这样，就解析好了一个xml节点。
+												--注意：在@AnnotationBeanDefinitionParser.doParse()解析的时候：内部注册了一个reference注解处理器: 所以bdM里新增了"referenceAnnotationBeanPostProcessor"名字的bd	
 						>第四步：注册仓库里的类：获取 configClass 里的importBdRegistrars仓库，注册这些仓库里的bean: 这里共有2个registrar
 							>org.springframework.context.annotation.AspectJAutoProxyRegistrar: 跟 aspectj 有关。 一般为空
 							>org.mybatis.spring.annotation.MapperScannerRegistrar： 跟mybatis加载mapper文件有关：
@@ -412,7 +430,10 @@
 				>处理3：激活其他的 BeanDefinitionRegistryPostProcessor ： 从bf里取出来，过滤掉已经处理过的。再次调用@invokeBeanDefinitionRegistryPostProcessors()		
 					>此时往往三个processor： @postProcessBeanDefinitionRegistry()
 						>org.mybatis.spring.mapper.MapperScannerConfigurer 
-							>事情1： 设置属性占位符替换holders: 配置 sessionFactory,sessionTemplate等到
+							>事情1： 设置属性占位符替换holders: 配置 sessionFactory,sessionTemplate等到@processPropertyPlaceHolders()
+								>动作1：直接取@applicationContext.getBeansOfType(PropertyResourceConfigurer.class), 从 bf里取(实际上已经有bd了，只是实例化而已)， name就变成“propertySourcesPlaceholderConfigurer” ，而最终直接 使用工厂方法方式：然后以这个name为方法名，反射调用：PropertyPlaceholderAutoConfiguration@propertySourcesPlaceholderConfigurer()获取实例---非常暴力；而方法的实现也非常直接：@new PropertySourcesPlaceholderConfigurer()
+									>顺便注册了："com.ihuaben.config.BookDataSourceConfig#MapperScannerRegistrar#0" 这个bean，非常神奇。
+									>执行这个实例的：@prc.postProcessBeanFactory(factory)
 							>事情2： 新建new ClassPathMapperScanner(registry)同理设置各种sessionFactory/template属性，资源记载器等之后；进行浏览：@scanner.scan()
 								>真正的scan: 先调用父类的org.springframework.context.annotation.ClassPathBeanDefinitionScanner@doScan(basePackages) 前面已经表达。浏览包下所有的类；
 									>这里浏览的就是：Mapper类；生成的名字也是“bookShelfCountMapper”首字母小写；所以就注册了mapper的beanDefinition
@@ -485,4 +506,217 @@
 		--完成刷新：@finishRefresh()
 			>对 org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext 的实现： 
 				>父类的finishRefresh()后启动webserver:@startWebServer() 后发布启动事件：@publishEvent(new ServletWebServerInitializedEvent(webServer, this))
-		---附加：spring-boot最后：还会发布一个事件：@context.publishEvent(new ApplicationReadyEvent(this.application, this.args, context)) 应用准备好事件。run()就完成了。所以run（）不会阻塞，从而继续执行main()后面的内容。			
+		---附加：spring-boot最后：还会发布一个事件：@context.publishEvent(new ApplicationReadyEvent(this.application, this.args, context)) 应用准备好事件。run()就完成了。所以run（）不会阻塞，从而继续执行main()后面的内容。	
+
+>spring-boot-autoconfigure的原因：@EnableAutoConfiguration注解会加入大量的配置类
+	>在它的spring.factories里：org.springframework.boot.autoconfigure.EnableAutoConfiguration的值非常多。都是自动配置类。典型的和tomcat有关的：org.springframework.boot.autoconfigure.web.servlet.ServletWebServerFactoryAutoConfiguration
+	
+>spring-boot在对scan的类中过滤出的配置类的解析，主要是解析新增哪些类？@processConfigBeanDefinitions()....@processConfigurationClass() 
+		>@Import 注解指定的类：
+			>ImportSelector类型：实例化它，后执行@selectImports()方法，返回更多的依赖的类名；这个心的类名数组--进行递归import:@processImports()  
+			--例子：对myApplication 解析时： 这里增加的 具体类 就是： AutoConfigurationImportSelector 在 解析 myApplication的最后执行了@deferredImportSelectorHandler.process() --> 转向@ConfigurationClassParser.process()再转向@processGroupImports(), 此时就开始 取imports来遍历：
+				>取的过程中就执行了@AutoConfigurationImportSelector.process()
+					>先获取自动配置元数据：@getAutoConfigurationMetadata()
+						>核心：@AutoConfigurationMetadataLoader.loadMetadata()
+							>使用加载器加载"META-INF/spring-autoconfigure-metadata.properties", 然后封装到Properties,然后封装到new PropertiesAutoConfigurationMetadata(properties)
+						>获取自动配置实体：@getAutoConfigurationEntry()
+							>使用jar浏览方式浏览spring.factories来加载 EnableAutoConfiguration.class 的配置项实现类： @SpringFactoriesLoader.loadFactoryNames()	往往有100+个
+							>从spring.factories里加载@SpringFactoriesLoader.loadFactories(AutoConfigurationImportFilter)然后 用来过滤。@filter.match(candidates, autoConfigurationMetadata) 过滤之后，只剩下一半 48+. 里面包括很多重要的配置类。然后再逐个遍历-执行@processImports() --这个执行内容是：ConfigurationClassParser@doProcessConfigurationClass(configClass, sourceClass, filter) 从后面的调用链知道，这个类会加到 configurationClasses 属性里。
+								>这个do...方法：解析@Componet/@ComponentScan/@PropertySources@ImportResource/@Bean方法分别都加到configClass.add()进去，以备后用。@ComponentScan则继续浏览。do方法最后自己又加到 configurationClasses 属性里。
+								--过滤后的配置包括： 
+									>org.springframework.boot.autoconfigure.context.PropertyPlaceholderAutoConfiguration   注册后name="propertySourcesPlaceholderConfigurer"
+									>org/springframework/boot/autoconfigure/web/servlet/ServletWebServerFactoryAutoConfiguration 这个配置类有@Bean方法-所以是工厂类，工厂方法就是6个@Bean方法，
+									>org/springframework/boot/autoconfigure/web/servlet/DispatcherServletAutoConfiguration
+									>org/springframework/boot/autoconfigure/web/servlet/WebMvcAutoConfiguration
+									>org.springframework.boot.autoconfigure.web.servlet.ServletWebServerFactoryConfiguration
+			>ImportBeanDefinitionRegistrar 类型： 实例化它，并且 增加到 @configClass.addImportBeanDefinitionRegistrar()以备后面的专门使用输入仓库。
+			>其他类型： 直接增加到imports属性里，然后直接递归性质的当做配置类来处理了@processConfigurationClass() -->@doProcessConfigurationClass()
+			--何时解析@Import：从处理bd仓库开始 @postProcessBeanDefinitionRegistry()-->@processConfigBeanDefinitions()-->@parse()的最后：@deferredImportSelectorHandler.process()-->@processGroupImports()-->@processImports()-->@processConfigurationClass()有注册到configurationClasses-->@doProcessConfigurationClass()就是解析@Component各种注解，从而会有各种递归解析-@Component解析member(内部类)时到@processConfigurationClass()， 而@ComponentScan 解析则递归到了@componentScanParser.parse()-->@scanner.doScan()-->后面就是注册bd到bf了。
+				>configurationClasses中的class何时加载和注册到bf：@processConfigBeanDefinitions()-->在parse()后就是@reader.loadBeanDefinitions(configClasses)-->遍历每个class,对每个@loadBeanDefinitionsForConfigurationClass()来注册：包括注册：
+					>这个配置类自己：@registerBeanDefinitionForImportedConfigurationClass(configClass)
+					>bean方法：@loadBeanDefinitionsForBeanMethod(beanMethod)
+					>importResource文件的解析加载：@loadBeanDefinitionsFromImportedResources(configClass.getImportedResources())
+					>注解上的所有仓库的自己的注册方法：@loadBeanDefinitionsFromRegistrars(configClass.getImportBeanDefinitionRegistrars()) --> 对每个仓库@registrar.registerBeanDefinitions()
+				--专门强调：解析一个配置类时：第一步 @processMemberClasses()解析成员：就是解析静态内部类--这个类上如果有@Configuration注解(含@Component注解)就可以当做候选的。因为5个条件满足其一：含注解@Component/@ComponentScan/@Import/@ImportResource/@Bean之一；一旦作为候选，从而开始解析它@processConfigurationClass()
+					>典型有这种静态内部类的：
+						>org/springframework/boot/autoconfigure/web/servlet/DispatcherServletAutoConfiguration
+						>org.springframework.boot.autoconfigure.web.servlet.WebMvcAutoConfiguration
+						>org.mybatis.spring.boot.autoconfigure.MybatisLanguageDriverAutoConfiguration
+						>org.apache.dubbo.spring.boot.autoconfigure.DubboAutoConfiguration  显然，在 dubbo-spring-boot-autoconfigure.jar里spring.factories里就有EnableAutoConfiguration的配置项；值之一就是这个配置类。
+						>org.springframework.boot.autoconfigure.aop.AopAutoConfiguration 在 spring-boot-autoconfigure.jar里，spring.factories里有最多的自动配置。
+					>spring.factories里有的典型类：
+						>ServletWebServerFactoryAutoConfiguration： 这个类又@Import ServletWebServerFactoryConfiguration.EmbeddedTomcat类(这个类又有@Bean方法--产生一个@TomcatServletWebServerFactory()实例)  ServletWebServerFactoryAutoConfiguration.BeanPostProcessorsRegistrar 之类，但是 spring.factories里是没有直接ServletWebServerFactoryConfiguration的，即它不是自动配置类；所以没有；所以即便在最后的bdm里，也没有直接实例化ServletWebServerFactoryConfiguration！！--仅仅是前面注入的它的内部类。
+		>@ImportResource 指定的xml解析加载的类:
+			>熟悉的操作：放到configClass里：@configClass.addImportedResource(resolvedResource, readerClass)
+		>@Bean 方法指定的类 
+>spring-boot 如何控制各个bean是否生成？
+	>@ConditionalOnProperty 注解的@Bean ,则是通过yml配置文件中的属性来控制 这个bean是否有效/是否要生成。如@ConditionalOnProperty(value = "server.forward-headers-strategy", havingValue = "framework") 则 要求 server.forward-headers-strategy=framework;; 显然没有，就不会被实例化。
+	
+>aspectj 的植入代码的时机？https://www.jianshu.com/p/3c5b09f6f563
+	>compile-time : 编译期： 在maven编译几千，有专门插件(aspectj-maven-plugin)来编译.aj切面文件，并将代码植入 . 
+	>post-time: 编译后：已经生成.class/jar之后，读取.class来织入。来增强jar/class。。此时需要新建一个项目，加入切面类，配置pom:aspectj-maven-plugin 指定要增强的jar:(<weaveDependency>标签内) 然后对这个项目编译： mvn package；那么就会生成指定增强jar里的类到项目的target/classes目录下；。。当然这个项目的pom.dependency本身没有依赖这个jar---因此无冲突。 那么就使用了一个增强的jar! 。。即：其实没有 真正的改变jar里的内容。
+	>load-time: jvm加载类的时候织入。需要vm启动参数：-javaagent:/Users/hongjie/.m2/repository/org/aspectj/aspectjweaver/1.8.13/aspectjweaver-1.8.13.jar  同时需要META-INF/aop.xml配置：指定切面+方法所在位置。
+		--注意：maven-surefire-plugin 插件 中也可以配置vm启动参数：
+	---运行时通过加方法拦截器的方式：拦截，只能对controller/service等才行；而对非spring创建的代理bean则无效！甚至比如dubbo 客户端代理服务接口生成的也不行。	
+	
+>spring-jdbc: 根据事务隔离级别 路由到不同的数据源？
+	>核心控制类：IsolationLevelDataSourceRouter， 只需要@Bean化这个类就可以了,同时配置 targetDataSources 属性:--隔离级别-数据源的map，然后在@afterPropertiesSet()时就会解析到内部形成一个 传播级别int---数据源的map; 
+	>何时使用：因为上述 IsolationLevelDataSourceRouter 继承了 AbstractRoutingDataSource ，后者又实现了 javax.sql.DataSource，所以其实这是一个数据源，是一个路由型数据源。作为一个数据源被使用的。所以它的@getConnection() 和 @getConnection(String username, String password)方法就是对外提供使用的，而且Driud 使用数据源 使用了这个接口，所以可能使用。。而实际内容就是根据事务传播级别，而事务传播级别这个参数只能从ThreadLocal里获取了：这个ThreadLocal就通过@TransactionSynchronizationManager.getCurrentTransactionIsolationLevel()来获取到值；设置值也自然是：spring-tx的@AbstractPlatformTransactionManager.prepareSynchronization()方法阿调用时就设置了，这个正式初始化事务同步的时候。
+	>事务如何打开的：从事务拦截器 TransactionInterceptor .invoke()开始： 即某个方法被反射执行之前，执行方法拦截器链，进入的其中之一方法拦截器：
+		>事务方式环绕执行：TransactionAspectSupport@invokeWithinTransaction(invocation.getMethod(), targetClass, invocation::proceed)
+			>查看是否有事务注解标签：TransactionAspectSupport@getTransactionAttributeSource() ,有则开始确定事务管理器：@determineTransactionManager(txAttr)
+			>并将tm转为核心的平台事务管理器：PlatformTransactionManager ptm
+			>后开始根据情况创建事务：TransactionAspectSupport@createTransactionIfNecessary(ptm, txAttr, joinpointIdentification):TransactionAspectSupport
+				>获取事务：@tm.getTransaction(txAttr):TransactionAspectSupport/AbstractPlatformTransactionManager
+					>获取事务：@doGetTransaction() 抽象方法 需要实现：看 spring-jdbc的：DataSourceTransactionManager
+						>直接新建：@new DataSourceTransactionObject()
+						>设置属性：允许保存点？=允许嵌套事务？；；；连接保持者ConnectionHolder: @TransactionSynchronizationManager.getResource(obtainDataSource()) 显然需要获取数据源：@obtainDataSource()---数据源来自 @DataSourceTransactionManager.getDataSource()-->内容：用当前线程中的事务隔离级别 从隔离级别-DataSource map 里查询出来。	
+							>因此要看数据源的来源：则是用户配置时写的方法@Bean DataSourceTransactionManager 实例的时候，注入的：@DataSourceTransactionManager(DataSource dataSource) 注入完成。这里的数据源就是用户的。而用户现在创建的数据源是sharding-jdbc的：new ShardingDataSource()
+								>自然的：获取的连接就是 sharding的连接：new ShardingConnection()
+					>根据事务传播级别确定对事务的操作：如果要开启一个新事务：则@startTransaction(def, transaction, debugEnabled, suspendedResources) AbstractPlatformTransactionManager
+						>真正开启事务：@doBegin(transaction, definition) 是抽象，需要实现：DataSourceTransactionManager 的实现：
+							>设置只读、隔离级别等。
+						>准备同步：@prepareSynchronization(status, definition)
+							>使用事务同步管理器设置：事务活跃状态(是否有事务)、当前事务隔离级别、当前事务是否只读、当前事务名字；然后开始初始化同步：@TransactionSynchronizationManager.initSynchronization()
+								--注意：事务隔离级别、是否只读、名字 都来自 事务定义TransactionDefinition--应该来自标签属性配置--即 TransactionAttribute。设置隔离级别：@TransactionSynchronizationManager.setCurrentTransactionIsolationLevel() 这个就是 路由数据源 在getConnection()时候根据的事务传播级别来源和选择哪个数据源---即将会使用的。
+				>准备事务信息：@prepareTransactionInfo(tm, txAttr, joinpointIdentification, status)
+	>事务拦截器如何被创建的？
+		>渠道1：@JpaRepositoryBean.create()
+			>转到：@CdiRepositoryBean.create() spring-data-commons
+				>转到：@RepositoryFactorySupport.getRepository()
+					>最后遍历processor处理：@processor.postProcess(result, information) TransactionalRepositoryProxyPostProcessor
+						>直接new事务拦截器：@new TransactionInterceptor()...
+		>渠道2： 用户自己编写一个@@Bean("txAdvice") 方法，方法内直接new TransactionInterceptor(TransactionManager ptm, TransactionAttributeSource tas)并设置相关属性。其中后者属性：map: 配置：方法特征string--事务特征 RuleBasedTransactionAttribute； 事务特征-包括事务传播级别/回滚规则/超时时间	
+			>利用TransactionAttributeSource根据方法名+类获取匹配这个方法的事务规则配置 RuleBasedTransactionAttribute ：@tas.getTransactionAttribute(method, targetClass):NameMatchTransactionAttributeSource
+				>
+>service方法执行之前如何开启事务的？
+	>如何确定使用哪个数据源？：	
+
+>spring通过事务传播级别获取到了数据源，可能这个数据源是 ShardingDataSource, 这个是包装的，不是真正的数据源；所以使用这个数据源的时候，如何路由到真正的数据源？(master/slave)(sharding0-8)	
+	>使用数据源：就是使用它的获取连接@getConnection()--实际上也只有这个重载方法。获取到了 Connection实例- ShardingConnection 对象。而连接使用的目的： 创建"语句声明"@createStatement()、 "准备声明"对象@prepareStatement(String sql)、设置自动提交状态、回滚@rollback()提交@commit()， 所以看 ShardingConnection的创建声明 PreparedStatement 实现：返回new ShardingPreparedStatement()对象，因此sharding的核心重心工作在声明类的实现里：聚焦关注这个声明类对 PreparedStatement 接口的实现 @PreparedStatement@executeQuery()、PreparedStatement@executeUpdate()等接口：所以 ShardingDataSource 就是通过重写这些方法， 而再内部重新路由到真正的数据源，用真正的数据源来发送sql请求的。因此看：@executeQuery()实现：
+		>直接看 ResultSet ShardingPreparedStatement@executeQuery(): 
+			>先清除：@clearPrevious() 包括: 声明、连接、结果集
+			>再准备：@prepare()
+				>使用准备引擎 创建 执行上下文：@prepareEngine.prepare(sql, getParameters())
+					>参数复制：
+					>执行路由：BasePrepareEngine@executeRoute(sql, clonedParameters)
+						>注册路由装饰器：@registerRouteDecorator()
+							>再次以SPI机制获取 RouteDecorator 的Class： 遍历，对每个： 
+								>用 rules来过滤：如果规则类和 装饰器类 一致： 则使用路由器执行注册 规则-装饰器：@router.registerDecorator(rule, routeDecorator) ：就放到了 decorators :map里。
+						>执行路由：@route(router, sql, clonedParameters)
+							---PreparedQueryPrepareEngine 实现为例： 
+								>直接路由器路由：@dataNodeRouter.route(sql, parameters, true)
+									>核心：@executeRoute()
+										>遍历每个装饰器：调用它的装饰方法：@decorate()并且是流水线一样的装饰，所以最终结果直接返回。
+											---MasterSlaveRouteDecorator 主从装饰器实现：
+												>将主从规则放到主从数据源路由器：然后调用路由器的路由方法：@new MasterSlaveDataSourceRouter(masterSlaveRule).route(routeContext.getSqlStatementContext().getSqlStatement())
+													--最核心的路由逻辑出现：
+													>先判断是否是主路由：@isMasterRoute(sqlstatement):是则设置主访问过：@MasterVisitedManager.setMasterVisited() 然后从主从规则获取主数据源名返回：@masterSlaveRule.getMasterDataSourceName()
+														>主路由条件：满足其中之一
+															>包含lock的select语句：
+															>非select语句：
+															>master已经访问过：@MasterVisitedManager.isMasterVisited()
+															>hint只读主：@HintManager.isMasterRouteOnly()
+													>不是主路由：则使用负载均衡算法 获取一个从数据源名：@masterSlaveRule.getLoadBalanceAlgorithm().getDataSource()
+														---RoundRobinMasterSlaveLoadBalanceAlgorithm 轮询算法：自增数自增取模。
+														---RandomMasterSlaveLoadBalanceAlgorithm 随机算法为例： 就是随机取一个。ThreadLocalRandom.current().nextInt(范围)
+											---ShardingRouteDecorator 分区装饰器实现：
+												>获取分区条件：@getShardingConditions()  确定列名-表名的映射。对于分区列，建立专门映射。
+													>分insert: 无where
+													>非insert: 有where
+												>创建分区路由引擎：@ShardingRouteEngineFactory.newInstance()  语句不同 则 引擎专门。
+												>执行路由：	@shardingRouteEngine.route(shardingRule)
+													--ShardingDefaultDatabaseRoutingEngine 实现： 获取默认数据源名+ 逻辑表名集合。
+													--ShardingStandardRoutingEngine 实现： 
+														>根据规则获取数据节点：@getDataNodes()
+														>生成路由结果：@generateRouteResult()
+															>是否走hint路由：即数据库分区策略 和 表分区策略都是 HintShardingStrategy 实例。 
+															>只要不走hint，就走分区条件路路由：@isRoutingByShardingConditions()
+																>执行分区条件路由：@routeByShardingConditions()-->@routeByShardingConditionsWithCondition()-->@route0()-->@routeTables()
+																	>核心：通过规则获取分区策略并进行分区：@shardingRule.getTableShardingStrategy(tableRule).doSharding()
+																		---InlineShardingStrategy 策略为例：
+																			>核心：对每个分区值 PreciseShardingValue 进行解析执行：@execute(each)
+																				>使用groovy表达式来解析：@closure.rehydrate(new Expando(), null, null)
+					>直接创建执行引擎：new ExecutionContext(routeContext.getSqlStatementContext())
+					>执行引擎增加执行单元：@result.getExecutionUnits().addAll(executeRewrite(sql, clonedParameters, routeContext))	显然，入参有个重写方法：
+						>重写执行：@executeRewrite()
+							>注册重写装饰器：@registerRewriteDecorator()
+								>获取 使用SPI机制加载的 SQLRewriteContextDecorator 实现类Class：遍历 ，对每个：反射创建实例, 用 rules 属性来过滤，如果规则类实例中有一个和 当前装饰器实例相同 ， 那么就 使用重写器注册 规则+装饰器：@rewriter.registerDecorator(rule, rewriteContextDecorator)
+							>创建SQL重写上下文：@rewriter.createSQLRewriteContext(...)
+								>创建重新上下文：new SQLRewriteContext()
+								>进行装饰：@decorate(decorators, result, routeContext)
+									>遍历前述的 规则-重写装饰器：对每个装饰器：逐个调用装饰方法：@decorator.decorate(rule, properties, sqlRewriteContext)
+										--ShardingSQLRewriteContextDecorator 实现为例：
+											>获取所有需要重写的参数：进行重写：@each.rewrite(): ParameterRewriter
+								>重写引擎生成sqltokens: @result.generateSQLTokens()
+							>开始重写：@rewrite(...)
+								>新建重写引擎重写：@new SQLRewriteEngine().rewrite(sqlRewriteContext)
+									>直接轮询机制获取一个数据源名，后封装到一个执行单元里：返回：@new ExecutionUnit()
+			>初始化 准备声明执行器：@initPreparedStatementExecutor()
+				>
+			>合并查询：@mergeQuery()
+			>获取结果集合并返回：@new ShardingResultSet(preparedStatementExecutor.getResultSets()...)	
+			
+>spring-boot环境下，代理类的advised如何设置值的，值的来源有哪些？
+	>来源1：bean工厂方式创建的对象，即便是mapper的接口的代理，后也会经过 初始化完成后的应用beanpostprocessor:AbstractAutowireCapableBeanFactory@applyBeanPostProcessorsAfterInitialization()遍历processor:	
+		>对于 PersistenceExceptionTranslationPostProcessor ： 调用到其父类：@postProcessAfterInitialization(result, beanName)
+			>如果是候选：@isEligible(bean, beanName)，切点匹配；
+			>匹配则：添加自己的advisor:@proxyFactory.addAdvisor(this.advisor):org.springframework.dao.annotation.PersistenceExceptionTranslationAdvisor  是sprint-tx内部自己的。
+			--最终创建的是：JDKDynamicProxy, 且只有一个 advisor
+		>对于 org.springframework.aop.aspectj.annotation.AnnotationAwareAspectJAutoProxyCreator ： 进入包装方法：AbstractAutoProxyCreator@wrapIfNecessary(bean, beanName, cacheKey)
+			>先也有：@shouldSkip(bean.getClass(), beanName))过程。
+			>核心：直接获取适合这个类的 通知 + 建议者：@getAdvicesAndAdvisorsForBean()
+				>直接转：寻找合格的@findEligibleAdvisors(beanClass, beanName)
+					>先找候选：@findCandidateAdvisors()
+						>先父类：@super.findCandidateAdvisors()-->父类转：@this.advisorRetrievalHelper.findAdvisorBeans()
+							>内部有缓存advisor名：@cachedAdvisorBeanNames属性里；否则从bf里查找Advisor类型的全部bd来补充：@BeanFactoryUtils.beanNamesForTypeIncludingAncestors(this.beanFactory, Advisor.class, true, false)
+							>遍历使用bf创建：@beanFactory.getBean(name, Advisor.class) 收集起来返回。
+							----注意：此时不会发现@Asepct注解的类及其通知，因为 @Asepct没有@Componet等注解，非spring一套。
+						>后尝试从aspectJ中补充：@aspectJAdvisorsBuilder.buildAspectJAdvisors()	
+							>启动寻找有aspectj注解的类：
+								>从bf里查找所有Object的子类的bn:@BeanFactoryUtils.beanNamesForTypeIncludingAncestors(this.beanFactory, Object.class, true, false) 非单例也包括。
+									>遍历每个bn: 从bf里获取类型：查看这个类型是否是aspect切面类@this.advisorFactory.isAspect(beanType) 
+										>即有@Aspect 注解：@AnnotationUtils.findAnnotation(clazz, Aspect.class) 且 方法的 field 名称 中至少有一个 是 "ajc$" 开头的---即已经被aspectj 字节码修改过了/编辑过了。
+										#如果都有：那么就是，加到 aspectNames 属性里。接着，获取类里的全部Advisor:@this.advisorFactory.getAdvisors(factory:BeanFactoryAspectInstanceFactory)
+											>获取全部的Advisor:@getAdvisorMethods(aspectClass)
+												>即遍历类：获取@AnnotationUtils.getAnnotation(method, Pointcut.class)有 Pointcut 注解的方法：
+												>对每个注解方法：获取Advisor:@getAdvisor(method...)
+													>获取表达式等：@getPointcut()
+														>获取一种通知类型：@findAspectJAnnotationOnMethod(): Pointcut.class, Around.class, Before.class, After.class, AfterReturning.class, AfterThrowing.class
+														>取这个通知类型的切点表达式：@aspectJAnnotation.getPointcutExpression()，封装到新增的一个切点表达式类里：@new AspectJExpressionPointcut()
+													>封装而返回：@new InstantiationModelAwarePointcutAdvisorImpl()
+														>对 单例切面，需要实例化通知：@this.instantiatedAdvice = instantiateAdvice(this.declaredPointcut)
+															>@this.aspectJAdvisorFactory.getAdvice()
+																>从切点取通知：@.aspectJAdvisorFactory.getAdvice(pointcut...):ReflectiveAspectJAdvisorFactory, 入参有切点方法
+																	>根据切点方法的注解类型：@aspectJAnnotation.getAnnotationType(): AtPointcut, AtAround, AtBefore, AtAfter, AtAfterReturning, AtAfterThrowing 封装到不同对象里：如：@new AspectJAroundAdvice()
+																	--这个就是最终返回的 需要的 Advice 
+												>加到结果集合里，List<Advisor>, 然后可能增加：SyntheticInstantiationAdvisor:Advisor	
+												>遍历类的每个Field: 如果上面有@DeclareParents主机， 那么需要封装到@new DeclareParentsAdvisor()返回。加到结果集里。
+							>返回结果集即可。					
+					>过滤可以应用的：@findAdvisorsThatCanApply(candidateAdvisors, beanClass, beanName)
+						>核心：转@AopUtils.findAdvisorsThatCanApply(candidateAdvisors, beanClass)
+							>遍历每个候选Advisor:合格条件： 是 IntroductionAdvisor 类型， 第二：@org.springframework.aop.support.AopUtils#canApply(org.springframework.aop.Advisor, java.lang.Class<?>, boolean)为true:
+								>如果是 IntroductionAdvisor ： 需要类过滤器匹配:ClassFilter:TransactionAttributeSourceClassFilter
+								>如果是 PointcutAdvisor 类型： 需要切点匹配；方法匹配：直接转：@canApply(pca.getPointcut(), targetClass, hasIntroductions)
+									>核心为遍历这个类的所有方法：至少有一个方法匹配到@org.springframework.aop.aspectj.AspectJExpressionPointcut.matches(method, targetClass, hasIntroductions)	才返回true: 
+									>遍历这个类的所有方法：至少有一个方法匹配到：@methodMatcher.matches(method, targetClass) 才返回true;否则false。。@org.springframework.aop.support.MethodMatchers.UnionMethodMatcher#matches(java.lang.reflect.Method, java.lang.Class<?>)
+										>类匹配+方法匹配：@matchesClass1(targetClass) && this.mm1.matches(method, targetClass)) 方法匹配要求方法有xx注解。
+							---ProxyTransactionManagementConfiguration 需要研究，里面有事务建议者。	
+					>再次以扩展方式增加Advisors:@extendAdvisors(eligibleAdvisors)
+						>在advice chain前面增加 ExposeInvocationIntercepter:@AspectJProxyUtils.makeAdvisorChainAspectJCapableIfNecessary(candidateAdvisors), 条件是：
+							>advisors不是空且有advisor是 aspectj通知： 条件满足之一：通知者类型=InstantiationModelAwarePointcutAdvisor，通知类型=AbstractAspectJAdvice，PointcutAdvisor通知者但是切点=AspectJExpressionPointcut
+				>如果没有通知者：那么不会代理，不需要代理。
+				#否则创建代理：AbstractAutoProxyCreator@createProxy(bean.getClass(), beanName, specificInterceptors, new SingletonTargetSource(bean))	
+					>直接构造@new ProxyFactory()配置后.@proxyFactory.getProxy(getProxyClassLoader())
+		>对于 org.apache.shardingsphere.transaction.spring.ShardingTransactionTypeScanner： 构造方法就设置this.advisor = new ShardingTransactionTypeAdvisor()
+			>直接转父类 AbstractAdvisingBeanPostProcessor :
+				>先看是否合格：@isEligible(bean, beanName)
+					>就是看advisor是否用于这个类：@AopUtils.canApply(this.advisor, targetClass)
+				>合格: 则直接新建new ProxyFactory()配置，增加advisor: @proxyFactory.addAdvisor(this.advisor) 然后也是创建：@proxyFactory.getProxy(getProxyClassLoader())
+	>来源2：bf创建中，实例化之前：也会应用processor: @AbstractAutowireCapableBeanFactory.applyBeanPostProcessorsBeforeInstantiation()	
+		>对 org.springframework.aop.aspectj.annotation.AnnotationAwareAspectJAutoProxyCreator ： 调用父类 AbstractAutoProxyCreator@postProcessBeforeInstantiation(Class<?> beanClass, String beanName) ---其实没有用；因为根本不会加到任何advisors里。
+			>如果这个是基础设施类：@isInfrastructureClass(beanClass)--即Pointcut/Advisor/Advice/AopInfrastructureBean, 则要添加到@this.advisedBeans 属性里。 
+			>或者是应该忽略的：@shouldSkip(beanClass, beanName) 转到 AspectJAwareAdvisorAutoProxyCreator 实现看：
+				>寻找候选通知者：@findCandidateAdvisors()
+					>先父类：@super.findCandidateAdvisors() -->@this.advisorRetrievalHelper.findAdvisorBeans() 和上述同。
+					>后自己构建：@this.aspectJAdvisorsBuilder.buildAspectJAdvisors() 同上。

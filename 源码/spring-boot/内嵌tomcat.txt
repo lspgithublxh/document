@@ -28,7 +28,29 @@
 			>直接走到本类实现：@org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext.onRefresh()
 				>先父类本身实现：@super.onRefresh()
 				>后开始创建webserver：@createWebServer()
->一次请求的过程：
+					>从bf里获取：org.springframework.boot.web.servlet.server.ServletWebServerFactory 类型的 实例：TomcatServletWebServerFactory 
+						>从bf里获取bd: 其实就发现了 "tomcatServletWebServerFactory" 名字的bd, 搜索发现是 ServletWebServerFactoryConfiguration 这个@Configuration配置类的一个静态类EmbedTomcat 的一个@Bean方法；所以被注册了。
+						--其实：在 myApplication 类的 在 ConfigurationClassParser.parse()解析的最后一步：@this.deferredImportSelectorHandler.process()
+							>寻找自动配置实体来源：@org.springframework.boot.autoconfigure.AutoConfigurationImportSelector.AutoConfigurationGroup#getAutoConfigurationMetadata()
+								>直接：@AutoConfigurationMetadataLoader.loadMetadata(this.beanClassLoader)
+									>核心：@loadMetadata(classLoader, "META-INF/spring-autoconfigure-metadata.properties") 自然 的通过 cl就可以加载到：@classLoader.getResources(path)
+									>后从 spring.factories里加载 EnableAutoConfiguration 的实现类：
+									--两者匹配后：设置到 autoConfigurationEntries。。然后提取封装到@new AutoConfigurationSorter()返回；作为@getImports()的内容
+							>而在@processGroupImports()中：就要遍历上述imports的内容：发现其中就有“org.springframework.boot.autoconfigure.web.servlet.DispatcherServletAutoConfiguration”，，然后转到@org.springframework.context.annotation.ConfigurationClassParser#processImports()处理输入：
+								>内容就是：注册+处理这个 importCandidate  ：处理部分：@processConfigurationClass()
+									>变成了层层解析这个Class:@doProcessConfigurationClass() --上面各种注解包含
+						--注意：在创建 TomcatServletWebServerFactory 实例之后的 初始化之前，应用processsor:	ErrorPageRegistrarBeanPostProcessor 会导致 仓库注册错误页：创建"errorPageCustomizer"的bean, 而对应的类是 ErrorMvcAutoConfiguration， 对应采用工厂方法创建：工厂方法为@errorPageCustomizer(), 方法的入参为：DispatcherServletPath 类型，从而会继续创建这个的实例；这个是接口，实现类为：DispatcherServletRegistrationBean
+							>入参的类型的获取和解析：DefaultListableBeanFactory@findAutowireCandidates(beanName, type, descriptor) 这里的type就是入参的类型，而beanName就是 "errorPageCustomizer"
+								>通过@BeanFactoryUtils.beanNamesForTypeIncludingAncestors()来查找到 DispatcherServletPath 的实现类 DispatcherServletRegistrationBean 然后计算它对应的beanName: 为 “dispatcherServletRegistration” ，---因为 这个Bean的创建正是 DispatcherServletRegistrationConfiguration 这个类的@Bean方法 @dispatcherServletRegistration() 返回的。从而使用这个构造方法就创建了实例，放到了bf里。从而入参解析就完成了。
+								--从而完成了 "errorPageCustomizer" bean的创建。
+					>开始获取webserver:
+						>先获取初始化器： @getSelfInitializer()		
+						>后开始创建server: @factory.getWebServer()
+							>创建Conenctor:
+							>配置上下文：
+							>配置引擎：
+							>创建server: @getTomcatWebServer(tomcat)	
+>一次请求的过程：				
 
 
 -----专项问题：
