@@ -177,3 +177,5 @@
 									>获取结果：@resultSetHandler.handleResultSets(ps) DefaultResultSetHandler
 										>最终通过@ShardingPreparedStatement.getResultSet()获取到结果！！ResultSet
 									--最后就是关闭会话了。	
+									
+									

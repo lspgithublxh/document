@@ -36,7 +36,7 @@ org.springframework.web.servlet.config.annotation.DelegatingWebMvcConfiguration
  "address" -> "zookeeper://39.105.71.50:2181"
 "client" -> "curator"
 "timeout" -> "15000"
-
+AspectJAroundAdvice
 过滤器
 org.apache.dubbo.config.spring.beans.factory.annotation.DubboConfigAliasPostProcessor
  实时查询到本月末有多少体力值过期的测试接口：http://39.105.71.50:8002/app/power/overdue?planType=%22ios%22&userId=1008&tokenId=MTAwODoxNjAwMjIyNTMzOjdiZDEwODI3YWFhYTFjZDQ=

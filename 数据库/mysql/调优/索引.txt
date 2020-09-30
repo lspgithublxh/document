@@ -1,0 +1,51 @@
+>是否走索引？
+    -- 建立的索引：idx_userId_createTime, idx_sourceId_likeCount, idx_status_createTime,idx_sourceId_createTime,idx_replyId_createTime
+	-- 走索引 index 且 ref=null, 因为 sourceId=''字符串类型
+	explain SELECT `sourceId`  FROM topic WHERE sourceId=111  order by createTime desc limit 10
+	explain SELECT `sourceId`, `createTime`   FROM topic WHERE sourceId=111  order by createTime desc limit 10
+	explain SELECT `sourceId`, `createTime`, `id`    FROM topic WHERE sourceId=111
+	explain SELECT `sourceId`, `createTime`, `id`    FROM topic WHERE sourceId=111 order by createTime desc limit 10
+	EXPLAIN select id, likecount  from topic where sourceId=111
+	EXPLAIN select id, likecount  from topic where sourceId=111 and `likeCount` =2
+	EXPLAIN select id, likecount  from topic where sourceId=111 order by `likeCount` desc
+	EXPLAIN select id  from topic where sourceId=111 order by createTime
+
+	-- 走索引 range 
+	EXPLAIN  select * from topic  where id in (1,2,3,4,5,6,7,8,9,10,11,12,13)
+	-- 走索引 const
+	EXPLAIN  SELECT * from topic where id = 1
+	-- 走索引 ref 
+	explain SELECT id FROM topic WHERE sourceId=111 and replyId=0 AND status=0 order by createTime desc limit 0,5000
+	-- ref:const-8 replyid-createtime (replyId取值使得结果更少)
+	explain SELECT id FROM topic WHERE sourceId=111  AND status=0 and replyId=10 order by createTime desc limit 0,5000
+	explain SELECT id FROM topic WHERE sourceId=111 and replyId=10 AND status=0  order by createTime desc limit 0,5000
+	explain SELECT * FROM topic WHERE sourceId=111 and replyId=10 AND status=0 order by createTime desc limit 0,1000
+
+	-- ref:const-4 status-createtime
+	explain SELECT id FROM topic WHERE sourceId=111  AND status=0 and replyId=0 order by createTime desc limit 0,5000
+	explain SELECT id FROM topic WHERE sourceId=111  AND status=1 and replyId=0 order by createTime desc limit 0,5000
+	explain SELECT * FROM topic WHERE sourceId=111 and replyId=0 AND status=0 order by createTime desc limit 0,1000
+	-- ref const 且 rows 很少， Extra:Using where
+	explain SELECT `sourceId`  FROM topic WHERE sourceId='111'  order by createTime desc limit 10
+	explain SELECT `sourceId`, `createTime`   FROM topic WHERE sourceId='111'  order by createTime desc limit 10
+	explain SELECT `sourceId`, `createTime`, `id`    FROM topic WHERE sourceId='111'
+	explain SELECT `sourceId`, `createTime`, `id`    FROM topic WHERE sourceId='111' order by createTime desc limit 10
+	EXPLAIN select id, likecount  from topic where sourceId='111'
+	EXPLAIN select id, likecount  from topic where sourceId='111' and `likeCount` =2
+	EXPLAIN select id, likecount  from topic where sourceId='111' order by `likeCount` desc
+	EXPLAIN select id  from topic where sourceId='111' order by createTime
+	-- 混合：all+eq_ref primary-8
+	EXPLAIN  select * from topic where id in (select id  from topic where sourceId=111 order by createTime)
+	EXPLAIN  select * from topic t1 where EXISTS  (select id  from topic t2 where sourceId=111 and t2.id=t1.id order by createTime)
+
+
+	-- 未走索引 all
+	explain SELECT `sourceId`, `createTime`, `likeCount`    FROM topic WHERE sourceId=111  order by createTime desc limit 10
+
+	explain SELECT `sourceId`, `createTime`, `likeCount`    FROM topic WHERE sourceId=111
+	EXPLAIN select id, likecount + 3*replycount + top * 100000 from topic where sourceId=111
+	EXPLAIN  SELECT * from topic where sourceId = 1 and likecount=1
+
+	-- 未走索引 什么也没有：
+	explain SELECT `sourceId`  FROM topic WHERE sourceId=111 and id = 3
+	>>以上说明：走了某个索引，没有走其他的索引的原因：可能是数据类型的原因。否则优化一定是走选择性大的。
