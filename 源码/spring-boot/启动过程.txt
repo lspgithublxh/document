@@ -837,6 +837,17 @@
 										>这时就遍历 InterceptorChain 的 interceptors 属性， 对每个拦截器：都进行 访问：@interceptor.plugin(target)  每个拦截器的核心：@Plugin.wrap(target, this)  ：目的是生成增加几个 接口实现的代理。
 											>获取类上的@Intercepts 注解里的接口类，如果和类 实现的接口相同，则作为代理的接口：动态代理创建， 回调接口是 Plugin :new Plugin(target, interceptor, signatureMap) 其中 interceptor  这里就是 之前设置的 PageInterceptor , 而这个target 就是 executor 。
 							>因此这里可以通过 @TransactionSynchronizationManager.getResource(sessionFactory) 方式获取 当前线程中的数据源：而这个入参就是 用户 bean 化的 实例--->底层调用了@new DefaultSqlSessionFactory()来实现。返回的就是上一步 获取 的 DefaultSqlSession 实例；
+							>但是上一步往往第一次是获取不到的：Sqlsession 是空，所以是执行了后面的代码：
+								>根据session工厂打开了一个连接@sessionFactory.openSession(executorType) 即：@org.apache.ibatis.session.defaults.DefaultSqlSessionFactory#openSession(org.apache.ibatis.session.ExecutorType)
+									>内部：@openSessionFromDataSource(execType, null, false) 
+										>从配置i获取了 SpringManagedTransactionFactory 实例，并使用来创建一个事务实例：@transactionFactory.newTransaction():实例就是：new SpringManagedTransaction(dataSource)
+										>并根据执行类型创建了执行器：@new SimpleExecutor(this, transaction)，后被包装为：@new CachingExecutor(executor) 
+										>使用拦截器链 进行 层层代理：@interceptorChain.pluginAll(executor)
+										>代理结果封装到@new DefaultSqlSession()返回。
+								>后实际注册了sessionHolder:@registerSessionHolder(sessionFactory, executorType, exceptionTranslator, session)
+									>直接封装到了@new SqlSessionHolder()里 
+									>然后开始绑定资源:以便后续可以共享访问到这个 sessionfactory--sqlsessionholder 映射对：@TransactionSynchronizationManager.bindResource(sessionFactory, holder)
+									>然后执行其他注册：@org.springframework.transaction.support.TransactionSynchronizationManager#registerSynchronization()	
 						>上述 @DefaultSqlSession.selectList() 这一步：即 反射执行了获取的 DefaultSqlSession的 selectList()方法这一步：	两件事：一 从配置里获取@configuration.getMappedStatement() statement对象，第二 是 用 executor 来执行 实际查询：@executor.query() 因为 这个 executor 已经 是一个 代理 ， 所以执行 它的回调： new Plugin()实例的 invoke(), 而这里就执行了 前面封装进来的 拦截器：@interceptor.intercept(new Invocation(target, method, args)) 结果直接返回。而这个拦截器 就是 PageInterceptor:com.github.pagehelper.PageInterceptor, 已经是第三方包 pagehelper.jar 里的类。
 							>所以看拦截器的实现：核心：就是获取 executor 这个代理的目标类--就是真正的 executor:CachingExecutor, 来执行它的@executor.query()方法：经典的是 居然交给了代理：@delegate.query():SimpleExecutor ，而这个方法为父类实现：BaseExecutor , 父类则走了最核心的@queryFromDatabase()--->然后是@doQuery():
 								>创建 语句处理器：@configuration.newStatementHandler() 创建路由处理器@@new RoutingStatementHandler()实际创建了 @new PreparedStatementHandler()对象，然后开始对 这个 语句处理器 也进行 链式拦截器包装：@interceptorChain.pluginAll(parameterHandler) 自然的包装了 PageInterceptor 拦截器: 
@@ -846,3 +857,108 @@
 									>参数化：@handler.parameterize(stmt)	
 								>语句处理器来查询：@handler.query(stmt, resultHandler)
 									>核心：用语句：@ps.execute() 从而转到@org.apache.shardingsphere.shardingjdbc.jdbc.core.statement.ShardingPreparedStatement#execute()了。
+									>然后操作获取结果：@resultSetHandler.handleResultSets(ps) ，此时还在mybatis:DefaultResultSetHandler 里：显然是要获取 ResultSet 
+										>先获取第一个结果：@getFirstResultSet(stmt)
+											>直接从statement里获取：@stmt.getResultSet() 这个自然是从 DruidPooledPreparedStatement.getResultSet() 里获取的：
+											>最后封装返回：@new ShardingResultSet()返回。 
+											-->封装new ResultSetWrapper()返回。
+										>然后循环着：多次 获取@stmt.getResultSet()， 直到结果获取完毕；	
+>spring-boot中 sharding-jdbc 到 druid的职责过程？这个流程的各个细化环节？并寻找这个环节中可能存在的扩展点(从bf里获取/从spring.factories里获取/从注解仓库中获取/)--整个过程其实shardig-jdbc里有；
+	>即从@org.apache.shardingsphere.shardingjdbc.jdbc.core.statement.ShardingPreparedStatement#execute()开始： 
+		>清除之前的全部记录--门面模式：@clearPrevious() -->@preparedStatementExecutor.clear() 内部实现就是各个语句之类的存储； 
+		>准备：之前已经有阐述 @prepare(sql, parameters) 入参就是正常的包含占位符的sql和 占位参数具体值；
+			>核心工作：通过路由的方式构造一个上下文，以便进行重写sql的准备：@executeRoute()
+				>注册路由装饰器：本质是采用SPI机制加载的路由器实现：RouteDecorator 接口的实现；对每个路由装饰器：都和规则表的每个条目进行匹配：然后注册到内部的router:DataNodeRouter 属性的.decorators:map属性里：BaseRule--RouteDecorator 
+				>路由方式创建上下文：	@route(router, sql, clonedParameters) 转到 PreparedQueryPrepareEngine 实现： 实际又是一个访问者模式/状态模式/策略模式：即转调入参router的方法：DataNodeRouter@router.route(sql, parameters, true)
+					>常规的：使用解析上下文属性 来解析 sql 得到一个sql语句 结果：@parserEngine.parse(sql, useCache)--->实现核心@parse0(final String sql, final boolean useCache) 内部比较复杂，就是构造sql解析树，然后从树里获取对应的东西来构造出sql:核心为2个方法：
+						>构造解析器并生成解析树：@new SQLParserExecutor(databaseTypeName, sql).execute().getRootNode()
+						>访问解析树生成sql语句：@ParseTreeVisitorFactory.newInstance(databaseTypeName, VisitorRule.valueOf(parseTree.getClass())).visit(parseTree)  访问者的实现：@org.apache.shardingsphere.sql.parser.mysql.visitor.impl.MySQLDMLVisitor#visitSelect(),因为是select语句，所以走@visitSelect()方法；同样，对于insert/update/delete则走对应的其他方法来访问；
+							>访问方法包括的其他方法：可能对字句进行：@org.apache.shardingsphere.sql.parser.mysql.visitor.impl.MySQLDMLVisitor#visitUnionClause()
+						---上面的方法 甚至 是sql解析最关键的内容；可以解析最一般sql的全部信息；得到了@SQLStatement 结果对象；
+					>根据sql类型构造sqlstatement上下文：@org.apache.shardingsphere.sql.parser.binder.SQLStatementContextFactory#newInstance()  比如创建 new SelectStatementContext()上下文的时候，内部还创建了 groupby/orderby/limit/投影(对某列的去重)	。。显示，不支持子查询。---因为代码里强制了返回false:@containsSubquery()
+					>封装上述的sqlstetementcontext到路由上下文：@new RouteContext()即可。
+					>开始遍历第一步获取的所有decorators装饰器来装饰：@.decorate(result, metaData, entry.getKey(), properties) 具体装饰器如：
+						--ShardingRouteDecorator的实现：
+							>先验证：
+							>封装分片条件：@getShardingConditions() -->new ShardingConditions() 内部很奇怪的使用了where字句的判断：@org.apache.shardingsphere.sharding.route.engine.condition.engine.WhereClauseShardingConditionEngine#createShardingConditions(org.apache.shardingsphere.sql.parser.binder.statement.SQLStatementContext, java.util.List<java.lang.Object>)
+							>工厂模式创建分片路由引擎的实例：@org.apache.shardingsphere.sharding.route.engine.type.ShardingRouteEngineFactory#newInstance() 含有分片规则，利用了分片规则的判断逻辑表是否为空等：选择方式选择一种引擎：@new ShardingDefaultDatabaseRoutingEngine(tableNames)
+							>使用得到的路由引擎结合路由规则来路由：@shardingRouteEngine.route(shardingRule)	仅仅将默认数据源名 封装到@new RouteResult()而已返回。
+							>进一步封装到：@new RouteContext()返回。
+						--MasterSlaveRouteDecorator 的实现： 
+							>利用上述构造的上下文+RouteUnit: 进行路由：构造主从数据源路由器来路由 获取本次使用的真正数据源名@new MasterSlaveDataSourceRouter().route()：：内部的实现就是老生常谈的：看是否是主路由：非select/mastervisited/hint-master ， 是则返回主数据源名，否则就用主从规则的负载均衡算法调用它的实现---根据它的策略从slave 数据源名集合里选择一个返回。
+							>结果封装到：@new RouteUnit(new RouteMapper())里，然后进一步封装到	RouteContext:RouteResult:RouteUnits 里即可。
+				>完成创建路由上下文，创建执行上下文：@new ExecutionContext()添加 对 上述路由上下文 处理之后的结果：这个处理就是：重写 @executeRewrite()	，模式类似，也是先注册重写装饰器，后创建重写上下文，后执行真正的重写：
+					>注册步：类似，SPI机制获取 SQLRewriteContextDecorator 实现 ，到 decorators 里： rule-decorator 
+					>上下文创建步：@rewriter.createSQLRewriteContext()
+						>新建重写上下文：@new SQLRewriteContext()，里面的有个参数构建对象：new @StandardParameterBuilder()
+						>直接开始装饰：@decorate(decorators, result, routeContext) 即调用每个装饰器的：@decorator.decorate(rule, properties, sqlRewriteContext) 
+							--ShardingSQLRewriteContextDecorator 实现为例：
+						>用上述上下文来生成sqltoken:@result.generateSQLTokens()
+					>重写步：构造重写上下文来重写：@new SQLRouteRewriteEngine().rewrite()
+						>核心为sql的重建：@new RouteSQLBuilder(sqlRewriteContext, each).toSQL()
+						>结果封装到：@new ExecutionUnit()--->RouteContext
+					>打印sql: Logic SQL: ...   SQLStatement:  ... Actual SQL: ...
+		>初始化 preparedStatementExecutor： @initPreparedStatementExecutor() 里面最重要的工作是 获取 connection连接，然后从连接里创建 prepareStatement, 采用的方式都是回调方式调用；即方法封装到了一个对象里：@new SQLExecutePrepareCallback()里。 详细过程：
+			>preparedStatementExecutor.init(executionContext);
+				>获取执行组：@getExecuteUnitGroups() 入参之一为从执行上下文获取的执行单元s，之二为new SQLExecutePrepareCallback()。
+					>遍历执行单元组：对每个单元，确认连接模式--如“MEMORY_STRICTLY”， 调用回调获取连接：@callback.getConnections(), 入参有 数据源名---这个正好是前面准备时获取到的 actualName--真正的数据源名 
+						>而这个获取回调的连接方法：走了父类@PreparedStatementExecutor.super.getConnection().getConnections()的方法：就是从 ShardingConnection 里获取的：所以看它的实现：
+							>走了父类 AbstractConnectionAdapter 实现： 即为一个模板模式的 ShardingConnection ： 
+								>先根据数据源名获取数据源：DataSource 
+								>后使用数据源创建连接：@createConnections()  
+									>如果是分区事务：则需要从@shardingTransactionManager.getConnection(dataSourceName)里获取，否则直接从数据源里获取：@dataSource.getConnection()， 此时已经走了druid的实现：@com.alibaba.druid.pool.DruidDataSource#getConnection() 返回一个 DruidPooledConnection 类型实例：
+										>先对druid连接初始化：@init() --分不同数据库类型进行：
+											>用SPI机制获取 com.alibaba.druid.filter.Filter 的实现类，过滤出有 com.alibaba.druid.filter.AutoLoad 注解的那些；添加到内部this.filters 属性里。 
+											>驱动解析：@resolveDriver() 入参为 jdbc-url :如 jdbc:mysql://rdsql815s2568iryqn93o.mysql.rds.aliyuncs.com:3306/commentdb?autoReconnect=true&useUnicode=true&characterEncoding=UTF-8
+												>先获取驱动类名：方式直接，看jdbc-url协议的开头：所有可能情形都判断，比如：“jdbc:mysql:”， 则返回 对应版本的：比如6:com.mysql.cj.jdbc.Driver, <6: com.mysql.jdbc.Driver
+												>设置到this.driverClass 属性即可。
+											>需要的检查：oracle需要：@initCheck()
+											>异常排序器的设置：@initExceptionSorter() 如 mysql的：new MySqlExceptionSorter()	
+											>连接checker的设置：@initValidConnectionChecker()如mysql的 new MySqlValidConnectionChecker()
+											>连接池初始化：这里就是@new DruidConnectionHolder[maxActive]，默认8个；
+											>连接池填充实例：循环中：
+												>先获取物理的连接：@createPhysicalConnection()
+													>获取连接jdbcUtil,username,password: 密码的获取可能是回调的方式：PasswordCallback --即可能是动态生成的。如会话、zk,smtp 等动态方式；
+												>封装到new DruidConnectionHolder(): 设置到 connections[index]里；
+											>启动一个日志线程：@createAndLogThread()--->@new LogStatsThread(threadName).start()	
+											>启动创建连接线程：@createAndStartCreatorThread()-->new CreateConnectionThread(threadName).start()
+											>启动销毁线程：@createAndStartDestroyThread() 可能放到 定时任务调度，或者自己调度：new DestroyConnectionThread(threadName).start()
+											>注册Mbean: @registerMbean() 入口为：@DruidDataSourceStatManager.addDataSource(DruidDataSource实例)
+												>使用MBean服务器来注册：@ManagementFactory.getPlatformMBeanServer() 之后，@mbeanServer.registerMBean(instance, objectName)注册；关键的 instance 就是：DruidDataSourceStatManager 实例。名字则是：“com.alibaba.druid:type=DruidDataSourceStat”
+												>然后接着注册：@DruidStatService.registerMBean()()--->名字为“com.alibaba.druid:type=DruidStatService” 实例：new DruidStatService()。
+												>注册入参：即 “com.alibaba.druid:type=DruidDataSource,id=” DruidDataSource实例
+											>根据最小闲逛数创建“创建连接”的任务：并跑起来：@new CreateConnectionTask(initTask) 放到schedual里调度起来；	
+										>核心走了：@getConnectionDirect(long maxWaitMillis) 直接的方式；然后是直接的：@getConnectionInternal(maxWaitMillis)
+											>从一个连接数组里获取：@takeLast() 说明，访问到这里时候，已经初始化建立了8个connectionHodler,从中取出一个即是：connections[poolingCount] 具体初始化动作：@init() 在前面有做；但不重复；
+												>获取之后，封装到：@new DruidPooledConnection(holder) 里返回。
+											>连接测试：@testConnectionInternal()
+												>使用连接创建语句：@conn.createStatement()
+												>执行验证sql:@stmt.executeQuery(validationQuery) 当然--如果这个sql 配置时空的，那么就不会执行，直接返回true了；
+								>基本直接返回了：虽然还有个可能的：延迟方法invoke:@replayMethodsInvocation()---这里可能是一个扩展点：----			
+						>遍历每个sql执行组：然后执行创建语句执行组：@callback.createStatementExecuteUnit()
+							>创建preparedStatement:@createPreparedStatement() 
+								>开始真正的创建：使用druid来创建 preparedStatement: @connection.prepareStatement() ::@com.alibaba.druid.pool.DruidPooledConnection#prepareStatement(java.lang.String, int, int, int)
+									>仅仅做：创建语句holder:@new PreparedStatementHolder()--->后初始化：@initStatement(stmtHolder)
+										>使用了数据源来初始化：@holder.getDataSource().initStatement()
+										>封装到@new DruidPooledPreparedStatement()即：返回。
+							>将上述封装到 new StatementExecuteUnit() 里： 
+					>继续封装：new InputGroup<>(result) 而返回。	
+			>开始参数设置和延迟方法的激活：@replayMethodsInvocation()			
+		>开始真正的执行：@preparedStatementExecutor.execute()
+			>获取sql执行回调：@SQLExecuteCallbackFactory.getPreparedSQLExecuteCallback()
+				>封装的sql执行回调：@new SQLExecuteCallback() 其实现方法中：
+					>核心方法@executeSQL()的实现：@((PreparedStatement) statement).execute()
+			>执行回调：	@executeCallback(executeCallback) 先走执行模板，合适时机才回调上述：
+				>模板开始走：@sqlExecuteTemplate.execute()
+					>层层交给了执行引擎：@executorEngine.execute()
+						>串行执行：@serialExecute()
+						>并行执行：@parallelExecute() 一般走并行：所以开始异步执行：@asyncExecute()
+							>开始串行回调：@callback.execute()入参就是前面获取到的；
+								>遍历每个执行单元：对每个执行单元@execute0(each, isTrunkThread, dataMap)
+									>先取数据源元数据：@getDataSourceMetaData() 核心：返回 new MySQLDataSourceMetaData(url) 就是解析url里的内容；
+									>核心的: 执行sql:@executeSQL() 这个方法的实现 就是 上述 编写的回调执行抽象类的实现方法：@((PreparedStatement) statement).execute() 就从sharding-jdbc转到了@com.alibaba.druid.pool.DruidPooledPreparedStatement#execute() 即这个就到了druid 核心了。
+										>模式型的处理：核心： 
+											>开始前：@conn.beforeExecute() 这个conn还是 druid的：
+											>核心：@stmt.execute() 为：转到 jdbc了：@com.mysql.jdbc.PreparedStatement#execute()
+											>执行后释放：@conn.afterExecute()
+		>又是门面模式清除相关信息：@clearBatch()									
