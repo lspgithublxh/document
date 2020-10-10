@@ -1,0 +1,51 @@
+23.elasticsearch: 问题架构和使用哲学(这两点必须使用至少1年后才对外表达)
+	>系统特征：一类系统。其各个特征的来源---对象 本身；取值可能性：大量对象的可能--或者类的定义规定了其范围；(就像定义这个类，定义这种系统的一个类)
+		>elasticsearch为例：属于全文搜索系统 类别。
+			>全部特征：(本类系统最重要的特征)
+				>部署特征(分布式/独立单机)：分布式。
+				>查询时间(实时/离线查询)：实时。
+				>扩展性(扩展多少个节点): 胜任上百个服务节点的扩展；
+				>可支撑存储数据的容量：PB级别的结构化或者非结构化数据。
+				>索引特征：	
+					>建议每个Index就一个type: 不要多个type
+					>每个Field默认建索引：不建则明确指出。。同理 不需要analysis的也定义出来---因为默认会analysis。
+					>建的倒排索引：每个term排序好term dictory, dict太大而根据term的前缀建立容量更小的term index, term index加载到内存；term index的表示：压缩空间表示 FST:值就是对应的dict块，找到对应的posting list , posting list 排好序存储；使用bitmap/roaring bitmap存储；
+					>多字段查询：分别会从Field的term index下匹配到 posting list, 然后对几个posting list 对应的bitmap直接进行按位与 即可； 而roaring bitmap 是二维(商，余)的方式存储的；也可以类似操作；第二种方式可以 按照 posting list的跳表 方式 实现；
+					>也需要有规律的ID：
+				>文档嵌套：
+				>值类型：
+	>使用哲学：充分使用，不出问题的使用；各种可能的问题的预见后的使用；			
+	>查询语法：
+		>通用：会按照匹配程度，每个匹配到的条目都有分值。
+			>查询类型: query
+				>match: 会对指定的条件field的值分词；各个分词之间默认是or的关系--也可以指定为and关系；即包含。甚至可以指定为75%的分词匹配到了。
+				>multi_match: 既指定查询条件值-并进行分词，又指定多个field, 为or的关系，有一个field匹配则匹配。
+				>term: 精确值匹配；值可以是整数、时间、布尔，字符串不分词；再指定field；
+				>terms: 可以指定多个值，但还是一个field；类似in查询；
+			>复合查询类型：query->bool
+				>must: 必须满足的子查询类型。与
+				>must_not: 必须不能满足的子查询类型。非
+				>should: 或。
+			>范围查询： query->range
+				>gte: 下限
+				>lt: 上限
+			>模糊查询：query->fuzzy
+				>指定field,指定值；搜索和指定值的编辑距离<=2的条目；fuzziness:可以指定编辑距离上限。
+		>过滤：对已经有分值的条目进行过滤；即本身不会给条目打分；
+			>查询后过滤：query->bool->filter->range: 进行的范围限制
+			>只过滤不查询：query->constant_score->filter->range: 不会评分；
+		>排序：sort->
+			>指定字段，指定排序方式：xxx->order:desc 
+		>分页：
+			>普通方式：from+size: 指定 from, 指定size; 则会从所有shard里拉取全部页的数据，合并后取对应第xx页数据；缺点在于页太大则要取很多页从而可能OOM,
+			>非实时方式：记录每个shard 上次读取的位置，则读取下一页的时候就从每个sharding的对应位置开始读取下一个数据，则只需要始终读取相同的个数；则即便是后面的页也不需要太多时间--->显然这个需要一页页的读取，所以这个耗时始终恒定。
+				>scroll是对数据的一种快照，当数据变化--新增更新删除(索引变动)，不会被感知到；维护scroll上下文非常昂贵；不适合实时和高并发场景；。。同样的，类似mysql where id > xxxx 的方式，即不能够随机跳转---但是流水是场景--不是限制；
+			>search_after 方式：依赖上一页最后一条数据；
+				>并列于from/size: search_after: [排序列A的上次的最后一个值，排序列B的上次的最后一个值] 所以要结合 ： sort:[{列1:顺序},{列2:顺序}]
+		>返回字段：
+			>_source: 可以指定某些列返回。可以指定哪些列不返回。
+		
+---参考：https://www.cnblogs.com/sha0830/p/8000242.html
+			https://www.cnblogs.com/qin1993/p/12643369.html
+			https://www.infoq.cn/article/database-timestamp-02/?utm_source=infoq&utm_medium=related_content_link&utm_campaign=relatedContent_articles_clk
+			https://blog.csdn.net/andybegin/article/details/83864171

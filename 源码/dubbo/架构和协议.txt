@@ -273,3 +273,96 @@
 											>可能注册服务实例：@registerServiceInstance()
 											>引用全部服务：@referServices()
 											
+-------------------------------专项问题：
+>spring-boot中：客户端一个服务请求的过程？
+	>服务接口的实现肯定是一个代理，所以走回调：这个回调类就是：org.apache.dubbo.rpc.proxy.InvokerInvocationHandler, 所以看它的@invoke()方法 
+		>建立一个rpc激活类：new RpcInvocation()
+			>执行一个初始化参数描述工作：@initParameterDesc()
+				>获取服务仓库：@ApplicationModel.getServiceRepository() 
+					>核心：加载名为"repository"的扩展实现类实例：@loader.getExtension("repository") 而这个 loader也是以扩展的方式加载的：@ExtensionLoader.getExtensionLoader(FrameworkExt.class), 而这个FrameworkExt有@SPI注解，从而会返回一个：@new ExtensionLoader<T>(type)这个type就是入参FrameworkExt,而在new创建过程中会：@ExtensionLoader.getExtensionLoader(ExtensionFactory.class).getAdaptiveExtension()赋值给内部 objectFactory 属性；
+						--必要阐述创建合适的扩展的过程：
+							>先加载全部扩展：@getExtensionClasses()
+								--比如属性type=org.apache.dubbo.common.threadpool.manager.ExecutorRepository,则：
+								>加载： 则加载 "META-INF/dubbo/internal/org.apache.dubbo.common.threadpool.manager.ExecutorRepository" 这个路径的资源：即以类加载器：ClassLoader.getResources(fileName)方式加载，然后读取这个URL到 BufferedBreader里：@new BufferedReader(new InputStreamReader()),然后遍历读取每一行，然后name=前缀，而Class=后面的反射加载Class.forName()这个value代表的类名，放到：exceptions 属性里。。。可以查看@loadDirectory()方法细看。加载自然是加载 classpath下的包里的。
+									>实际就加载了："default":"org.apache.dubbo.common.threadpool.manager.DefaultExecutorRepository"
+								>同理加载：尝试加载"META-INF/services/org.apache.dubbo.common.threadpool.manager.ExecutorRepository" 实际并不存在；
+							>后创建合适的扩展类：@createAdaptiveExtensionClass()
+								>
+		>					
+>spring-boot中：启动过程中 服务的代理过程？从而生成完整的一个个服务？猜测是解析配置注解的时候，@InputSource 注解的consumer.xml配置的解析而产生的一个个客户端bean:
+	>先是创建bd时：创建了name="dubboBootstrapApplicationListener" 的 bd: 
+	>后在广播事件的时候：需要寻找所有的 applicationListener, 此时就执行了从bf里寻找并创建name="dubboBootstrapApplicationListener"的bd的实例工作：bf.getBean(..)  创建的实例 就是 DubboBootstrapApplicationListener 实例。 
+		--这个广播事件：就是在 org.springframework.data.mapping.context.AbstractMappingContext 的初始化方法@afterPropertiesSet()里调用出发执行的。
+		--这个实例 的创建：非常多事情：核心为：@DubboBootstrap.getInstance() 单例模式创建
+			>属性初始化方面：
+				>创建线程池：赋值给属性
+				>创建默认扩展：@EventDispatcher.getDefaultExtension()
+					>核心：指定类别后 调用通用方法 获取默认扩展类： @ExtensionLoader.getExtensionLoader(EventDispatcher.class).getDefaultExtension()
+						>先是获取扩展加载器--核心：new ExtensionLoader<T>(type) 这个type=EventDispatcher  其取得后放到 EXTENSION_LOADERS 属性里。
+							>核心就是固定的：@ExtensionLoader.getExtensionLoader(ExtensionFactory.class).getAdaptiveExtension()) 来赋值给 objectFactory 属性；关键显然是后面一个方法：@getAdaptiveExtension()
+								>核心：创建扩展：@createAdaptiveExtension()
+									>核心：获取扩展类来实例化：@getAdaptiveExtensionClass()
+										>核心：已经有说：就是@getExtensionClasses() 加载 文件中配置的类， 但是执行的时候却很特别：在@loadExtensionClasses()里：因此此时 type=org.apache.dubbo.common.extension.ExtensionFactory 上面调用的入参已经说明了。
+											>所以加载："META-INF/dubbo/internal/org.apache.dubbo.common.extension.ExtensionFactory" 而这个文件里有3行：spring=org.apache.dubbo.config.spring.extension.SpringExtensionFactory  adaptive=org.apache.dubbo.common.extension.factory.AdaptiveExtensionFactory  spi=org.apache.dubbo.common.extension.factory.SpiExtensionFactory
+												>而具体的加载方法很独特：@loadDirectory()->loadResource()->loadClass(): 这个方法里，分类处理：
+													>如果有 @Adaptive 注解，则调用@cacheAdaptiveClass(clazz) 来处理。而这个方法处理很简单：就是@cachedAdaptiveClass = clazz 赋值，显然，上面因为有这种类，所以赋值给了这个属性；
+													>其他类，一般就是直接放到入参map里返回了：即剩下的两个都这样返回了。到了@loadDirectory()的入参里，返回作为@loadExtensionClasses()返回值返回了。
+										>然后：可能创建 适配的扩展类：@createAdaptiveExtensionClass()； 但是条件是 cachedAdaptiveClass 属性 是Null,但是上一步已经 设置了，所以不会执行(内部有死循环问题？)，而是直接返回 cachedAdaptiveClass 这个属性。 但是有的就是没有@Adaptive 注解，比如 org.apache.dubbo.rpc.Protocol， 而 cachedDefaultName="dubbo", 从而会执行：@createAdaptiveExtensionClass()
+											>直接生成class的java code: @new AdaptiveClassCodeGenerator(type, cachedDefaultName).generate()
+												>简单粗暴：就是 编写 package... import....class.., 且这个类是：Protocol$Adaptive implements org.apache.dubbo.rpc.Protocol 然后将接口Protocol的方法实现补上， 重点是实现 @export()方法 + @refer()方法。。。这样，完整的类代码生成了。
+											>开始编译这个java code: 先找到合适的 compiler: @ExtensionLoader.getExtensionLoader(org.apache.dubbo.common.compiler.Compiler.class).getAdaptiveExtension() 很明显，先加载文件，发现有三个：adaptive=org.apache.dubbo.common.compiler.support.AdaptiveCompiler, jdk=org.apache.dubbo.common.compiler.support.JdkCompiler, javassit=org.apache.dubbo.common.compiler.support.JavassistCompiler
+												>第一个 AdaptiveClassCodeGenerator 有 Adaptive 注解：所以缓存了这个Class到 ExtensionLoader::cachedAdaptiveClass 属性里；后面两个没有--必然没有。所以在@getAdaptiveExtension()->createAdaptiveExtension()->getAdaptiveExtensionClass()这个实现里，直接返回了。不会递归@createAdaptiveExtensionClass()
+												>找到之后自然就是实例化：实例化之后@injectExtension()注入即可；
+												--方法名如其含义，获取到 adaptive 的扩展 为止。
+											>然后开始实质的编译：@compiler.compile(code, classLoader)
+												>获取编译器的默认扩展：@ExtensionLoader.getExtensionLoader(Compiler.class).getDefaultExtension() 很显然，org.apache.dubbo.common.compiler.Compiler 这个接口上@SPI("javassist") 这个注解表名 javassist 才是默认的；因此找到 JavassistCompiler 这个类来实例化。
+												>使用获取到的默认扩展-编译器：来编译：@compiler.compile(code, classLoader)
+													>核心：最终通过对@org.apache.dubbo.common.compiler.support.CtClassBuilder#build()的调用 实现 转到 javassist 的 字节码拼接生成：仅仅只需要指明 类名、接口名。。。。
+									>上一步返回的 cacheAdaptiveClass 代表的类：	AdaptiveExtensionFactory 直接反射方式创建它的实例：@newInstance()	
+										>实例创建的具体操作：
+											>创建扩展工厂：@ExtensionLoader.getExtensionLoader(ExtensionFactory.class) 因为入参类是这个，所以内部 objectFactory=null 
+											>遍历上述从文件获得的三个name: 对每个，获取具体扩展类实例@getExtension(String name)
+												>创建先：@createExtension(name)
+													>自然是 SpiExtensionFactory 类，然后反射实例化，后存储到 ExtensionLoader.EXTENSION_INSTANCES属性里；
+													>注入扩展：@injectExtension() 
+														>如果 objectFactory=null直接返回
+														>获取这个类的所有方法，筛选 其中 setter方法 且 非 DisableInject 注解方法，然后根据方法名采取出对应的属性名，从 objectFactory里获取对应名字的工厂： objectFactory.getExtension()成功后，则反射调用这个方法设置进去这个工厂；
+													>初始化扩展：@initExtension(instance)	 看有没实现 Lifecycle 接口，有则要执行初始化方法。
+													>返回实例
+												>存储后：将实例封装到Holder 实例里，放到 cachedInstances 属性。
+												>返回这个实例。 
+											>将两个工厂类实例 放到 factories 属性里：即 SpiExtensionFactory / SpringExtensionFactory 
+									>注入创建的 AdaptiveExtensionFactory 实例 ：@injectExtension() 也直接返回：因为 objectFactory=null 
+							>如此，完成这个type的 ExtensionLoader的 实例化。
+					>后是获取默认扩展：		@getDefaultExtension() 
+						>核心：先还是获取所有的扩展类：@getExtensionClasses() 但此时 type=org.apache.dubbo.event.EventDispatcher 所以 在@loadDirectory()时构造的文件路径是“META-INF/dubbo/internal/org.apache.dubbo.event.EventDispatcher”， 内部两个：direct=org.apache.dubbo.event.DirectEventDispatcher  parallel=org.apache.dubbo.event.ParallelEventDispatcher
+						>然后是获取指定的扩展：@getExtension(cachedDefaultName) ，这里的 cachedDefaultName="direct"  所以结果自然是：给 EXTENSION_LOADERS 属性增加了一个扩展加载器：@new ExtensionLoader<T>(type) type=DirectEventDispatcher  而过程中实例化 DirectEventDispatcher 时候，有额外的工作：@loadEventListenerInstances() 
+							>获取了 EventListener 类型扩展加载器：@ExtensionLoader.getExtensionLoader(EventListener.class) 自然的就加载了"META-INF/dubbo/internal/org.apache.dubbo.event.EventListener" 里的四个：service-mapping, config-logging, service-instance,registry-logging  对于这四个，自然是@getExtension(name) 方式获取实例
+								>在对 service-mapping 的 ExtensionClass 实例化时：org.apache.dubbo.config.event.listener.ServiceNameMappingListener 有特殊操作:就是给内部属性 serviceNameMapping 赋值@getDefaultExtension()默认扩展：@getExtensionLoader(ServiceNameMapping.class).getDefaultExtension()这个，自然看会加载哪个文件，第二，看默认的选择哪个：在@SPI("default")注解里的内容，就是选择的文件里的具体的那个扩展。这里的路径就是“META-INF/dubbo/internal/org.apache.dubbo.metadata.ServiceNameMapping”
+							--实例化的@loadEventListenerInstances()执行完毕后, 是@injectExtension(instance) 动作，自然有阐述；		
+				>执行仓库 这个扩展的获取：@ExtensionLoader.getExtensionLoader(ExecutorRepository.class).getDefaultExtension() 同样，还是看加载路径和默认标签选择："META-INF/dubbo/internal/org.apache.dubbo.common.threadpool.manager.ExecutorRepository" 文件内容只有一个：DefaultExecutorRepository, 而父类上有注解@SPI("default") 所以选择了这个来实例化。
+			>构造方法里的初始化：
+				>设置配置管理器：@ApplicationModel.getConfigManager()
+					>使用一般的加载器：@ExtensionLoader.getExtensionLoader(FrameworkExt.class) 这个加载器 ，来加载 @loader.getExtension("config")这个名字配置的 实现类 实例 org.apache.dubbo.config.context.ConfigManager。 这个文件里其他2个：environment=org.apache.dubbo.common.config.Environment, repository=org.apache.dubbo.rpc.model.ServiceRepository
+						>而在实例化 ConfigManager 时 ： @injectExtension()阶段，发现它有属性：setModule()，从而属性 module需要设置，自然 objectFactory 里找不到；
+				>设置环境：@ApplicationModel.getEnvironment()
+					>类似上述：使用同一个loader, @loader.getExtension("environment") 而已，自然得到它的实例。
+						>它实现了 Lifecycle 接口，所以会在@initExtension(instance)阶段执行 这个接口的 初始化方法@lifecycle.initialize() 一些工作，作用不大；
+				>注册jvm回调处理：@ubboShutdownHook.getDubboShutdownHook().register()  
+					>新建new DubboShutdownHook()--内部许多初始化 
+					>注册：@Runtime.getRuntime().addShutdownHook()
+					>分发注册回调事件：@dispatch(new DubboShutdownHookRegisteredEvent(dubboShutdownHook))
+						>使用的事件分发器：@EventDispatcher.getDefaultExtension() 方式获取的：即 也是从扩展文件里获取的：@ExtensionLoader.getExtensionLoader(EventDispatcher.class).getDefaultExtension()
+						>执行分发：@eventDispatcher.dispatch(event) 具体监听器略。
+					>增加DubboShutdownHook回调：@ShutdownHookCallbacks.INSTANCE.addCallback()
+						>实例的创建，首先还是补充callback:@ExtensionLoader.getExtensionLoader(ShutdownHookCallback.class) 从文件里补充。
+						>调用时间：还是在注册回调事件的 DubboShutdownHook 实例的 被 线程池执行过程。
+	>第二个重要节点：<dubbo:application name="dubbo-comment" ...>这样对应的 bean的 getBean()的过程中：在初始化阶段@initializeBean()-->@applyBeanPostProcessorsBeforeInitialization() 时候执行：在 InitDestroyAnnotationBeanPostProcessor 处理器 处理时：直接寻找并调用初始化方法：@invokeInitMethods(Object target, String beanName)-->发现初始化方法为“addIntoConfigManager”确实这个方法上有@PostConstruct 注解，这个方法的具体实现：
+		>往配置管理器里增加一个配置：@ApplicationModel.getConfigManager().addConfig(this) ， 这个this=ApplicationConfig 
+	>第三个节点：@refresh()中后面的获取接口的实例：如 getBean("com.ihuaben.dubbo.api.iservice.comment.ICommentService") ，因为从bd中看是没有构造方法的，所以走了最后的尝试：@org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory#instantiateBean()
+		>即根据设置的实例化策略来进行实例化：这个策略属性： org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory.instantiationStrategy=CglibSubclassingInstantiationStrategy, 即@getInstantiationStrategy().instantiate(mbd, beanName, parent) 策略 的实例化方法：是一个模板方法，即走了父类的实现：@org.springframework.beans.factory.support.SimpleInstantiationStrategy#instantiate()方法：
+			>找构造方法：优先从 bd.resolvedConstructorOrFactoryMethod 这个属性里取， 发现 Constructor 是 org.apache.dubbo.config.spring.ServiceBean 的构造方法：
+			>使用找到的构造方法进行实例化了：@BeanUtils.instantiateClass(constructorToUse) 具体实现，非常干脆，直接反射实例化@ctor.newInstance()，毕竟 ServiceBean也是一个类；实例化过程：
+				>因为继承了 ServiceConfig 类，所以它的一些构造方法需要执行：
+					>创建调度线程池：@Executors.newSingleThreadScheduledExecutor()
+					>加载协议实例：@ExtensionLoader.getExtensionLoader(Protocol.class).getAdaptiveExtension() 发现也是从文件里获取，且获取合适的那个：这个文件里有19个实现！！
