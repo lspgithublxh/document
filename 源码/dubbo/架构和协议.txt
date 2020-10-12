@@ -365,4 +365,147 @@
 			>使用找到的构造方法进行实例化了：@BeanUtils.instantiateClass(constructorToUse) 具体实现，非常干脆，直接反射实例化@ctor.newInstance()，毕竟 ServiceBean也是一个类；实例化过程：
 				>因为继承了 ServiceConfig 类，所以它的一些构造方法需要执行：
 					>创建调度线程池：@Executors.newSingleThreadScheduledExecutor()
-					>加载协议实例：@ExtensionLoader.getExtensionLoader(Protocol.class).getAdaptiveExtension() 发现也是从文件里获取，且获取合适的那个：这个文件里有19个实现！！
+					>加载协议实例：@ExtensionLoader.getExtensionLoader(Protocol.class).getAdaptiveExtension() 发现也是从文件里获取，且获取合适的那个：这个文件里有19个实现！！而这个具体实现 是 javassist 动态编译的 结果。Protocol$Adaptive
+					>加载代理工厂实例：@ExtensionLoader.getExtensionLoader(ProxyFactory.class).getAdaptiveExtension() 尽管文件里有3个：stub=, jdk=, javassist=; 但因为这三个都没有 @Adaptive 注解， 所以导致不会使用，而还是走了 动态编译， 因为有@SPI("javassist")所以构建 ProxyFactory$javassist 的动态编译类：
+			>这样构造完成的新建的ServiceBean实例：就是 "com.ihuaben.dubbo.api.iservice.comment.ICommentService"	名字bean的 实例。
+	>第3.2个节点@refresh()里获取bean实体：@getBean() 时候：已经有了解析 provider.xml时建立的 关于 <dubbo:application> 这样配置的 beanName="dubbo-comment"， 它的bd指明的类型是“org.apache.dubbo.config.ApplicationConfig()” 所以创建这个类型的实体；后执行初始化方法：@PostConstruct 注解 的 @addIntoConfigManager()方法：	
+		>把自己当做配置增加去而已：@ApplicationModel.getConfigManager().addConfig(this)， 核心到了：放到 configsCache 属性里，而key=application, valu=map: 所以， 再次put:key="dubbo-comment", value=ApplicationConfig它自己 。
+	>第3.n个节点@refresh()的类似这种@getBean()而导致的初始化中增加自己到配置 configsCache ， 还有：
+		> <dubbo:protocol> : bean类型：ProtocolConfig , 存到 configsCache里，key=protocol
+		><dubbo:provider> beanName="org.apache.dubbo.config.ProviderConfig#0" org.apache.dubbo.config.ProviderConfig , key=provider , 且provider可能多个：有一个默认的，在valu=map的key=“ProviderConfig#default”
+		><dubbo:service > ServiceBean , key=servie,  value=map, 这个map的key="com.ihuaben.dubbo.api.iservice.comment.ICommentService", 值就是 ServiceBean 本身。
+		><dubbo:registry > beanName="org.apache.dubbo.config.RegistryConfig#0" 类型 RegistryConfig, key=registry 	值就是这个 RegistryConfig 实例。 
+		><dubbo:config-center> beanName="org.apache.dubbo.config.spring.ConfigCenterBean#0" ConfigCenterBean key=config-center 值就是 这个 ConfigCenterBean
+		><dubbo:metadata-report> beanName="org.apache.dubbo.config.MetadataReportConfig#0"  MetadataReportConfigBean key=metadata-report 其中 ,map里的key="MetadataReportConfig#default"
+	>第四个节点：服务的初始化：从@refresh()->@finishRefresh()最后一步开始：
+		>发布上下文刷新事件：@publishEvent(new ContextRefreshedEvent(this))
+			>使用广播器广播事件：内部就是获取所有的listener来执行：@listener.onApplicationEvent(event) 其中有个 DubboBootstrapApplicationListener 监听器：看它实现：
+				>核心代码：执行启动：@dubboBootstrap.start()  这个实例上述已经有 其 单例创建过程。 start()分四大过程： 初始化、输出服务、注册服务实例、引用服务；
+					>初始化：@initialize()
+						>初始化框架爱扩展：@ApplicationModel.iniFrameworkExts()()
+							>获取支持的"框架"扩展实例集合：@ExtensionLoader.getExtensionLoader(FrameworkExt.class).getSupportedExtensionInstances()只看扩展实例：
+								>先获取所有的文件中的：依然是三个扩展：config=, environment=,repository= 都都会获取扩展实例， 所以会实例化三个：而在仓库的创建时：
+									>org.apache.dubbo.rpc.model.ServiceRepository() 构建时：
+										>构建服务侦查的扩展的获取：@ExtensionLoader.getExtensionLoader(BuiltinServiceDetector.class).getSupportedExtensionInstances() 有两个：echo=org.apache.dubbo.rpc.service.EchoServiceDetector， generic=org.apache.dubbo.rpc.service.GenericServiceDetector 这个 EchoServiceDetector 和 GenericServiceDetector 的创建是直接 的；
+										>注册这两个侦听的服务：服务就是写死的，去除Detector 后缀的名称类：GenericService +  EchoService， 分别封装到 ServiceDescriptor 实例，然后放到 ServiceRepository:map: services: 属性里； 
+							>对三个扩展进行初始化：@ext.initialize()	环境初始化有内容：@org.apache.dubbo.common.config.Environment#initialize()
+								>获取默认配置中心：@ApplicationModel.getConfigManager().getDefaultConfigCenter()
+									>即从 configsCache 属性里获取"config-center" 的那个配置map: 而这个 configsCache 此时已经有内容，内容和 xml 配置是类似的；所以认为是解析xml时设置进来的；但是xml里没有详细，所以还有一部分配置从 properties 里来的，发现如 application-dubboo-test.properties里文件发现有：dubbo.registry.address=xxx, dubbo.config-center.address=xxx, dubbo.metadata-report.address=xxx 类似这样的配置；所以也是配置信息来源。则这里的解析时间？？
+										>这个map只有： “ConfigCenterBean#default”->ConfigCenterBean, 核心数据 address,timeout 就是 properties 里配置的；其他默认，所以他是默认配置--从keyname也可看出来；取出来的目的：是尝试获取 externalConfiguration 等设置到 Environment 这个类的UI应属性上来；实际是空。
+						>启动配置中心：@startConfigCenter()
+							>遍历每个配置中心：实际只有一个；执行刷新：@configCenter.refresh()
+								>调用环境获取配置：@env.getConfiguration(getPrefix(), getId())-- 前缀=dubbo.config-center, id=null。
+									>构造复合配置：new CompositeConfiguration()
+									>添加系统配置到复合配置：先将一个配置增加 Environment 的 systemConfigs属性里："dubbo.config-center." -- new SystemConfiguration("dubbo.config-center") 后再返回这个系统配置。
+									>类似这种方法再次添加4个配置：new EnvironmentConfiguration()/new InmemoryConfiguration()2个/new PropertiesConfiguration()
+								>获取源数据后封装到新的配置类适配器：@new ConfigConfigurationAdapter(this) ， 这个this=ConfigCenterConfig 即入口实例。封装了metadata---实际内容就是 configCenter  的所有属性及其值；
+								>最后又将这个配置类适配器加到了复合类的 configList 里： 即和前面的 5个配置一起：且指定下标位置=4
+								>遍历配置中心的每个方法，对于属性方法，进行必要的重新转换值？(因为set方法上可能有注解@Parameter)
+							>配置中心的参数值验证：长度和字符串值@ConfigValidationUtils.validateConfigCenterConfig(configCenter)
+							>从配置中心构造动态配置：@prepareEnvironment()  后将动态配置添加到 复合配置里。
+								>获取动态配置：@getDynamicConfiguration() 是从 zk上获取。
+									>工厂模式：使用动态配置工厂来获取动态配置：@getDynamicConfigurationFactory() 工厂类的加载--也是 扩展加载器方式：@getExtensionLoader(DynamicConfigurationFactory.class)..getOrDefaultExtension("zookeeper"), 文件里确实有zookeeper=org.apache.dubbo.configcenter.support.zookeeper.ZookeeperDynamicConfigurationFactory, 且有 nop/file/apollo/nacos/consul/etcd 配置。
+									>实际获取：@factory.getDynamicConfiguration(connectionURL)就使用了 zookeeper 的实现：实际为模板模式：抽象类中 获取了 "39.105.71.50:2181" 可以, 调用自雷获取动态配置，联合key,形成key-value, 放到自己的属性 dynamicConfigurations里。 子类实现：@new ZookeeperDynamicConfiguration(url, zookeeperTransporter) 里面做了很多工作
+										>确定根路径：/dubbo/config
+										>缓存监听器+线程池构建：
+										>开始连接形成zk客户端：@zookeeperTransporter.connect(url) 参数 是入参 ZookeeperTransporter， 在工厂构建时就设置了。且这个 ZookeeperTransporter 也是 接口，也是在文件中获取实例的---CuratorZookeeperTransporter 是唯一实现， 实现方法是创建客户端：@new CuratorZookeeperClient()。
+											>连接的实现走 AbstractZookeeperTransporter 模板模式：
+												>先调子类获取客户端：@createZookeeperClient() 即返回上述的 @new CuratorZookeeperClient() 实例： 
+													>建造器模式建造框架工厂：@CuratorFrameworkFactory.builder()
+													>然后建造客户端：@builder.build()
+														>直接@new CuratorFrameworkImpl(this) 也有内容：此时已经进入 curator-framework 框架包。
+															>构造zk工厂：@makeZookeeperFactory()---为匿名内部类：@new ZookeeperFactory()
+															>以极多的入参构造客户端设置到client:@new CuratorZookeeperClient(...)
+															>其他很多属性的设置：包括 authInfos 。@buildAuths(builder)
+													>增加连接状态监听器：@new CuratorConnectionStateListener(url)
+													>启动客户端：client.start() 也进入到 curator-framework 框架包  
+														>如状态管理器的启动：@connectionStateManager.start()
+														>再添加连接状态监听器：@new ConnectionStateListener()
+														>实际客户端的启动：@client.start() : CuratorZookeeperClient  连接状态的启动@state.start()--->提供者启动：@ensembleProvider.start()。。。
+															>zk重置：@reset() -->@zooKeeper.getZooKeeper()@最后在@org.apache.curator.utils.DefaultZookeeperFactory#newZooKeeper()里直接进行@new Zookeeper(connectString, sessionTimeout, watcher, canBeReadOnly)来创建了zk实例。转到了 zookeeper-3.4.9.jar 客户端包。
+														>添加一个定时执行任务：@backgroundOperationsLoop()	
+													>阻塞到连接成功：@client.blockUntilConnected(timeout, TimeUnit.MILLISECONDS)
+												>添加到内部客户端map:@writeToClientMap(addressList, zookeeperClient)	
+										>使用客户端添加数据监听器：@zkClient.addDataListener(rootPath, cacheListener, executor)	
+										---这样就返回了动态配置。
+								>从动态配置里获取属性：@dynamicConfiguration.getProperties()   其中 ，key="dubbo.properties", group="dubbo"	；实际没有获取到结果。
+								>获取应用名：@getApplication().getName() 结果 comment
+									>实际从configManager里获取， "application" 名的值， 获取之后先刷新@application.refresh() 刷新就是前面的@org.apache.dubbo.config.AbstractConfig#refresh()
+										>然后添加了额外的属性：@appendEnvironmentProperties() 包括这个扩展：@ExtensionLoader.getExtensionLoader(InfraAdapter.class).getSupportedExtensionInstances()
+								>获取app配置内容：@dynamicConfiguration.getProperties() 内部走了动态配置查：zkClient.getContent("/dubbo/config/comment/dubbo.properties")  key="dubbo.properties", group="comment"
+								>使用从动态配置获取的内容来更新到Enviroment:@environment.updateExternalConfigurationMap(parseProperties(configContent)) 	environment.updateAppExternalConfigurationMap(parseProperties(appConfigContent))
+							>开始全部刷新：@configManager.refreshAll()  ApplicationConfig/MonitorConfig/ModuleConfig/ProtocolConfig/RegistryConfig/ProviderConfig/ConsumerConfig
+						>有必要则用仓库来代表配置中心:@useRegistryAsConfigCenterIfNecessary()实际则不会。
+						>启动元数据报告：@startMetadataReport()
+							>实际就是从application里 获取 元数据类型，从configManager获取 到元数据配置： MetadataReportConfig
+							>配置验证后：构造元数据报告路径："metadata://39.105.71.50:2181?metadata=zookeeper", 协议=metadata
+							>开始初始化：@MetadataReportInstance.init(metadataReportConfig.toUrl())
+								>获取元数据报告工厂：@ExtensionLoader.getExtensionLoader(MetadataReportFactory.class).getAdaptiveExtension()
+								>重组路径进行报告：zookeeper://39.105.71.50:2181 @metadataReportFactory.getMetadataReport(metadataReportURL)
+									>此时路径已经处理为: "zookeeper://39.105.71.50:2181/org.apache.dubbo.metadata.report.MetadataReport" 
+									>根据路径创建报告：@createMetadataReport(url)
+										>直接@new ZookeeperMetadataReport(url, zookeeperTransporter)
+											>使用父类接口：创建缓存文件："C:\Users\lonel/.dubbo/dubbo-metadata-null-39.105.71.50-2181.cache"
+												>调用定时任务保存：@this.doHandleMetadataCollection(allMetadataReports)  内部实现：会远端和本地：
+													>保存到zk上：ZookeeperMetadataReport@zkClient.create(getNodePath(metadataIdentifier), v, false) 入口@org.apache.dubbo.metadata.report.support.AbstractMetadataReport#storeProviderMetadataTask()
+													>保存到本地：@new SaveProperties(version).run()--> @org.apache.dubbo.metadata.report.support.AbstractMetadataReport#doSaveProperties()
+											>本类连接：@zkClient = zookeeperTransporter.connect(url) 
+										--返回的报告路径：“zookeeper://39.105.71.50:2181/org.apache.dubbo.metadata.report.MetadataReport”		
+						>加载远端配置：@loadRemoteConfigs()  实际仓库id和协议id都是null, 所以无操作；
+						>检查全局配置：@checkGlobalConfigs()
+							>验证配置：如验证 monitor :@ConfigValidationUtils.validateMonitorConfig(getMonitor()) 实际上增加了一个默认：@new MonitorConfig()， 设置到了configManager里：@configManager.setMonitor(monitorConfig)
+								>同理：验证了 new MetricsConfig()/new ModuleConfig()/new SslConfig()
+						>初始化元数据服务：@initMetadataService() 实际为获取扩展：@getExtension(getMetadataType())， 即获取 @getExtensionLoader(WritableMetadataService.class).getOrDefaultExtension("local")这个扩展实例。org.apache.dubbo.metadata.store.InMemoryWritableMetadataService
+						>初始化元数据服务输出者：@initMetadataServiceExporter() 仅仅为DubboBootstrap属性设置：@new ConfigurableMetadataServiceExporter(metadataService)
+						>初始化事件监听器：@initEventListener()	 添加了一个listener: 就是它自己：@eventDispatcher.addEventListener(listener) DubboBootstrap 					
+					>输出服务：@exportServices()
+						>从 configsCache 获取所有的 service: 逐个遍历：每个 是 ServiceBean , 这个实现了 ServiceConfig接口， 先设置 DubboBootstrap 实例 this 进去。后开始同步输出：@sc.export()
+							>检查并更新子配置：@checkAndUpdateSubConfigs()
+								>如果provider是空 还会设置：@new ProviderConfig() 操作 类似上诉。
+								>同理 protocol也是：
+								>ref属性 就是 服务实例-已经被springCglib增强了：而 interfaceClass 就是服务的接口类：@Class.forName()反射方式加载它；
+								>接口方法检查：@checkInterfaceAndMethods(interfaceClass, getMethods())
+								>ref检查：主要是看 服务实例是否是接口的实现：@checkRef()  内部自然是：@interfaceClass.isInstance(ref) 核心判断；
+								>验证服务配置：@ConfigValidationUtils.validateServiceConfig(this) 检查值的字符串规范；仓库、协议、等等；
+									>参数添加：@appendParameters()  
+										>获取激活的参数组件：@ExtensionLoader.getExtensionLoader(AppendParametersComponent.class).getActivateExtension(appendParametersUrl, (String[]) null)
+							>设置常规属性后：开始真正的输出：@doExport() 
+								>输出url:@doExportUrls()
+									>加载服务仓库@ApplicationModel.getServiceRepository()：loader.getExtension("repository") 
+									>注册服务：@repository.registerService(getInterfaceClass()); 实际很快：而注册获取的接口就是：interfaceClass , 值就是： new ServiceDescriptor(interfaceClazz)  然后放到 ServiceRepository:services 属性里。
+									>注册提供者：@repository.registerProvider() 同理： serviceKey="com.ihuaben.dubbo.api.iservice.comment.IIdCommentService",封装到 @new ProviderModel() 而放到 providers:map: ServiceRepository 里。
+									>获取注册url:@得到"registry://39.105.71.50:2181/org.apache.dubbo.registry.RegistryService?application=comment&client=curator&dubbo=2.0.2&pid=19368&qos.enable=false&registry=zookeeper&release=2.7.5&timeout=15000&timestamp=1602493271451" @ConfigValidationUtils.loadRegistries(this, true)
+									>遍历协议protocols: 
+										>构建路径而注册服务：@repository.registerService(pathKey, interfaceClass) pathkey="com.ihuaben.dubbo.api.iservice.comment.IIdCommentService" 内部实现类似上述。
+										>为协议输出：@doExportUrlsFor1Protocol(protocolConfig, registryURLs)
+											>构造一个配置map: 包括本地主机号："bind.ip"
+											>构造超长url: "dubbo://10.1.1.103:20884/com.ihuaben.dubbo.api.iservice.comment.IIdCommentService?accepts=500&anyhost=true&application=comment&bind.ip=10.1.1.103&bind.port=20884&deprecated=false&dubbo=2.0.2&dynamic=true&generic=false&interface=com.ihuaben.dubbo.api.iservice.comment.IIdCommentService&methods=increaseTopicLikeId,increaseTopicId&pid=19368&qos.enable=false&release=2.7.5&retries=0&side=provider&threadpool=fixed&threads=500&timeout=30000&timestamp=1602493514428"
+											>进行本地输出：@exportLocal(url)
+											>获取invoker并包装：@PROXY_FACTORY.getInvoker() 包装到@DelegateProviderMetaDataInvoker()
+											>实际协议的export:@protocol.export(wrapperInvoker)	
+												>核心：一直转到@org.apache.dubbo.qos.protocol.QosProtocolWrapper#export()
+													>尝试启动服务器：@startQosServer(invoker.getUrl())
+													>再次转发：@protocol.export(invoker)RegistryProtocol
+														>注册路径：zookeeper://39.105.71.50:2181/org.apache.dubbo.registry.RegistryService?application=comment&client=curator&dubbo=2.0.2&export=dubbo%3A%2F%2F10.1.1.103%3A20884%2Fcom.ihuaben.dubbo.api.iservice.comment.IIdCommentService%3Faccepts%3D500%26anyhost%3Dtrue%26application%3Dcomment%26bind.ip%3D10.1.1.103%26bind.port%3D20884%26deprecated%3Dfalse%26dubbo%3D2.0.2%26dynamic%3Dtrue%26generic%3Dfalse%26interface%3Dcom.ihuaben.dubbo.api.iservice.comment.IIdCommentService%26methods%3DincreaseTopicLikeId%2CincreaseTopicId%26pid%3D19368%26qos.enable%3Dfalse%26release%3D2.7.5%26retries%3D0%26side%3Dprovider%26threadpool%3Dfixed%26threads%3D500%26timeout%3D30000%26timestamp%3D1602493514428&pid=19368&qos.enable=false&release=2.7.5&timeout=15000&timestamp=1602493271451
+														>提供者路径：dubbo://10.1.1.103:20884/com.ihuaben.dubbo.api.iservice.comment.IIdCommentService?accepts=500&anyhost=true&application=comment&bind.ip=10.1.1.103&bind.port=20884&deprecated=false&dubbo=2.0.2&dynamic=true&generic=false&interface=com.ihuaben.dubbo.api.iservice.comment.IIdCommentService&methods=increaseTopicLikeId,increaseTopicId&pid=19368&qos.enable=false&release=2.7.5&retries=0&side=provider&threadpool=fixed&threads=500&timeout=30000&timestamp=1602493514428
+														>本地输出：@doLocalExport(originInvoker, providerUrl) 添加到 RegistryProtocol.bounds:map属性而已。返回：new ExporterChangeableWrapper()
+														>注册：@register(registryUrl, registeredProviderUrl) 
+															>核心：获取仓库来注册：@registryFactory.getRegistry(registryUrl)..register(registeredProviderUrl)
+																>既添加到本地，也实质的保存到zk:@zkClient.create(toUrlPath(url), url.getParameter(DYNAMIC_KEY, true))  源于：@org.apache.dubbo.registry.zookeeper.ZookeeperRegistry#doRegister()
+														>订阅：@registry.subscribe(overrideSubscribeUrl, overrideSubscribeListener)		
+															>核心：内部实际的调用了zk:@zkClient.create(path, false) path="/dubbo/com.ihuaben.dubbo.api.iservice.comment.IIdCommentService/configurators" 
+															>同时增加了子节点变动监听器：@zkClient.addChildListener(path, zkListener)
+														>返回输出者：@new DestroyableExporter<>(exporter)
+											>获取可写元数据服务扩展实例：@WritableMetadataService.getExtension(): key=local, value=org.apache.dubbo.metadata.store.InMemoryWritableMetadataService 来源 @getExtensionLoader(WritableMetadataService.class).getOrDefaultExtension(name)		
+											>发布服务定义：@metadataService.publishServiceDefinition(url)
+												>获取服务定义：@ServiceDefinitionBuilder.build(interfaceClass)
+													>先@new ServiceDefinition()后注入属性：都和调用有关的：相当于进行一次抽取。：源码class位置、接口、方法。 
+													>gson 序列化后保存到 InMemoryWritableMetadataService.serviceDefinitions 属性；
+								>分发服务配置输出事件：@dispatch(new ServiceConfigExportedEvent(this))
+									>使用扩展来分发：@EventDispatcher.getDefaultExtension().dispatch(event)
+										>除了有条件时间监听器：都@listener.onEvent(event) 如 org.apache.dubbo.config.event.listener.LoggingEventListener 多个， DubboBootstrap 一个。ServiceNameMappingListener 
+					>注册服务实例：@registerServiceInstance() 不会进入。
+					>引用服务：@referServices() 几乎没有内容。
+					
+					
+>spring-boot中， application-dubboo-test.properties 文件的解析时间？解析位置？最后存放位置？
