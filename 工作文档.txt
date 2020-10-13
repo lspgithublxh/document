@@ -1,0 +1,156 @@
+jenkins:  amdin jenkins@iHuaBen123!
+1.开发工具方面：
+git remote add job2 http://lishaoping:123123@git.dev.ihuaben.com/huaben/ihuaben-job-executor.git
+---------------------------
+数据迁移工具(设计方案讨论)
+数据对比恢复工具(设计方案讨论)
+---------------------------
+2.idea常规技巧：
+	>查找接口/类/方法的所有使用位置：
+	>项目转maven项目(settings里配置，项目/pom.xml右键add as maven project)：后编译安装；如果有kt文件，需要先专门打包；
+	>lombok插件安装：
+	>全局搜搜：ctrl+shift+F, 选scope
+	
+3. idea 用户名密码： 	
+	>lib为空：一个是other settings;一个是删除工程下的.idea和.iml文件，重新启动项目；
+	>快捷：ctrl + alt + T : 环绕异常；
+4.oracle username/password: 471126124lxh@sina.com Lsp2019*
+		ApplicationContextInitializer
+5.打包顺序：
+	>base-parent
+	>base-util
+	>base-api:+k
+	>base-mq:
+	>base-bridge:+k
+	>base-lsh:
+	>job-executor:
+	>service-book:
+	>service-comment:
+	>service-common:
+	>service-similarbooks:
+	>service-user:
+		>数据源配置：master+slave 共两个，一主一从，负载均衡(写专门，读负载均衡)(负载均衡只针对读)；
+			>S-S实现：配置了主-从，实际实现为读写分离；添加-更新-删除 走 主；查询 走 从-且负载均衡(默认roundrobin或SPI提供的随机算法)
+				>主从同步：谁在做？
+		>数据源后续的关联类： 数据源-->sql会话工厂-->sql会话模板-->
+							  数据源-->数据源事务管理器-->事务拦截器advice(划定方法种类)-->切点Advisor(圈定方法范围)
+	>web-comment:
+	>web-mq:
+	>web-ranking:
+	>web-user:
+	>web-author:
+	>web-function:---有问题/编译无法通过---语法问题；Error:(182,65) java: 找不到符号
+	>web-manager:
+	>web-passport:
+	>web-wechat:
+	>job-admin:
+	>job-crontab:会爆出异常
+5.2工作进度：
+	>数据结构+存储结构：各个业务的；
+	
+6.项目设计规范：
+	>桥接模式：使用第三方包，一般都需要专门的处理类--桥接一下；如 http连接包。
+
+7.dubbo:
+	>客户端：对哪些接口生成动态代理类，在dubbo-consumer.xml里配置；
+	>服务端：对哪些接口映射对应的实现类，在dubbo-provider.xml里配置； 
+	------
+	>项目内的补充：https://github.com/apache/dubbo-samples/tree/master/java
+		>
+	
+8.公司密码：LiangZiShiDai liangzie603
+	>netsh wlan show profiles
+	>netsh wlan show profile name="LiangZiShiDai" key=clear
+	
+9.linux相关：
+	>免密登录：编辑/etc/sudoers文件相关配置保存即可；切换root无需密码: sudo -s
+		iHuaBen123LSP		iHuaBen123<>,.*@!()   
+	>查看cpu/mem占用率：ps auxw|head -1;ps auxw|sort -rn -k4|head -10 
+		ps
+	>磁盘使用率和各文件夹占用量：df
+		du -h --max-depth=1
+	>正式环境：
+		>跳板机登录：私钥密码： wwwiHuaben123!
+						vpc2密码： iHuaBen123LSP
+						
+10.windows查看端口：netstat -ano|findstr "8080"
+				进程对应：tasklist|findstr "pid"
+	
+11.zookeeper:
+	>创建持久化节点：create /hello "helloworld"
+	>创建持久化节点--带上节点序号：create -s /a "value"
+	>创建临时节点--退出会话则消失：create -e /tmp "tmp"
+	>创建临时有序节点：create -e /tmp "tmp"
+	>创建目录：需要一级级创建：create /abc/abc/file "thisisavalue"
+	>监听节点： get -w /hello
+	
+12.spring相关：spring的集市交互模型像
+	>给每种方法设置特定的传播级别/回滚规则(抛出异常)/超时时间：配置方法： 新增一个@Bean("txAdivce") 方法 ：返回 TransactionInterceptor 实例
+	>名称空间的解析器：spring.handlers里包括的；spring-boot启动时会遍历各个jar里的/META-INF/spring.handlers，所以只要有，就会加载文件内的类：实例化，调用它的@init()方法？
+	>需要解析的配置bean: spring.factories里包括的：spring-boot启动时会遍历classpath下各个jar里的/META-INF/spring.factories，只要有，就会加载解析文件内容中的配置类，加载，则会执行静态块；第二， 还会解析里面的 方法上的@bean 配置---获取到具体的bean实例，典型：DruidDataSourceAutoConfigure 配置类里的创建 DataSource 实例的@Bean dataSource()方法；实例化了---自然就是执行初始化方法：
+		>注意：@Bean注解，即便  @Bean(initMethod = "init") 加了指明初始化方法，如果实现了InitializingBean 接口 首先也会执行 @afterProperties()方法， 后执行@init()方法；
+	>SPI机制的加载实现类：/META-INF/serivces/java.sql.Driver如，里的jdbc实现类，加载；从而执行了static{}块，块里将自己的实例 调用DriverManager进行静态注册；
+	
+13.mysql:
+	>安装服务和删除服务：mysqld --remove MySQL_SLAVE                       mysqld --install MySQL_SLAVE --defaults-file="D:\download\mysql-8.0.21-slave\mysql-8.0.21-winx64\bin\my.ini"
+	>修改密码：alter user 'root'@'localhost' identified with mysql_native_password by 'lsp';
+	>主从配置：一个是安装好两个服务：且my.ini配置好：参考https://www.cnblogs.com/wangbodang/p/11115440.html
+		>2.slave建立复制权限的用户，连接上master：
+			>CREATE USER 'slave'@'%' IDENTIFIED WITH 'mysql_native_password' BY '123456';
+			>grant replication  slave on *.* to 'slave'@'%';
+			>flush privileges;
+			--3.条执行
+			>stop slave;
+			--配置从master拉取bin-log:
+				>change master to master_host='192.168.2.61',master_port=3306,master_user='slave',master_password='123456',master_log_file='mysql-bin.000001',master_log_pos=156;
+			>start slave;启动重新
+			>show slave status \G  查看链接状态； 如果首行出现：Slave_IO_State: Waiting for master to send event则表示成功建立了主从复制；
+		>3.检测状态：
+			>master上：show master status;
+			>配置同样的用户：
+				>CREATE USER 'slave'@'%' IDENTIFIED WITH 'mysql_native_password' BY '123456';
+				>grant replication  slave on *.* to 'slave'@'%';
+				>flush privileges;
+		--登录验证：master/slave都登录root有权限的账号，可以看到数据同步的过程；其实也只需要master链接，后添加数据，可以看到实时就在从库里增加了内容；
+		>
+14.镜像打包和部署
+15.dubbo监控：
+	>参考：https://blog.csdn.net/rogerjava/article/details/54743455
+		>本地monitor启动：D:\download\dubbo-monitor-2.7.3-master\target\dubbo-monitor-simple-2.7.3\conf
+	>admin参考：https://blog.csdn.net/x2145637/article/details/56488072
+		>本地使用位置：D:\download\dubbox-master\dubbo-admin
+16.git批量pull: 增加一个gitpull文件到git安装目录即可；后到根项目下执行gitpull即可；		
+17.apk开发debug环境安装：
+	>环境之后：npm install 安装必要的包
+	>执行相关两个命令：react-native run-android --variant ihuabenDebug    
+		cd android && ./gradlew assembleIhuabenRelease
+	>启动：huaben-app目录下：执行 npm start 
+	>打包： ./gradlew assembleIhuabenDebug
+	 
+18.mybatis：
+	>一次排查错误的过程：mapper接口和xml必须同名；排查源码可以知道 org.apache.ibatis.builder.annotation.MapperAnnotationBuilder private void loadXmlResource() ，这个方法里是这样通过Mapper接口找到xml文件的；
+	
+19.消息系统模式：其实可以看做是 异步非阻塞!!	
+20.docker 命令：
+	>docker build ./ 构建 
+	>docker run 
+	>查看目录下长字符串文件名对应哪个镜像：vim hostname
+							docker ps | grep "ffb917264d14"
+			---来方便看是哪个镜像的日志变得如此大；
+	>查看镜像的完整信息：：docker inspect 252e7003bddc
+	>docker logs 252e7003bddc 查看当前的日志；docker logs -f 252e7003bddc
+21: 慢sql问题：
+
+                //采用异步方式：需要删除已有数据;同步可删可不删；
+//                String sql_delete = "delete from sharding_"+ db + ".integral_available_asset_" + table + " where user_id=" + uid;
+//                jdbcTemplate.execute(sql_delete);
+
+22.一直不退出的问题：？一直使用？也可以？体验？重新登陆----还是重启app?
+	>很久才登陆一次---直接已经过期了；可以；
+	
+>分库分表、迁移数据；体力值可用、历史。；
+>改造体力值原来，持久化数据；
+>体力值过期后端推送消息；	
+
+！！！完成：根据事务传播级别路由数据源。而不是根据事务级别。
+

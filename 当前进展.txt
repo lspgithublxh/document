@@ -1,0 +1,524 @@
+xx实现：
+1.微服务
+	>框架：SCF
+		>
+	>治理：
+		>限流：
+		>隔离：分组
+		>灰度：切流量
+		>伸缩：cpu/mem扩容，节点扩容；
+		>超时-重试：
+		>降级：和恢复；
+		>熔断：无
+	>监控统计告警：
+		>WMonitor: 数据量，统计函数(每分钟进行的数据操作),调用异常量
+		>服务管理平台：实时Qps, 调用时间分布，超时告警、qps超过配置阈值告警
+	>链路追踪：
+		>
+2.数据库：
+	>自研：WTable 分布式列式数据库(海量)
+		>
+3.其他：
+	>分布式缓存、消息中间件、分布式配置、任务系统、搜索系统；
+4.代码管理-需求管理：
+	
+5.部署平台：私有云
+
+		
+提问：
+	>待做：事务的引进；因为发现本地事务也没有使用；
+	>分布式配置：？	
+--------------------
+1.问题：
+ >No provider available from registry :  接口名不对应；		
+ >无法抓包：因为安卓系统，app不再信任系统；需要改app!::https://www.jianshu.com/p/1de7aeac4073
+ 
+
+>业务梳理：
+	>评论：
+		>数据结构：
+			>主题表：topic 评论主题(一条评论)
+				>字段：
+					>sourceId: 含义 bookid,communityId,chapterId 含义有点乱；评论来源？
+						>确定bookid，可能用来统计这本书的topic总数；
+					>id: 评论主题id?
+					>content:评论内容
+					>createTime:评论时间
+					>replyId: 评论恢复的是哪条id
+					>likeCount: 点赞数量
+					>replyCount: 恢复数量
+					>essence:加精
+					>top:置顶
+					>authorMark:作者说印记
+				>方法：
+					>按sourceId搜搜，按createTime排序,分页取数据；；缓存自然是：sourceId-->page-->list的zset有序集合,1day超时
+					>缓存：分值缓存：sourceId-->topicid-->score(分值就是创建时间)
+					>热评：至少超过10个点赞，才是热评；倒序
+					>填充数据：填充用户相关的；
+					>评论的回复评论列表/总数：按replyId=xx搜索，按createTime排序，分页取数据；每一页数据存到redis: topicid-->page-->string:json列表，这样的hash值类型存储；
+					>黑词统计：topic.content/title
+					>数美审核：content,title
+					>保存和发送消息到redis:订阅了这个主题的，则消费；
+					>用户有点赞：则会增加likecount;同理有取消赞，也会减少likecount;
+					>主题删除：即找出一个topic将status设置为delete
+					>批量获取用户的所有评论：按照userid筛选，createTime排序；
+						>缓存：userid-->limit-->topic列表字符串
+					>评论修改：essence+top修改；
+					>用户的所有的评论的哪一页的评论：找出其中全部的回复帖，来找到那个贴是个什么贴--什么内容哪个用户什么nickname
+					>作者印记：更新为新的值；同时发消息，这本书这个评论；
+			>主题点赞表：topiclike
+				>字段：
+					>userid-topicId: 用户对某个评论是否点赞了；
+					>status: 评论状态：正常/删除；正常则 会 推送 一条消息 为xx用户 点赞了 xx帖子；
+					--每个用户对每个topicid的点赞，都会保存下来；
+				>方法：
+					>获取用户对一批评论的所有点赞了的评论：
+			>用户对书的评论状态表：commentblock   用来禁言用
+				>userid:
+				>bookid:
+				>status: 正常或者已经删除：：删除表示被作者禁言
+				--用户书评：新增或者删除；
+			>会员表：member: 
+				>userId:用户id
+				>id: 用户的会员id 最大的就是该用户最后的一个会员记录；也可以判断一个用户是否是会员
+				>endTime: 过期时间
+			>用户角色表：userrole:
+				>roleId: 可以是网编、客服、安审、...
+				-->获取用户所有角色：
+			>用户等级积分表：userscore:
+				>totalScore: 分值 分为 12个区间，为12个等级
+			>用户书本积分表：userbookscore: score是前端push过来的直接覆盖
+				>id: 主键id，通过redis访问而生成；整数类型；
+				>userId:
+				>bookid:
+				>score:
+			>角色扮演索引表：cosplayindex
+				>bookid:书的id
+				>chapterId: 章节id
+				>chapterPassage: 加戏文本(给这个章节加的)
+				>passageIndex: 段落 索引；代表是否有记录；
+				>
+			>角色扮演表：cosplay 缓存分页数据--到凌晨(缓存：bookid-->page-->cosplayList存储hset)
+				>id:
+				>cosPlayIndexId: 一个则可能有很多条; 查出来放到 redis有序集合里，后分页查询；1h更新；
+				>createTime:创建时间
+			>书表：book
+				>缓存时间：1h
+			>章节表：chapter 
+				>书id:一本书的所有章节id；全部书；---分库分表？按照书的类型？
+				>章节内容本身：也有；
+				>作者：
+			>书本粉丝表：book_fans
+				>字段：
+					>bookid:
+					>user_id:
+					>fans_type:粉丝类型
+				方法： 
+					>获取书的评论中属于粉丝的评论：粉丝评论有多少
+					>缓存：key-hash表；
+			>书标签表：booktag 详情；缓存一天
+				>获取方式：静态获取；
+			>书资源-版权相关表：bookindex 
+				>信息位置：会加到book.info拼接；
+			--标签+版权都是book的扩展信息；	book.marks信息里；
+			>社区表：community
+			>用户禁言时间配置表：userforbidcomment， 阿里表；
+			>活动词匹配：activity_literature_match 文学联赛第二期
+				>bookid:
+				>userId:
+				>amount:
+			>积分余额表：integralasset
+				>userid: 
+				>balance:
+				>withdrawal:提现
+				>deposit:
+			>积分余额日志：integralassetlog
+				>userid: 
+				>amount: 积分总额。/10000为人民币数量
+				>createTime:
+			>用户积分转人民币数量记录表：rmbassetlog
+				>userId:
+				>payType: 支付类型
+				>orderNum: 
+			>用户积分表：rmbasset 
+				>userid:
+				>balance:余额
+				>income:收入
+				--和上述日志表一起保存；
+			>作者说表：authorsay:
+				>bookid:根据书找作者说的总数
+				>authorId:
+				>top:
+				-->作者说按页查询：bookid为条件，createTime为排序；显然是多个author的评论；limit分页查询；先是全部查询出来，直接string存一份，后根据time而重新存有序集合全部的数据集；---作为初始化；后面就可以分页查询；
+		>业务逻辑：
+		>数据请求流程：
+			>获取书的评论列表：https://comment.ihuaben.com/topic/list?page=1&sourceId=3951981&tokenId=MzQ1NDkxNDg6MTU5ODM0NTkzNzoyNjk2NzIyNDZjMDNiNzEz
+			>查看某个评论的回复：https://comment.ihuaben.com/topic?id=15200684&tokenId=MzQ1NDkxNDg6MTU5ODM0NTkzNzoyNjk2NzIyNDZjMDNiNzEz 
+					回复列表：https://comment.ihuaben.com/reply/list?page=1&tokenId=MzQ1NDkxNDg6MTU5ODM0NTkzNzoyNjk2NzIyNDZjMDNiNzEz&topicId=15200684
+
+		>改造议题：
+			>数据库表重新设计：字段，索引，
+			>业务梳理：根据数据库的调整而调整；代码上优化重构；
+			>切换流程：上线切换过程；灰度过程；
+
+
+	>积分系统：
+		>用户积分资产表：integralasset 
+			>字段：
+				>userid: 
+				>withdrawal:提现；一直累加
+				>
+			>方法：
+				>提现：存款不变；提现增加，余额减少；//相当于，存：是进，提：是出，balance是余额--净余额
+				>存款：提现不变；余额增加，存款增加；//
+		>用户积分资产流水表：详细表 integralassetlog
+			>字段：
+				>id:分布式？
+				>userid:
+				>amount:
+				>inoutType:
+				>integralType:
+			>方法：
+				>提现或存款后记录流水：
+		>业务逻辑： 
+			>新增需求：
+				>描述：
+				>方案：
+					>新增接口1：查询当前用户当月月末将过期的所有没兑换的积分；总值；
+					>新增任务1：每月末定时任务启动，查询3月前(月份差小于2)创建的积分；失效处理;插入到流水表中；
+					>已有接口修改1：扣减流水，需要将已有积分足够的失效；
+					>数据库方案1：
+						>数据库表的修改：修改流水表，查询流水表代价比较大；
+							>新增：
+								>有效状态: 因过期而失效，因兑换了而失效
+							>方法： 
+								>减少积分：都要额外 对 已经有的积分进行失效处理；(剩下一个半失效:0失效，1有效，-负数 未完全失效)
+					>方案2:
+						>新增 可用表：userid-amount-creattime
+							>初始化：用户余额决定的所有从尾找到头的所有可用积分流水记录；
+							>新增积分：双写：流水表+积分表
+							>使用积分：整理，合并可用积分 来减少；删除；
+							>失效积分：定时任务 将过期积分失效处理--删除；插入过期流水；(删除--先用更新状态，后批量删除)
+						--可以分表：10张；则每个用户3个月100可用优惠券也比较稳定//一开始开发就分表方式；	
+				>流水表的分表方案：
+					>只分表：按userid进行；用户100w, 分10张,平均每人100足够；
+					>过程：开发功能-上线-->数据迁移-->灰度用户(按照同步完成/每次新增数据更新数据删除数据：查看一下该用户是否同步完成：同步完成则直接变更到新库/或者双写--新库和老库都写；自然而然完成分库分表)
+				----------------------------
+					建表：create table integral_available_asset(
+							 user_id bigint(20) not null comment '用户id',
+							 amount int(11) not null comment '数额',
+							 create_time datetime not null comment '积分创建时间',
+							  key `idx_integral_aa_userid`(user_id)
+							)engine=innodb default charset=utf8mb4
+				----------------------------
+				>执行计划：
+					>停机-->可用积分表建表-->迁移数据到可用积分表-->流水表迁移开始-->测试-->恢复积分服务-->问题回滚
+					>停机-->执行建表脚本-->执行util初始化(log)-->执行job初始化(定时任务+初始化执行一次可用积分的任务)--->切换回正常服务；
+					  ----：异常：直接切换原来版本；不影响；双写log, 也不影响线上；
+				>需要解决的问题：
+					>定时任务在删除时，用户在使用：如何同步？(并行读会出错；必须一个事务读的时候，另一个事务要阻塞起来)(事务涉及到回滚，代价比较高；所以直接java里同步)
+					>初始化：原封不动将原来的积分加过去，还是只增加一条，积分过期时间为最后一次的/当前的？--为了看效果，原封不动加过去最好；
+					>数据不一致的问题：可用积分初始化之后，必须和实际积分对应；
+					>幂等问题：保存过期积分；
+					>停服务问题：
+						>时间差方法：t1-t2-t3区间同步；
+						>时间差+确认表： 当同步任务t1同步完成了x个，插入A表(userid, finishTime, confirm) confirm尚未确认；当业务方法保存时，查询上次更新时间tk, 如果tk<t1,说明已经同步完成，那么可以直接更新确认confirm=1,那么以后看到confirm=1了，就认为已经同步完成了，那么直接插入到分表即可；如果tk>=t1,那么认为同步过程中又修改了，则认为还没有同步完成，不写分表；
+							>辅助切换任务：如果用户没有访问业务，那么显然就不会confirm，所以可以第三方进行confirm；这个适合用独立的任务，用独占锁的方式阻塞读占用A表那一用户行；那么即便用户访问了那么会等待，而很快第三方确认好了，则同步好了则confirm=1而没有则还是0,很快！！！！可以大大的促进迁移数据的进程；
+			>url接口：
+				>积分兑换：https://www.ihuaben.com/function/activity/countdown/click	
+					>相当于积分使用：优先使用最早获取的；//必须计算出哪些积分被使用了；
+				>积分总额：https://user.ihuaben.com/app/integral/getIntegralAsset?tokenId=MzM4OTg1NzU6MTU5ODQ5OTU5Njo4NTZhODRjNGQ0NzI4M2Uy
+				>积分列表：https://user.ihuaben.com/app/integral/list?pageNum=1&pageSize=20&tokenId=MzM4OTg1NzU6MTU5ODQ5OTU5Njo4NTZhODRjNGQ0NzI4M2Uy
+	>钱包系统：
+		>人民币资产表：rmbasset
+			>字段：
+				>userid:
+				>balance: 余额
+				>income: 收入总共
+				>payout: 支出总共
+			>方法： 
+				>给用户发钱的记录：如在提现后；
+		>人民币资产流水表：rmbassetlog
+			>字段：
+				>id: 分布式？ 
+				>userid:
+				>amount:
+				>inoutType:
+				>orderNum: 
+			>方法：
+				>给用户发钱的记录：
+				
+
+
+
+
+
+
+
+
+
+
+
+api
+bridge
+util
+executor
+service-user
+web-user
+
+
+
+
+select distinct userId from integralasset limit #{offset} , 
+
+
+----设计方案的制定：就是一层一层的问题向后伸展开来：树状发展展开的分析确定结果的过程；
+	>采用什么数据库--->设计表、分库分表-->
+>需求2： 体力值系统的改造：
+	>当前情况：
+		>业务逻辑1：
+			>接口：
+				>增加用户体力值：一次增加6/8/1，都有可能；
+				>使用用户体力值：一次1次；
+			>数据库：
+				>redis 
+					>键userExchanges: hash, 用户id-体力值/免费阅读次数
+						>数据量： 113752  过期时间 180天 。。113722
+						>单条查询时间： <1ms
+				>table-store: nosql 存储 userid-type(-1) 总量：未知
+		>业务逻辑2：
+			>接口： 
+				>增加用户今天广告点击次数：一次增加1次。
+					>同时增加一次体力值！！
+				>是否可以领取体力值： 条件是 点击广告次数<10	
+				>获取用户排行表：
+				>获取单个用户排名数： redis  :key:zset:userExchangesAll  这个key实际上是null ?? 没有使用过？
+				>修改+获取 用户的自动兑换状态：false/true
+			>存储方案： 
+				>redis 
+					>键userExchange.userid.date  值： 点击次数  ； 过期时间：1d
+				>table-store: nosql 存储 userid-type(1) 总量：未知
+	>业务模型：
+		>提供什么数据的什么服务：
+			>读取存储服务：详细哪些读、哪些写；
+			>流程模拟走服务：
+			>数据： 数据量、数据类型、
+		>数据要求：持久性要求、一致性要求、并行读写力、存储容量、读取耗时范围。存取成功率要求；
+			>持久性： 数据丢失的严重性；
+			>可维护性：是否不好维护。尤其只存在redis上；完全没有范式；
+			>数据量估计：容量估计。数据存储多久？这段时间增加的会有多少；
+			>数据库设计：哪些表；哪些表需要分库分表；分多少张；放在哪些节点上-怎么部署分配；
+	>上层业务：
+		>一次广告：直接换一次体力值；或者 500积分； 或者3天连续打卡；
+		>积分换体力值：1000积分才可以；
+		--结果：用户：更想直接看广告来增加体力值；积分--尽管可以换为现金；积分换体力值，源于积分来源更多？
+		>
+	>方案： 
+		>增加用户体力值增加/使用记录表：增加则插入一条，使用则从时间最早的开始，
+			>登录发消息--对用户的体力值过期；
+			>提供对外接口；查询当前用户本月底过期的体力值次数是多少；
+		>数据初始化：
+			>可以实时初始化：如果当前用户在数据库中没有记录，那么查一下redis,再增加到mysql数据库； 
+			>也可以停服务初始化： 直接对所有的用户从redis里查下来。。。遍历方式：hmget   20013732 2 3 4 5 6 7 逐个获取；
+		>新增业务逻辑 与 新增方案：
+			>需求：知道每个用户上个月总共过期的体力值次数
+			>方案：每次实时过期，则记录过期体力值数量到一个表里---对应哪个用户哪年哪月多少积分；所以至多只需要保存2个月；为了看更多的数据；可以先不清除历史数据；而等定时任务清除。以后分析用，以后导出来归档；然后再删除；
+	>开发和测试：
+		>查询用户过期积分：http://localhost:8080/app/power/overdue?planType=%22ios%22&userId=1008&tokenId=MTAwODoxNjAwMjIyNTMzOjdiZDEwODI3YWFhYTFjZDQ=
+		>实时过期：成功
+		>
+	>提交和部署：
+		>base-api/base-util/base-mq/service-uesr/web-passport/base-bridge/web-mq/web-user
+		base-api/base-bridge/job-executor/service-user/web-user
+
+
+	>实时同步方案：
+		>批量任务刷着：
+		>线上也跑着：
+		>线上新增逻辑(增加体力值和使用体力值接口里)：查数据库里是否有“标记任务增加的数据--date=0”, 有则查redis,更新amount+date;
+									删除本人的其他数据；新增一条数据；最后再redis新增1
+		>任务新增逻辑：第二遍逻辑：对于查询到的每个用户，如果只有date=0数据，那么直接查redis更为最新的date；；
+							如果还有其他数据，此时可以直接安全的删除。。没有date=0的用户，直接忽略；
+			--跑n次；直到没有用户date=0
+------------------------------------------------------------------------------------------			
+>评论系统为什么要改造？当前系统有什么不得不改的问题？
+	>慢查询：
+			SELECT *
+				FROM topic
+				WHERE sourceId = 'community_17754'
+					AND replyId = 0
+					AND status = 0
+					AND (likeCount >= 10
+						OR top = 1)
+				ORDER BY top DESC, likeCount DESC
+				LIMIT 0, 10
+				
+			SELECT *
+				FROM topic
+				WHERE sourceId = 'undefined'
+					AND replyId = 0
+					AND status = 0
+				ORDER BY createTime DESC
+				LIMIT 0, 5000	
+			-数据库表设计问题: sourceId 字符串索引，前缀匹配，相同太多。
+				>sourceId字符串带来的其他问题：处理不方便、含义不清晰。改为int类型，增加sourceType类型区分。
+			-数据量本身：topic按照sourceId分库分表
+	>新增业务需求：要求更合适的数据库表设计等。
+		>一级评论 按计算的分值排序。
+		>一级评论 上的回复量统计。
+		...
+	>缓存问题：	
+		>缓存粒度过大：topic list为例：一页一页序列化后缓存。实际是：每页的评论没有变化。
+		//>缓存时间过长：topic list为例：缓存1天。
+		>缓存主动失效：topic list为例：某个sourceId的评论，分页放在hash里，新增/修改一个topic， 整个sourceId全部失效；
+		>缓存使用混乱：单个更新后，相关的缓存都要删除；
+		>可以批量获取而单个取：getTopicLikeIdsByTopicId()
+			>同理批量删除。
+	>业务代码清晰性：
+		>一半业务、一半缓存增加删除？各种穿插：
+	>批量获取数据的逻辑：CommentBridgeService::getTopicDatas()---首页返回为空？, cosplayDatas 也是。
+		>查询了5000条topic实体，但是只缓存了id,没有缓存topic本身，浪费。
+		>zset:CLIENT_TOPICS_CTIME 缓存删除。新的排序规则下，更新topic需要重新计算分值。
+	>分布式id生成: 目前还是redis
+	>其他方面：(引进全新的技术)
+		>服务重启：流量怎么切换的？
+		>数据库数据一致：涉及同时操作多个库，当前是否有数据不一致的？检查和修复？
+		>各个服务接口客户端调用成功和失败(服务端执行成功失败)次数的统计：失败时候的上下文(入参、返回值、报错-捕获到没捕获到)、失败后怎么处理的？(有没有回滚/补偿)(四种失败策略fallfail,fallback,fallsafe,fallover)
+			>各个接口的响应时间统计：
+		>调用量突增/调用失败的处理措施：限流、降级。
+		
+>重构计划：
+	>数据库表设计： +topic表拆分-分库分表。1d
+	>服务实现对应表的改变而调整：CommentService、CommunityService、CosPlayService。CURD服务。+需求开发：一级评论排序、回复数统计。3d
+	>中间服务CommentBridgeService：大方法拆分、拆分出来为一个新的服务？数据聚合性质/重业务性质/前端交互需要数据协议。1d
+	>控制器 CommentController： 对应服务的修改、新需求的新增实现。1d
+	>联调/测试：2d
+------------------------------------------------------------------------------------------		
+		
+>需求3：评论系统的改造：：：：各个痛点和解决方案。
+	>领域：
+		>作者说： 
+			>列表：作者说列表，列表查询正常状态的作者说即可。
+			>数量：某本书的作者说数量。所以只定bookid而已来统计。
+			>印记：本书作者 对 某个评论 设置 评论的 authorMark 值。0-1 . 后保存。
+		>topic: 
+			>列表： 某本书的评论列表，批量获取。--都采用：先取该本书的全部评论，异步缓存到redis(所以线程池大小有关系),然后分页获取。
+				>额外功能：填充回复评论的userid;
+				>填充热门评论：正常非回复的 评论，且最小点赞数>10 或者 top=1置顶了。
+			>修改： 比如置顶、加精
+			>删除： 状态更新。
+			>新增： 获取书评； 更新用户-书 表的评分；
+				>新建评论保存：判断用户屏蔽天数--tablestore中； 是书的粉丝，则还影响积分---增加100-200积分。
+			>详情：单个获取
+			>用户点赞某个评论：保存。
+			>提供一系列评论id: 看哪些是用户点赞过的。
+			>当前用户点赞过：
+			>数量： 某个来源id下的所有正常非回复评论。
+			>获取当前用户批量的评论：填充回复和评论的对象的信息(比如书的信息)
+			>获取用户点赞过的评论：
+			>获取用户对评论的点赞记录：
+			>评论黑名单：
+			>评论回复数：
+			>评论回复列表：某个评论的回复列表；批量获取。同时获取在这些评论中当前用户点赞过的所有评论。
+			>获取用户的评论列表：某个用户的所有评论，获取后，填充回复的详细信息；然后填充书的详细信息。
+		>cosplay: 
+			>列表：逻辑最乱的。代码逻辑估计有许多冗余。
+			>数量：
+		>commentblock: 书评 
+			>保存：人对书评论了。
+			>是否评论：某个用户对某本书
+	>数据库： 
+		>commentdb.topic: 18481935 可能接近2000w
+			>字段设计的不合理性：枚举类型 用int authorMark/planType/status
+				>sourceId: 评论来源用了字符串？ bookid， 社区id, 章节id
+					>该为：sourceId + sourceType
+		>commentdb.topiclike: 8427146 用户点赞过的主题
+		>commentdb.commentblock: 11303 书评 。用户-书id-状态。	
+		>userdb.community: 7441 字段含义不明，
+			>社区：名字/信息、用户数、主题数、创建人。
+		>bookdb.chapter: 30634309
+		>bookdb.cosplayindex: 书-章节-段落-扼要内容-id;
+			>访问方法：获取全部，放到redis,分页获取。
+		>bookdb.cosplay:48188961 用户-cosPlayIndexId-加戏的内容-点赞数： 显然，不止一个人在加戏。所以有获取加戏列表的接口。 
+		>bookdb.book_fans: 8912181 书的粉丝id-打卡时间-粉丝类型-打卡总次数	
+		>bookdb.userbookscore: 780927 用户-书id-分数
+		>userdb.user_member	：744538 用户会员信息。表：唯一索引 是多余的。
+			>什么时候过期：
+		>userdb.userrole: 9686 用户角色
+		>userdb.userbookscore: 用户书籍分支 
+		>userdb.authorsay: 71644 书-作者-内容-是否置顶
+	>专门改造方案：
+		>重写代码：太长的分开；redis的使用分离(缓存+数据库)；另外是bridge分离出来-----------------------	
+		>分库分表： chapter 30634309  cosplay  48188961
+		>传播级别数据库改造：切面的问题：环绕通知---无法确定表达式；尽管直接就是methodintercepter了。
+		>分布式id不再redis上获取：
+		>缓存注解+直接执行框架：直接调用服务。
+		>分布式事务：
+	>所有的查询需求：
+		>
+	>其他方面的改造实现：
+		>实现两个新的需求：
+			>回复页：
+				>排序规则：点赞数_发布时间
+			>一级评论页：
+				>排序规则：
+					>方案1：按照 新增的评论得分字段(likecount + 3*replycount + top * 100000)
+					>方案2： mysql里不排序，查出全部放到redis - zset; 计算得分，而自动取得分靠前的若干的。---缺点：需要查询全部：且需要重新计算--计算所需要的列需要从全部数据里找。
+		>数据库存储设计：
+			>数据组织结构：。csdn文章评论模式。微信微博抖音。
+				>重新设计表结构: 
+					>方案1：mongodb非结构化数据
+					>方案2:2级表。 sourceid-level1id 表(主帖人), level1id-level2底下回复 表；
+				>分库分表：
+					>主帖人表：sourceId 为分库分表键
+					>回复表：方案1：sourceId 为分库分表键(方便查询回复总量)；方案2：sourceId 分库键，sourceId+主帖人userid 分表键；
+			>缓存： (粒度足够小，清晰简单)
+				>热门评论：实体内存缓存。
+				>一般评论：redis缓存单个评论 / 缓存查询出的排序后的id列表(胡分页查询id list)
+					>分页查询，从redis分页查询得到id list + 从redis/数据库得到实体   
+					
+		--参考资料：http://www.woshipm.com/pd/834106.html https://sq.163yun.com/blog/article/154739686600065024
+			>2表：方案比较类似：https://blog.csdn.net/ztchun/article/details/71106117 https://blog.csdn.net/weixin_44266137/article/details/89334044
+	
+>需求3.2： 方案优化：
+	>缓存： 
+		>同步查第一页 + 异步查10页 缓存： 缓存时间=保持redis数据量不是很大--先于变动失效---且冷数据应该最少；(最高效合理充分的使用)(使用的技巧科学哲学,知其长短而扬长避短)
+			>用户查询第11页，则同理，同步查第11页，异步查第11-21页 来缓存---时间可以更短；--因为访问次数少；
+			>缓存什么？：缓存id 
+			>缓存存储结构？：zset 有序集合。对于新增的一条--加“id-分值”即可；对于分值改变了：则重新“id-分值”覆盖即可。。且可以批量添加---接口支持。因此每次10页可以直接添加上去。
+				>所以不存在删除某个sourceId下的所有页id; 即有topic变动仅仅变动相关条(2条)就可以了。所以代价很小；
+	>查询： 
+		>只查id：且分批次查；一次查10页；
+		>分数要有：从而查第一页就会快。
+	
+>微服务展示表：各个服务调用量/超时量....
+>分布式链路跟踪：
+>尝试7种分布式事务的实现；分别看效果。
+>分布式锁的使用
+---是否需要分库分表？11w*30=300w数据？
+>日志不统一，混乱有问题？
+>同步方案的落实？
+ -- 体力值持久化 + 数据迁移 
+ --测试总共需要多长时间：：jvm定位(instru)+mysql慢sql定位
+ 
+ 
+ --------------------------事务列表：
+ >利用asepectj : tracing and logging applications.
+ >评论系统的逻辑 + shardingshare的分布式事务
+ >数据库数据对比一致检查工具，检查到不一致，根据一定的策略进行合并消除误差。从而多次运行不断消除不一致的数据，从而让数据一致。只要冲突概率<100%，就可以；比如50%的冲突概率，那么不一致数据就以2倍速率不断减少，那么运行k次之后基本就没有冲突的不一致的数据了。！
+ >查看dubbo的发送请求到下一级，看是否在请求参数上增加额外的参数：即traceId+方法名级联，那么就可以记录方法的调用链。并且记录方法的耗时；这样，生成日志发送到日志服务器解析合并，统计，就可以看出调用过程！
+	>完全使用aspect切面完成。
+ >分布式事务: spring-jdbc的实现。	
+ >容灾-降级-熔断 功能。	
+ >按事务传播级别 路由数据源：方法拦截器+ThreadLocal+新数据源类	；；方法2：切面+ThreadLocal+新数据源类
+----非常需要的是：可靠性建设：比如 错误检测---- 数据+连接等。	
+	
+ >注解缓存的使用。redis数据库。开发框架，而不是仅仅还是code	
+	>自己方案的实现：实现一个方法拦截器+自己的注解。第一，如何注册自己的方法拦截器？第二：用切面？
+	>spring-cache的自己的实现：可以进行比较。
+	------典型使用地方：@com.ihuaben.dubbo.service.comment.CommentService#getTopicList()
+	::项目里的缓存使用太多---和业务逻辑严重耦合在一起。
+ >编写一个统一服务：UnionService,  入参=mapper::method + method的参数； 内容：为call()回调执行。前后缓存。如果使用了上述注解，则直接使用注解--而不用编码。
+	>这个统一服务的功能： 查询获取数据库里的数据，并进行缓存。批量缓存；简单缓存；指定redis方法进行缓存；指定缓存时间缓存。
+	
+----效率工具+基础设施。	
