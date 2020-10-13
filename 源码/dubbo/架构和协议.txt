@@ -505,7 +505,52 @@
 									>使用扩展来分发：@EventDispatcher.getDefaultExtension().dispatch(event)
 										>除了有条件时间监听器：都@listener.onEvent(event) 如 org.apache.dubbo.config.event.listener.LoggingEventListener 多个， DubboBootstrap 一个。ServiceNameMappingListener 
 					>注册服务实例：@registerServiceInstance() 不会进入。
-					>引用服务：@referServices() 几乎没有内容。
+					>引用服务：@referServices() 几乎没有内容。和客户端有关。
 					
-					
+>spring-boot中，dubbo客户端启动过程中，做的事情？
+	>比如经过了bd生成阶段，有了"commentService"的bd, 开始@getBean() , 则获取的具体过程：先已经创建 ReferenceBean 实例， 然后此时执行@getObjectForBeanInstance() 发现这个bean 是工厂bean, 因为 ReferenceBean 实现了 FactoryBean 接口： 从而使用工厂方法获取实例：@getObjectFromFactoryBean(factory, beanName, !synthetic), 这个 factory 就是它自己！！ 因此内部核心：执行@factory.getObject() 来获取：所以看 ReferenceBean 的实现： 
+		>直接初始化：@init()
+			>先根对象的初始化：@DubboBootstrap.getInstance().init()
+				>直接转到：@org.apache.dubbo.config.bootstrap.DubboBootstrap#initialize()初始化，上述已经讲述。一直到最后的：@initEventListener()
+			>检查和更新子配置：@checkAndUpdateSubConfigs()
+				>检查默认：@checkDefault()
+					>从loader里获取 "config" 扩展实现：@ApplicationModel.getConfigManager().getDefaultConsumer() 实际没有发现，所以直接创建新的并进行刷新：@new ConsumerConfig().refresh()
+			>添加一串运行参数：@ReferenceConfigBase.appendRuntimeParameters(map)
+			>获取服务仓库注册服务：@ApplicationModel.getServiceRepository().registerService(interfaceClass)"com.ihuaben.dubbo.api.iservice.comment.ICommentService"	
+			>注册消费者：@repository.registerConsumer(): 实际也是 放到 ServiceRepository.consumers:map属性里， key=com.ihuaben.dubbo.api.iservice.comment.ICommentService;;; 值为  new ConsumerModel()
+			>非常关键的：给ref创建 代理：@createProxy(map) map 里包含了：接口、方法、本机地址等。12个信息一般。
+				>加载仓库url:@ConfigValidationUtils.loadRegistries(this, false) 得到：List<URL>: registry://39.105.71.50:2181/org.apache.dubbo.registry.RegistryService?application=comment-web&client=curator&dubbo=2.0.2&pid=25032&qos.enable=false&registry=zookeeper&release=2.7.5&timeout=15000&timestamp=1602497512103
+				>获取invoker:@REF_PROTOCOL.refer(interfaceClass, urls.get(0))
+					>直接转发：@protocol.refer(type, url);ProtocolFilterWrapper
+						>再次：@org.apache.dubbo.qos.protocol.QosProtocolWrapper#refer()  内部：@protocol.refer(type, url): RegistryProtocol
+							>通过仓库工厂创建仓库：@registryFactory.getRegistry(url) 最后还是需要创建：@createRegistry(url) 内部实现直接：@new ZookeeperRegistry(url, zookeeperTransporter) 
+								>核心：根据url创建客户端：@zookeeperTransporter.connect(url)   内部创建客户端：@new CuratorZookeeperClient() 前述已毕。
+								>再客户端增加状态监听器：@zkClient.addStateListener() 以便进行 状态的回复：@ZookeeperRegistry.this.recover()
+								--最后封装到 new ListenerRegistryWrapper()返回。
+							>仓库有了直接开始创建refer:@doRefer(cluster, registry, type, url)
+								>创建注册目录：@new RegistryDirectory()
+								>仓库注册客户端url:@registry.register(directory.getRegisteredConsumerUrl())  转到：@org.apache.dubbo.registry.support.FailbackRegistry#register()	
+									>核心的注册：@doRegister(url) --> 还是走zk: @zkClient.create(toUrlPath(url), url.getParameter(DYNAMIC_KEY, true))  消费者请求url：consumer://10.1.1.103/com.ihuaben.dubbo.api.iservice.comment.ICommentService?application=comment-web&category=consumers&check=false&dubbo=2.0.2&init=false&interface=com.ihuaben.dubbo.api.iservice.comment.ICommentService&methods=getTopicLike,getReplyList,getTopicLikeIdsByTopicId,getCommentBlock,getTopicList,getTopic,saveTopicLike,saveTopic,getUserTopics,getTopicListPage,getHotTopicList,saveCommentBlock,getTopicListCount,getReplyListCount,getTopicsByIds,getUserTopicList&pid=25032&qos.enable=false&release=2.7.5&side=consumer&sticky=false&timestamp=1602497195885
+								>构建路由链：@directory.buildRouterChain(subscribeUrl) 根据消费者请求url进行构建：@RouterChain.buildChain(url) 直接new RouterChain<>(url)而还。
+									>加载激活的：@ExtensionLoader.getExtensionLoader(RouterFactory.class).getActivateExtension(url, "router") 得到  List<RouterFactory> 路由工厂，后遍历得到所有的路由器：@factory.getRouter(url) 自然需要初始化路由器@initWithRouters(routers) 只是没内容，排个序而已。
+								>订阅：@directory.subscribe()"consumer://10.1.1.103/com.ihuaben.dubbo.api.iservice.comment.ICommentService?application=comment-web&category=providers,configurators,routers&dubbo=2.0.2&init=false&interface=com.ihuaben.dubbo.api.iservice.comment.ICommentService&methods=getTopicLike,getReplyList,getTopicLikeIdsByTopicId,getCommentBlock,getTopicList,getTopic,saveTopicLike,saveTopic,getUserTopics,getTopicListPage,getHotTopicList,saveCommentBlock,getTopicListCount,getReplyListCount,getTopicsByIds,getUserTopicList&pid=25032&qos.enable=false&release=2.7.5&side=consumer&sticky=false&timestamp=1602497195885"
+									>核心：使用仓库注册：@registry.subscribe(url, this)
+										>转核心订阅：@doSubscribe(url, listener) org.apache.dubbo.registry.support.FailbackRegistry
+											>最后通知：@notify(url, listener, urls)
+												>内部核心：遍历 notified, 
+													>先@listener.notify(categoryList) 
+													>后 保存配置：@saveProperties(url) 内部则会异步执行：@registryCacheExecutor.execute(new SaveProperties(version)) @run()就是：@doSaveProperties()保存到磁盘文件。
+								>集群加入：@cluster.join(directory) 先@this.cluster.join(directory) 后封装到 new FailOverCluster() 里返回。 	
+									>加入：实际上会加入拦截器：@org.apache.dubbo.rpc.cluster.support.wrapper.AbstractCluster#join() 内部：@buildClusterInterceptors()  入参之一是：@doJoin(directory) 而这个的实现类：BroadcastCluster/FailOverCluster/FailsafeCluster/FailbackCluster/FailfastCluster/ForkingCluster/MergeableCluster/ZoneAwareCluster 返回的就是在尾部增加Invoker的类的实例。
+										>加载激活的拦截器：@ExtensionLoader.getExtensionLoader(ClusterInterceptor.class).getActivateExtension(clusterInvoker.getUrl(), key) 然后环环相扣/层层封装到拦截器里：@new InterceptorInvokerNode()  这个就最终返回的 invoker !!
+				>发布服务定义：@metadataService.publishServiceDefinition(consumerURL) 消费者请求url . 
+					>构造服务定义：@ServiceDefinitionBuilder.build(interfaceClass)
+					>json序列化后放到 serviceDefinitions InMemoryWritableMetadataService 属性里。
+				>开始真正的创建代理：@PROXY_FACTORY.getProxy(invoker), 而这个 org.apache.dubbo.rpc.ProxyFactory 有@SPI("javassist") 注解，实现类为 ProxyFactory$Adaptive 即通过 javassist 瓶装字符串而构建的类编译而来的。而它的@getProxy()接口方法上有@Adaptive({PROXY_KEY}) 注解。PROXY_KEY="proxy", 最后走的实际 实现类为 @org.apache.dubbo.rpc.proxy.wrapper.StubProxyFactoryWrapper#getProxy(org.apache.dubbo.rpc.Invoker<T>) 
+					>调用父类实现来创建：@Proxy.getProxy(interfaces).newInstance(new InvokerInvocationHandler(invoker))  而从proxy获得看：@org.apache.dubbo.common.bytecode.Proxy#getProxy(java.lang.ClassLoader, java.lang.Class<?>...) 是 javassist 拼接而动态编译的。明显 InvokerInvocationHandler 这个就是 代理结果的回调类。
+			>从而代理创建完成：而设置服务元数据serviceMetadata.target=ref 	, 后又@repository.lookupReferredService()工作不大。
+			>最后分发 引用配置初始化完成事件：@dispatch(new ReferenceConfigInitializedEvent(this, invoker))
+				>老：@EventDispatcher.getDefaultExtension().dispatch(event)
+		>返回这个ref: 代理。
+	>从而创建好了"commentService" 这个bd 。。。其他bd 如 "org.apache.dubbo.config.ConsumerConfig" 对 <dubbo:consumer> 	对 ConsumerConfig 的实例。	
 >spring-boot中， application-dubboo-test.properties 文件的解析时间？解析位置？最后存放位置？
