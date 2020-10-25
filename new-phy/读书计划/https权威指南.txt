@@ -1,0 +1,168 @@
+---------读书战略：自顶向下，从应用层到底层细节。先熟悉的常用的，后底层的不常用的。精读好书---《深入理解系列》
+--------es的处理思想都对应有 相应的“某种举动 及其导致 的问题”
+>需求背景-痛点陈述：现实开发中遇到了什么痛点导致XXX的开发？  
+>那么痛点的原因、产生的条件：分析是什么环境、什么动作 什么效果什么目的 等精准形容词的事实描述 导致了痛点的必然发生，难以避免？。条件-痛点。原因-结果。
+>则可以消除痛点的最简单的精准事实陈述是什么：修改“条件-痛点”陈述的哪一部分就可以导致没有痛点产生。 要做的根本事情是什么：
+>那么新陈述表明的解决动作是什么：
+>新情况的新痛点是什么：新举动、新环境会产生的新痛点描述出来， 继续上述4条操作。
+>学习要有战略和格局：过于零散、孤立、末支、叶子的知识点就没必要化太多时间，懂得放弃。聚焦在根节点、枢纽节点、产生分支的节点、主干知识点、枢纽知识点、关联到很多知识点的知识点上。
+ >对于主干知识点：要有全新的认识视角和进行精细的描述，大量的提问和好奇和进行必要的实验以获取支撑观点/导出观点的数据。
+ >规范是工程最独特的特征.
+ >慢慢读：
+>一种新技术的学习：
+ >它面对的情况和问题、它的世界观、它的方案、它的方案验证/论证/能处理的解决的所有情况及能成功处理的理由/功能边界
+  >所有的软件：都可以看作是向上封装一层接口，根据自己的世界观封装底层而向上/对外提供统一的(统一的更简单的更直观的更业务的更少底层信息的)接口，底层包含一系列的第三方的插件/构件/组件；内部则去做兼容和调用(对底层)(对上层则做逻辑分解和底层实现)。
+>知识混乱就是因为没有组织：
+	>组织就是关键字树：几个单词就是每层上的每个节点的内容；
+	>组织也可以看作逻辑树：有逻辑关系，逻辑顺序，逻辑联系的关键字的层层集合。层层囊括更精细的范围，层层划分范围。
+>推进理解的属性发展拓展、问题延展：重要方式；
+>什么是架构：架构也是从抽象到具体的考虑和描述；树形延展开来，可以写满非常大的黑板和巨大的脑图！！sharding-jdbc,dubbo,spring都可以这样方式来展现它的架构！！它的抽象到具体的考虑---本身才是架构！！！而不是什么模块、模式之类！！
+>抽象设计：则某一层就不管上一层的含义和下一层的含义，即更抽象的含义或者更具体的含义；而是实现本层的含义；完成本层的含义指定的功能；。如网络协议的架构设计；	
+>面向设计来理解，面向架构设计来理解，面向架构问题一层一层来理解它：面向设计来理解，所以按照面向对象设计的方式，看其中的对象、行为属性、流程环节逻辑。	
+>找不到知识/描述 所对应的问题 ， 那么看书将没有条理纲领，变得零散琐碎没有组织。	
+>不是按概念方式组织，而是按架构、问题方式来组织 笔记，书本内容。架构顺序，问题层次顺序。	
+>架构不是设计出来的，也不是演进出来的(甚至不是迭代出来的--尽可能避免迭代)：而是问出来的。	
+>每个方法方案都从属于一颗树，所以找到一个方法巧妙方法仅仅是第一步--找到从属的层次树 有更大的价值；(无论是谁想到的方法/概念，都要这样更进一步)
+
+>举动-痛点：
+	>解法/解决方案：序列密码--RC4不再安全；分组密码--AES; 散列函数-SHA256；带密钥的散列函数--更强：需要密钥才能生成合法的MAC---HMAC
+		>分组密码模式：为了加密任意长度的数据而设计的密码学方案；是对分组密码的扩展；输出模式---ECB/CBC/CFB/OFB/CTR/GCM; CBC最主要，GCM最新最好；
+			>ECB:分割填充加密，分组密码确定；
+			>CBC: 加密块连接模式；引入初始向量IV:随机生成--并保存；明文和IV异或，结果赋值给IV,然后用于下一个加密块；..如此到全部加密块都执行完毕；
+			--密码强度：RSA-2048位---强度等同于112位对称密钥；DSA/ECDSA
+			--数字签名：对文档的散列进行私钥加密；
+			--密钥最简单的形式：非常长的随机数；
+			--避免重放攻击和丢失消息：消息的MAC生成中需要加上序列号；；特殊标记 标记会话结束---避免被悄悄结束会话；
+		>协议：TLS以记录协议实现
+			>记录协议：只关注数据传输和加密；其他交给子协议；
+				>每条记录格式：标头(类型、版本、长度) + 数据；同时本地会存储 每个TLS记录指定唯一的64位序列号；
+				>子协议：增强了扩展性
+					>握手协议：协商连接参数，完成身份认证；。交换6-10条消息；。。消息格式：类型+长度+消息
+						>完整的握手：对服务器进行身份认证。交换各自支持的功能--->出示证书并验证--->用于会话的共享主密钥达成一致-->验证握手消息并未被第三方团体修改。。核心就是：身份验证和交换密钥
+							>客户端发送Hello消息：自身支持的功能+首先项。包括：随机数(32B防止重放攻击)、密码套件(列表)、签名算法、会话ID(无会话则空，否则32B)
+							>服务端响应消息：ServerHello消息--选择连接参数返回客户端(随机数+会话ID+密码套件)；Certificate消息--X.509证书链(和选择的算法套件一致)； ServerKeyExchange消息--懈怠密钥交换的额外数据；ServerHelloDone消息--服务器已经将所有预计的握手消息发送完毕；服务端开始等待消息；
+							>客户端发送消息：ClientKeyExchange消息--携带客户端为密钥交换提供的所有信息(和协商的密码套件相关)；ChangeCipherSpec消息--表明客户端已经取得生成连接参数的足够信息--已生成加密密钥--并将切换到加密模式；Finished消息--12B加密消息--完整性由协商MAC算法保证--内部包含verify_data字段：计算：先是协商得到了主密钥master_secret, 后 verify_data=PRF(master_secret,finished_label,Hash(handshake_message))来得到；
+						>简短握手：恢复之前的会话。ClientHello消息带上会话ID;ServerHello消息也是。然后双方都发送 ChangeCipherSpec消息+Finished消息：使用之前协商的主密钥生成一套新的密钥，再切换到加密模式；。。。另外，会话票证也可以；
+						>双向握手：对客户端和服务端都进行身份认证；相互身份认证；
+							>客户端身份验证：
+								>服务端发送CertificateRequest消息：请求对客户端进行身份认证：消息中包含 可接受的客户端证书列表(或者证书公钥+签名算法)
+								>客户端发送消息：Certificate消息--附上证书；CertificateVerify消息--证明自己拥有证书的私钥(即发送目前为止的所有握手消息的签名)。
+						--密钥交换：会话安全性取决于主密钥48B,预主密钥是组成来源；
+							>密钥交换算法：
+								>RSA: 密钥传输算法；客户端生成主密钥(46B随机数)，用服务端公钥加密传输给服务端(包含在ClientKeyExchange消息)；不支持前向保密；即以前加密过的流量可以再次被解开---因为使用的是同一个密钥；
+								>DHE_RSA: 支持前向保密，使用RSA身份验证；执行缓慢；密钥协定算法；。DHE两个域参数--服务端发送；然后客户端服务端各生成2个数，发给对方1个；
+								>ECDHE_RSA和ECDHE_ECDSA: 密钥协定算法；RSA/ECDSA身份验证；服务器参数+客户端随机值+服务端随机值 连起来签名；
+							>身份验证算法：
+						--加密：
+							>序列加密：使用序列密码加密；先计算MAC值(序列号+标头+明文)； 加密明文和MAC 生成密文；
+							>分组加密：生成MAC+明文+填充，后加密得到密文， 密文+IV+标头  来发送；
+							>已验证的加密：生成唯一的nonce64B + 序列号标头的加密+明文的加密。。GCM,CCM
+						--重新协商：改变加密强度等作用；。客户端发送ClientHello消息请求开始重新协商；
+					>密钥规格变更协议：
+					>应用数据协议：
+					>警报协议：发送close_notify警报，并响应close_notify警报；
+				>密码操作：
+					>伪随机函数PRF：算法套件都需要指明它们的PRF；基于HMAC和SHA256的PRF;PRF(secret, label, seed)=P_hash(secret, lable+seed)  预主密钥生成主密钥：master_secret=PRF(premaster_secret, "master secret", ClientHello.random + ServerHello.random)  ; key_block=PRF(master_secret, "key expansion", server_random, client_random)
+				>密码套件：身份验证方法、密钥交换方法、加密算法、加密密钥大小、密码模式、MAC算法、PRF、Finished消息的散列函数、verify_data结构的长度；	
+					>名称构成：TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256   显然： ECDHE_RSA 就是 密钥交换算法_身份验证算法， AES_128_GCM 就是 加密算法_加密强度_模式, GCM_SHA256 即 MAC/PRF。。。注意 SHA1 是 HMAC体系中的：HMAC-SHA1 
+				>TLS扩展：	
+					>心跳：目标定位是DTLS---UDP之上；
+					>会话票据：服务端将会话信息加密发送给客户端；客户端发送这个票据信息给服务端，服务端解开获取会话的完整信息 后 恢复这个会话； 使得 扩展服务器集群更简单；
+					>签名算法: 签名-散列算法：
+		>公钥基础设施：如何存储和吊销密码？PKI .如何不见面的情况下进行安全通信？
+			>基于可信的第三方机构：证书颁发机构；CA 签发的证书。
+				>订阅过程：订阅人 向 登记机构 申请证书签名 --> 登记机构 CSR给 颁发机构-->返回。
+				>证书部署：部署在web服务器；等；
+				>信赖方请求证书和验证：向web服务器请求证书，后对证书进行验证和签名；
+				>信赖方检测证书的吊销状态：向CRL服务器请求-->CRL服务器向CA请求
+			>证书：BER,DER,PEM
+				>版本/序列号：唯一性证书
+				>签名算法：证书签名使用的算法；
+				>颁发者：国家、组织、单位
+				>有效期：开始和结束
+				>使用者：subject；废弃
+				>公钥：算法ID+公钥本身
+			>CA安全问题：伪造身份获取某个域名的证书。。碰撞证书；	
+		>HTTP和浏览器问题：证书和证书覆盖的域名(可以多个)；对应；没有过期、签名有效；	
+		>部署：RSA/ECDSA; 2048位RSA, 256位ECDSA
+			>密钥管理：
+			>密码套件配置：强制服务器密码套件配置优先；
+				>加密强度：AES强，GCM比CBC好，CBC套件不安全；
+				>前向保密：不建议使用RSA密钥交换；ECDHE>DHE,  ECDHE--secp256r1曲线模型 可以为密钥交换提供128位的安全性；DH参数配置2048位的安全性；
+				>性能：GCM套件最快；AES还可以预防缓存计时攻击；完整性校验不用SHA256和SHA384, 而是配套HMAC+SHA1;
+				>互操作性：RC4禁用；
+				>公钥钉扎：证书指定CA;
+		>性能： 
+			>TCP调优：
+				>初始拥塞窗口：10个网络段一般；linux上改变所有路由的初始拥塞窗口：ip route | while read p; do ip route change $p initcwnd 10;done 。。。TLS 4次握手；3*RTT
+				>连接空闲禁用慢启动：sysctl -w net.ipv4.tcp_slow_start_after_idle=0 添加到/etc/sysctl.conf 配置永久生效；
+				>长连接：长连接超时时间；服务器在关闭连接前等待的时间；。减少每次打开连接，从而又是TCP/TLS握手---增加开销；
+				>SPDY: 新协议，TCP/HTTP之间；可以复用多个HTTP请求和响应；浏览器只需要与每个服务器建立一个连接即可；
+				>QUIC: UDP上进行拥塞控制、连接管理、丢包处理、安全性--使用加密；
+				>广域网优化：CDN--边缘缓存/连接管理
+			>TLS协议优化：AES_128_GCM_SHA256
+				>密钥算法：ECDSA256=3072RSA 一样的安全性，且快得多；
+				>密钥交换算法：ECDHE前向保密，且块；DHE慢；RSA不前向保密； secp256r1曲线模型比secp384r1快且好；。。2048DHE=256ECDHE
+				>用户身份认证算法：RSA
+				>证书：证书链；无多余证书；
+			--拒绝服务攻击：主要使用僵尸网络。防御在于网络层；
+				>防御：连接限制、资源超配；RSA--公钥操作快私钥操作慢--是后者消耗的4倍；ECDSA则相反--客户端更耗时；3DES比AES128慢11倍；.。重新协商---Nginx不支持；
+			--HSTS: 明文URL被透明重写为使用加密；全部的证书错误被视为致命的；。。	配置方式：HTTP响应头中：增加 头：Strict-Transport-Security: max-age=31536000;includeSubDomains;preload;;   max-age:0则撤销HSTS	
+			--CSP: 内容安全策略；预防跨站点脚本XSS攻击；禁止内联javascript, 控制外部代码从哪里加载---且禁止动态代码执行；设置http响应头来启用CSP策略：Content-Security-Policy: default-src 'self' ;img-src *; object-src *.cdn.example.com; script-src scripts.example.com  使用CSP控制内容来源：
+				>配置：Content-Security-Policy: default-src https: 'unsafe-inline' 'unsafe-eval'; connect-src https: wss: 来解决WSS的混合内容安全问题；
+				>启用报告：则违反CSP策略的行为被发送到报告指定的地址：Content-Security-Policy: default-src 'self'; report-uri http://example.org/csp-report.cgi
+			--钉扎：减少攻击面--持有者可以指定哪些CA颁发证书给自己的域名。。。钉扎元素：X.509证书的SPKI字段；可信证书库；公钥钉扎；；；浏览器中添加钉扎---就是添加：域名-证书？计算SPKI指纹？
+			--DANE:  DNSSEC+自签名证书；？
+		>OpenSSL: 密码库+SSL/TLS工具集
+			>版本查看：openssl version -a    显示的OpenSSL默认查找配置和证书的目录 在最后；
+			>查看密码套件如何配置：man ciphers 
+			>密钥和证书管理：用来配置并运行能够支持SSL的web服务器；
+				>生成强加密的私钥：广泛使用性如SSH的使用看，使用RSA:2048位： 
+					>生成RSA密钥并AES加密保存：openssl genrsa -aes128 -out fd.key 2048  输出可以看到e--这个公钥指数：65537   私钥以PEM格式存储；直接 cat fd.key 查看内容；  也可以看解析私钥的结构：openssl rsa -text -in fd.key 
+					>生成ECDSA密钥并AES加密保存：openssl ecparam -genkey -name secp256r1 | openssl ec -out ec.key -aes128	
+				>创建证书签名申请CSR 并发送给CA: 
+					>创建证书签名申请CSR： 要求CA给证书签名的一种正式申请；openssl req -new -key fd.key -out fd.csr  是一个交互式的配置过程；
+						>非交互式创建：创建fd.cnf 文件：[req] [dn] [ext] 等段；后使用命令创建：openssl req -new -config fd.cnf -key fd.key -out fd.csr 
+					>直接证书签名 或者发送给公共CA让它们对证书进行签名： 先检查csr文件的正确性： openssl req -text =in fd.csr -noout
+						>生成自签名证书：而不是找CA获取一个公开信任的证书：使用CSR创建证书：openssl x509 -req -days 365 -in fd.csr -signkey fd.key -out fd.crt   
+							>无需csr直接使用私钥创建自签名证书：openssl req -new -x509 -days 365 -key fd.key -out fd.crt  多域名证书--在扩展字段 -extfile fd.txt 内容：subjectAltName=DNS:*.feistyduck.com,DNS:feistyduck.com
+						>检查证书：openssl x509 -text -in fd.crt -noout 	
+					--密钥和证书格式转换：私钥格式--pem/der/PKCS#12,  证书格式--der/pem/PKCS#7/PKCS#12	
+						>pem/der的转换：如PEM->DER: openssl x509 -inform PEM -in fd.pem -outform DER -out fd.der
+					--配置：
+						>查看支持的所有套件：openssl ciphers -v 'ALL:COMPLEMENTTOFALL'  内容显示格式：密钥交换算法_身份验证算法_对称加密算法_消息摘要算法。。。AES GCM套件 -当前TLS客户端采用---安全性最好；
+						>算法性能查看：openssl speed rc4 aes rsa ecdh sha    并发多个实例操作：openssl speed -multi 4 rsa  使用4核  。查看每秒签名数和每秒验证数；
+					--创建私有证书颁发机构：
+						>创建根CA：配置、创建目录结构、初始化密钥文件、生成根密钥和证书；
+						>创建二级CA：类似
+				>在web服务器上安装CA提供的证书：
+				--连接测试：
+					>openssl s_client -connect www.feistyduck.com:443 -CAfile /xxx/xxx.crt 
+					>BEAST攻击+心脏出血：
+		>配置Apache: 首要：解开包后：执行./configure --enable-ssl  --prefix=/opt/httpd --with-included-apr --with-ssl=/opt/openssl-1.0.ip --enable-ssl-staticlib-deps --enable-mods-static=ssl 			
+			>启用TLS：Listen 192.168.0.1:443 <VirtualHost 192.168.0.1:443>SSLEngine on...
+			>配置TLS协议：SSLProtocol all -SSLv2 -SSLv3 
+			>密码套件： SSLHonorCipherOrder on ; SSLCipherSuite "ECDHE-ECDSA-AES128-GCM-SHA256" ...
+			>配置密钥和证书：SSLCertificateKeyFile conf/server.key   SSLCertificateFile conf/server.crt  SSLCertificateChainFile conf/chain.pem 
+			>OSCP stapling: 在线证书状态协议stapling: 启用： 	SSLStaplingCache shmcb:/opt/httpd/logs/stapling_cache   	SSLUseStapling on
+			>会话缓存/会话票据：LoadModule socache_memcache_module modules/mod_socache_memcache.so 配置TLS会话缓存：SSLSessionCache memcache:memcache.example.com:11211 指定缓存最长持续时间 SSLSessionCacheTimeout 3000
+			>客户端身份认证：SSLVerifyCLient require ...
+			>禁用压缩：SSLCompression off 
+			>部署HSTS: 即 Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"   访问者80端口也重定向：RedirectPermanent / https://www.example.com/
+			>监视会话缓存状态：ExtendedStatus on 
+			>使用mod_sslhaf高级日志记录：
+		>配置java和tomcat: 
+			>JCA提供加解密：JSSE处理TLS的组件；
+			>JCA Provider: 实现了加密算法；可以安装新的；
+			>keytool: java将密钥和证书放在一个存储单元--密钥库；管理里面的内容--keytool
+			>可信证书库：根证书集合；Java Root Certificate Store   。。。JVM厂商通常维护自己的可信证书库；
+			---创建自签名证书和密钥：keytool -genkeypair -keystore xxx.jks -alias RSA -keysize 3072 -validity 365 -ext SAN="DNS:www.eee.com,DNS:eee.com"  再交互配置。
+			---查看密钥证书内容：keytool -keystore fei.jks -list -v 
+			---创建证书签名申请：keytool -keystore fei.jks -alias server -file fd.csr 然后提交csr给CA用于签发正式证书；
+			---将证书导入密钥库：keytool -import -keystore fei.jks -trustcacerts -alias root -file root.crt   再相同的命令导入中间证书mediate.crt ; 导入服务器证书 fd.crt 。也可以密钥库.p12转jks
+			>配置tomcat:
+				>JSSE中使用阻塞连接器：<Connector protocol="org.apache.coyote.http11.Http11Protocol" port=443 SSLEnabled=true schema="https" secure="true" clientAuth="false" sslProtocol="TLS" sslEnableProtocols="TLSv1,TLSv1.1.TLSv1.2" keystoreFile="${catalina.home}/conf/fei.jks" keystorePass="xxx" keyAlias="server" ... keyAlias从证书库选择正确的证书链和密钥；
+					>也可以直接证书配置：SSLHonorCipherOrder="true" SSLCertificateKeyFile="fd.key" SSLCertificateFile="fd.crt" SSLCertificateChainFile="med.crt" SSLPassword="xxx" 密码套件配置：CipherSuite=""?
+		>配置Nginx: 默认临时DH参数较弱；
+			>安装时：./configure --prefix=/opt/nginx/ --with-openssl=../openssl-1.0.1h --with-openssl-opt="enalbe-ec_nistp_64_gcc_128" --with-http_ssl_module
+			>启用TLS：server{listen xxx.xxx.xxx.xxx:443 ssl spdy;server_name xxx;}
