@@ -1,0 +1,42 @@
+投放-模型；
+---装机配置：
+
+1.安装插件：
+	>idea-mybatis-generator
+	>Mybatis Helper	
+	>Lombok
+	>Mybatis Generator Plus
+	--切换项目--出现git 分支名
+	--项目先后打包的顺序--依赖顺序，install;避免 编译出错；	
+	--项目依赖：直接右键。
+	--快压+jar+idea直接看jar里面编译的某个字节码文件的内容
+	--自动添加依赖到pom;直接操作就可以；
+	--源码设置：terminal: mvn dependency:resolve -Dclassifier=sources
+2.可能成功的安装：https://tech.souyunku.com/?p=16235	
+>其他软件：
+	>charles:https://www.cnblogs.com/lichuanyan/p/11205246.html
+	>postman:和 charles配合非常好；可以直接将charles捕获的url(直接看Raw内容)和报头放到postman..Bulk set//body+header
+	>maven: 固定版本的代码，如果是jar形式(往往数据接口)被引用，则修改后只有升级版本才能被其他项目使用；只是修改不能替换仓库里的确定版本；且在父项目配置版本；
+>业务建模：
+
+----软件包-云盘存储；自动程序自动配置安装；至少一个流程文件--逐个做就可以；
+----自动将文本转图的建模工具；
+------------过程：
+>环境搭建-->业务建模-->业务效果-->业务提问-->业务流程逻辑文本构建-->技术架构-->项目运行-->走一个业务请求处理过程；--->发现一个问题/痛点/新业务-->数据分析(用户数据/用户增长/用户体验度量/市场数据/行业数据/业务数据)
+	>业务流程梳理：广度优先顺序--完整的方法(只看第一层实现)；
+------------
+3.密码：
+	>快财商学院：lishaoping123456
+	
+
+---工作：
+1.tomcat热部署
+2.ModelAttribute 注解的数据来源和 SesssionAttribute	
+3.文件下载：http://192.168.31.31:8090/	
+---linux:
+1.find / -name "xby-service-dubbo" -type d 2>/dev/null
+	
+---ws:
+ip过滤：ip.dst==47.92.76.190
+端口过滤：tcp.dstport==443	
+协议过滤：tls

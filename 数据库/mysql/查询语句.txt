@@ -8,3 +8,10 @@
     >值传递问题：外层传递给里层。
 	 >可以传递给on的条件里，但是不能传递到inner join 的查表语句里。
 	 >where是否可以传递？
+	 
+	>结果顺序：
+		>保证和第一个表的顺序一样：
+			-- 查覆盖索引， 返回的顺序 不是有序的；除非强制加排序-按照主键；；否则可能按照其它某个键(跟索引名有关)；--覆盖索引最好强制使用order by排序；
+			-- 保证和第一个表的顺序相同，则要left join;  否则inner join 也不是和第一个表的顺序一致的；所以可以保证顺序而增加过滤条件从而结果一样
+	>查结果序号： SELECT * FROM (SELECT tc.*,(@i:=@i+1) FROM t_customer tc, (SELECT @i:=0)t) tc LEFT JOIN t_customer_account tca ON tc.id=tca.customer_id WHERE tca.id > 0
+	

@@ -1,0 +1,4 @@
+>替换占位符：
+	>替换#{}格式的占位符内容时机：@evaluate(typedStringValue) org.springframework.beans.factory.support.BeanDefinitionValueResolver的。${}则不行；
+		>也就是TypedStringValue的解析：@valueResolver.resolveValueIfNecessary(pv, originalValue)
+	>替换${}格式的占位符时机：bd构成过程中；	
