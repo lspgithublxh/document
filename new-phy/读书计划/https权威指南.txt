@@ -40,7 +40,7 @@
 					>握手协议：协商连接参数，完成身份认证；。交换6-10条消息；。。消息格式：类型+长度+消息
 						>完整的握手：对服务器进行身份认证。交换各自支持的功能--->出示证书并验证--->用于会话的共享主密钥达成一致-->验证握手消息并未被第三方团体修改。。核心就是：身份验证和交换密钥
 							>客户端发送Hello消息：自身支持的功能+首先项。包括：随机数(32B防止重放攻击)、密码套件(列表)、签名算法、会话ID(无会话则空，否则32B)
-							>服务端响应消息：ServerHello消息--选择连接参数返回客户端(随机数+会话ID+密码套件)；Certificate消息--X.509证书链(和选择的算法套件一致)； ServerKeyExchange消息--懈怠密钥交换的额外数据；ServerHelloDone消息--服务器已经将所有预计的握手消息发送完毕；服务端开始等待消息；
+							>服务端响应消息：ServerHello消息--选择连接参数返回客户端(随机数+会话ID+密码套件)；Certificate消息--X.509证书链(和选择的算法套件一致)； ServerKeyExchange消息--携带密钥交换的额外数据；ServerHelloDone消息--服务器已经将所有预计的握手消息发送完毕；服务端开始等待消息；
 							>客户端发送消息：ClientKeyExchange消息--携带客户端为密钥交换提供的所有信息(和协商的密码套件相关)；ChangeCipherSpec消息--表明客户端已经取得生成连接参数的足够信息--已生成加密密钥--并将切换到加密模式；Finished消息--12B加密消息--完整性由协商MAC算法保证--内部包含verify_data字段：计算：先是协商得到了主密钥master_secret, 后 verify_data=PRF(master_secret,finished_label,Hash(handshake_message))来得到；
 						>简短握手：恢复之前的会话。ClientHello消息带上会话ID;ServerHello消息也是。然后双方都发送 ChangeCipherSpec消息+Finished消息：使用之前协商的主密钥生成一套新的密钥，再切换到加密模式；。。。另外，会话票证也可以；
 						>双向握手：对客户端和服务端都进行身份认证；相互身份认证；
@@ -166,3 +166,12 @@
 		>配置Nginx: 默认临时DH参数较弱；
 			>安装时：./configure --prefix=/opt/nginx/ --with-openssl=../openssl-1.0.1h --with-openssl-opt="enalbe-ec_nistp_64_gcc_128" --with-http_ssl_module
 			>启用TLS：server{listen xxx.xxx.xxx.xxx:443 ssl spdy;server_name xxx;}
+			>配置TLS：ssl_protocols TLSv1 TLSv1.1 TLSv1.2; ssl_prefer_server_ciphers on; ssl_ciphers "ECDHE-ECDSA..."
+			>配置密钥和证书：ssl_certificate_key server.key; ssl_certificate server.crt;
+			>默认站点返回错误消息：
+			>配置OSCP stapling: ssl_stapling on;resolver xxx.xxx.xxx.xxx;ssl_stapling_verify on; ssl_trusted_certificate trusted-for-oscp.pem;
+			>配置临时DH密钥交换：ssl_dhparam dh-2048.pem; 生成过程：openssl dhparam -out dh-2048.pem 2048
+			>TLS会话管理：会话缓存会话超时；独立会话票据；分布式会话缓存/会话票据
+			>客户端身份认证：ssl_verify_client on;ssl_verify_depth 2; ssl_client_certificate ss.crt;
+			>部署HSTS: server{add_header xxxx}
+			>TLS缓冲区调优：ssl_buffer_size 1400;
