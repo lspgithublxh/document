@@ -61,6 +61,7 @@
 				>一系列结论、约束得到之后(结合条件/问题/情况本身)逐渐可以清晰看到/归结出该具体问题符合的/满足的通用/一般的/一类的问题模型/函数模型/服务模型/IO模型/请求响应模型的轮廓：若干个具体模型
 					>方案的装饰/补充: 补充可靠性/稳定性/高性能(从而高可用/高并发)：因为暂时只是一个裸机、容易受到伤害、有功能但没有抵抗力(仅为打火机的火而不是熊熊大火)
 							>方案的用法规则：在请求缓存前使用
+		>能将具体方案进行分类的维度/情况/模型/环节/流程/抽象表述 的确定：然后使用 抽象-具体 的方法来得到新方案；					
 		>普通的方案：已有的方案；方案的抽象，方案的取值选择评价；方案的表象缺陷、劣势；。。模型、数据结构和算法、协议约定分担 维度 上考虑；
 
 --大总结：含义包括：重新 深刻理解：
@@ -77,8 +78,31 @@
 					>客户端<->注册中心：订阅、推送
 					>客户端<->服务端：选调、限流+鉴权、降级+熔断
 			>HTTPS一次过程：TLS一次过程：
-			>TCP三次握手/四次挥手过程：
-			>SQL解析处理过程：
+				>目标：1.确定(所处)会话(id) + (协商采用的)加密套件 ；--> 2. 确定对方身份； --> 3. 确定对称加密密钥
+				>过程： 
+					>协商加密套件和会话：
+						>客户端发送ClientHello: 包里包含： 一组加密套件编号 + 会话ID + 建议的加密套件编号 + 密钥交换需要协商的g-n-p 。
+						>服务端响应：选择的加密套件编号 + 会话ID +(下一阶段使用的) 证书 +  密钥交换需要的B(协商gnp,发送A和B)
+					>验证对方身份：
+						>客户端：验证证书：用CA公钥解开(证明CA颁发)--->用证书里面的服务端公钥解开里面的数字签名(得到的为证书的指纹)--->用证书里面的指纹算法+密钥 对 证书生成一个指纹--->两个指纹比较，如果相等则证明公钥有效+证书完整性未被破坏。。从而公钥就是服务端的公钥。也包含域名验证、证书有效期验证；
+					>确定对称加密密钥： 
+						>客户端：利用收到的密钥交换算法需要的g-n-p, 利用自己的私有a生成A，发送给对方；(同时内部利用B-a-gnp生成密钥K), 为了证明K的准确性，还需要用K+随机数+对称密钥算法 处理 一个信息，生成结果 ，连带随机数 发送给服务端；
+						>服务端： 服务端收到A后，结合g-n-p-b，可以生成密钥K', 然后用发来的随机数一起 对称加密 得到结果，看和发来的结果是否一致，一致则说明K是对的(或者直接看是否能解开)；密钥交换成功；
+			>TCP三次握手/四次挥手过程：确定链路双向通畅
+			>SQL解析处理过程：连接池(连接客户端)-->查询缓存(结果缓存)-->解析器(语法-句法-抽象语法树)-->优化器(执行计划)-->执行引擎-->存储引擎
+				>连接：半双工。查询有状态--show full processlist 可以查看
+				>查询缓存：使用场景局限。
+				>解析器：生成语法树：关键字+取值 
+				>预处理：表名、列名是否存在；表是否有权限；
+				>优化器：选择最优的执行计划：执行计划是数据结构；(指令构成的数据结构)
+				>执行引擎：根据明确的执行计划，调用存储引擎完成；
+				--sql查询执行：from-->where-->group by-->select-->having-->order by -->limit  。。从临时表的变化来看很直观：https://www.cnblogs.com/fanguangdexiaoyuer/p/10268570.html
+					>from: 加载数据库的表文件到内存
+					>where: 应用过滤条件 到 表，生成一张临时表
+					>group by: 应用拆分分组，会切分表为多个临时表。然后的select 就是取各个临时表的第一条，组成一张新的临时表
+					>having: 应用 过滤条件(select后面的字段) 于 临时表，生成新的临时表
+					>order by: 对临时表 排序 
+					>limit 0,2: 取排序后的几个数据
 			>DNS解析过程：用户程序-->本地域名服务器-->根服务器(回答.com找谁)-->顶级域名服务器(回答163.com找谁)-->权威域名服务器。共8个UDP报文。三类顶级域名(国家cn、通用com、基础结构arpa)。。逻辑根域名服务器13台：a.root-servers.net 实际中国17台，全球937台；副本；
 		>算法类：各种系统使用；
 			>负载均衡算法：静态、动态。实现：基于反向代理、NAT、DNS域名解析；
@@ -87,16 +111,53 @@
 				>源IPhash: 同一个ip的走同一个服务器
 				>随机：
 			>垃圾回收算法：步骤；判断；动作；。。复制；标记-整理；标记-清除；
-				>G1算法：
-				>CMS算法：
-					>目标：降低每次垃圾回收的时间；最小影响可用性；
-					>阶段：根标记-->并发标记-->并发预处理-->重新标记-->并发清除-->重置。
-						>过程：确定gc root直接关联的对象(new/old)-->出发所有可达的对象-->(重新标记的预备工作)三大对象的标记(新晋升/新分配/新修改),并发进行一次MinorGC, 老年代分块(之前标记脏，现阶段扫描标记可达)-->并发清除-->重置，清除内部状态；
-					>触发时机：老年代使用率：92%
-					>备案：老年代设置太高，启动SerialOld
-					>内存碎片整理：1.默认开启；FullGC前STW；2.配置k次不压缩的FullGC后执行1次压缩的FullGC(即FullGC后)
+				>G1算法：分代逻辑上连续。标记-复制；(充分利用多核、大内存)
+					>分配：
+						>巨型/大对象分配：依次尝试：Young中每个线程独享的TLAB区(无需同步机制即可分配)-->(不足)Eden区分配(需要线程同步机制)-->(无法容纳)old中Humongous区分配
+						>Region中分配新对象：top值增加即可；bump-the-pointer, top就是已分配区域和未分配区域的界限的值；。
+						>给每个线程分配：一个Buffer,类似TLAB； 需要扩容时，线程用CAS方式更新Region的top来获取新的空间；
+						>Region的Remember Set: 是Region的集合，即外部的引用了这个Region中对象的对象所在的Region的集合；则initial mark 时找根：这些RS就是--因为存着外部引用
+							>RS的实现：若干个Hash Table，每个Hash Table 都是线程独享--从而线程安全的；每个Hash Table存的：key=Card,val=引用的Region集合；参考：https://www.jianshu.com/p/aef0f4765098
+						>Region的Card Table: 一个Reion, 划分为若干个Card,每个Card对应一个Byte来记录是否被修改过。(可能因为byte比bit并发性更好)
+					>回收：两种模式：都是 “标记-复制-回收”
+						>Young GC(STW):
+							>触发时机：Eden区耗尽时。整个堆的使用率达到 -XX:InitiatingHeapOccupancyPercent=45默认的百分比：45%  。可调参数之三：-XX:ConcGCThreads=n (标记线程数)
+							>过程：存活对象-->S0区-->多余部分和大对象和年龄超限部分晋升到Old区-->清空Eden+S1-->GC停止，用户线程继续
+								>大过程：标记-迁移(一部分region中的活对象复制到空region中)-回收(被迁移region)
+									>Marking cycle phase: 根标记-->根引用标记+s0中指向了old的对象的标记-->使用SATB的并发标记(bitmap+TAMS)-->重新标记(扫描SATB,处理新产生的对象)-->清除(统计存活对象)
+										>基本变量：
+											>Marking bitmap: 标记地址上的对象是否存活；
+											>TAMS: 标记阶段 新分配对象的起止地址的变量
+											>top: 类似position, 标记region已被使用的最大地址,即region未分配区域和已分配区域的临界点；
+										>三大过程：简化描述：先行预知：1.region由card顺序组成 2.每个card对应一个起止地址(内部若干个存活/非存活对象)
+											>初始标记：Initial Marking : 1. nextTams=top; 2.nextBitmap=bit[top](bottom到top长度)的空bitmap。。。(置空，置top)
+												>确定标记起点的过程：扫出根， 扫Survivor里指向Old中对象的引用(作为老年代的根)。。。(扫根扫survivor)
+											>重新标记：Remark: 1.扫region的bottom到nextTams之间的存活对象的起止地址，标记到nextBitmap;(此时top可能已经因为继续分配而移动到的更大的位置)。。。(标记存活)
+												>存活对象的确定过程：并发标记：从 marking stack 里弹出引用，后扫堆的对象图，再标记到bitmap。(期间出现了引用修改，则原来的值被写屏障记录到log)
+													>记录存活对象的快照：SATB：snapshot at the begining；并发标记阶段可能有修改原本的引用，则写屏障记录到log(两级：共享和独享)。。最终标记时，使用这些log来修正SATB
+											>清除：1.prevBitmap=nextBitmap; 2.将prevBitmap对应标记的region中的存活对象起止地址之间的间隙地址上的垃圾对象 标记为清除。2.prevTams=nextTams;nextTams=bottom;。。。。(统计存活)(排序region,从而确定CSet)
+									>Evacuation:  选出若干个Region进行回收-->其中存活的对象(扫描根+RS来确定)复制到空闲的Region里去--->回收Region放到空闲Region列表里
+										>两大过程：
+											>选择Region: 根据标记阶段 排序的region+最大暂停时间限制考虑, 选择若干个(按模式是否要选择Old region)。形成CSet
+											>迁移存活对象：将CSet里的region中的存活对象复制到空闲的region里；(有的提升到老年代里)
+							>回收单元：Region, 每次n个；
+								>回收Region链表：每次GC回收的Region都加入到链表；
+							>记录对象被标记：bitmap 	
+						>Mixed GC(STW): Young + old 
+						--待回收Region集合：Collect Set 。fully-young模式下集合里全是Young region; partially-young模式下集合里大部分是young region,一部分是old region;----选择依据是 存活对象计数 最少的；
+				>CMS算法：内存整理时间太长--所以G1产生了；
+					>分配：
+					>回收：
+						>目标：降低每次垃圾回收的时间；最小影响可用性；
+						>阶段：根标记-->并发标记-->并发预处理-->重新标记-->并发清除-->重置。
+							>过程：确定gc root直接关联的对象(new/old)-->出发所有可达的对象-->(重新标记的预备工作)三大对象的标记(新晋升/新分配/新修改),并发进行一次MinorGC, 老年代分块(之前标记脏，现阶段扫描标记可达)-->并发清除-->重置，清除内部状态；
+								>gc root的确定之一：old区有remember set记录了指向新生代的引用(从而不用扫old全部)(Point-out类型) 
+						>触发时机：5种；老年代使用率：92%；(使用率未超过)大对象担保失败(未先到Young)、晋升失败(晋升量太大)、并发模式失败(CMS GC过程中新产生的浮动垃圾多而装不下)、MetaSpace空间不足、手动System.gc(显式gc)(直接内存分配或者回收时)
+						>备案：老年代设置太高，启动SerialOld
+						>内存碎片整理：1.默认开启；FullGC前STW；2.配置k次不压缩的FullGC后执行1次压缩的FullGC(即FullGC后)
 				>复制算法：存活对象不多，可以直接复制出, 自动压缩；
 					>判断存活：可达性分析。(java没使用对象计数法)
+				--决定是否进行MinorGC: 空间分配担保： 如果 Old最大可用连续空间>min(历次晋升量,Young全部)，直接MinorGC, 否则先FullGC	
 			>动态规划算法：确认有递推关系；建立递推关系；字符串相似度算法；
 			>Diskt最短路径算法：KMP算法
 			>限流算法：
@@ -111,7 +172,10 @@
 				>zk选举算法：
 				>raft算法：
 			>加解密算法：
-				>密钥交换算法：
+				>公钥加密算法：用公钥计算私钥加密的结果 还原出原信息；用私钥计算公钥加密的结果 也能还原出原信息;公私钥不相等；
+					>RSA：1.基于欧拉定理：互指的两个数a,n,满足：a^Φ(n)≡1 (mod n) 2.基于模反元素：an互质,则存在b,使得 ab mod n = 1；b为a的模反元素， 很明显a^(Φ(n)-1)就是一个；3.希望有加密还原过程，所以基于欧拉定理进行加工转换等值操作--试图再次得出a：利用数模等值公式得出：a^(k*Φ(n))≡1^k (mod n)≡1 (mod n), 利用两边同乘一个数等式成立，自然乘a,就会出现还原过程：m^(Φ(n)*k+1)≡m (mod n) 。显然信息m经过Φ(n)*k+1处理后对n取模又还原为m了，而处理如果分为中间过程，分为两步，则第一步的结果可以当作加密，后一步当作解密计算；自然的令e*d=Φ(n)*k+1, 那么 m^e mod n作为加密结果传递，则(m^e mod n)^d mod n = m mod n 就还原了m; ed就是公钥和私钥；在二进制位数一定情况下，则还原的m是唯一的；。e的计算，e和Φ(n)互质,找出一个很大的质数就可以，d则通过模反数来计算--也方便；					
+				>密钥交换算法：双方互传部分信息，利用对方和自己的私有信息生成的K是一样的。但单用互传的那部分信息无法得出K。
+					>DH密钥交换算法：1.基于难题 g^k ≡ n mod p ,已知gnp,难算k (所以k当作私有,gnp互传)(指数私有,结果互传).  2.利用关系：a次方的模等于模的a次方的模：m^a mod n = (m mod n)^a mod n 3.设计收到的+私有的生成相同K: 看到m nod n 则认为是收到的，则它的a次方的a是私有的，则结果(m mod n)^a mod n 就应该用作K;  则我方要传递什么结果，对方也能得出K,则从形式上，对方(c mod n)^b mod n = K , 即收到c mod n, 私有b, 则必要求  (c mod n)^b mod n = (m mod n) ^a mod n ,很明显，就是要c^b mod n=m^a mod n,显然mc表示为指数形式，则可以增加约束条件/具体条件c=g^a,m=g^b; 这样就可以保证生成的K相等；增加的条件的等价含义就是：分别发送 g^a mod n和 g^b mod n给对方；根据难题，知道这两个结果也难以猜测a,b的值；双方利用来生成K就安全了。 
 				>用户认证算法：
 				>对称加密算法：
 				>信息摘要算法：
@@ -139,15 +203,18 @@
 					>检测故障和切换节点：心跳检测、指标检测；可用节点切换到对等服务/冗余节点、节点摘除；
 						>消除单点故障：keepalived虚ip方案；冗余+心跳+切换 方案；
 				>增加保护措施: 超大波动。在超过处理极限时；避免崩溃而完全丧失处理能力,舍弃无法顾及的；避免压力传递到后面的服务。
-					>限流：
+					>限流：仅提供降级服务
 					>鉴权：
-					>熔断和降级：
+					>熔断和降级：就是服务调用的自动切断和自动恢复。切断后的替代服务。
+						>熔断：服务判定不可用-->不再耗费来尝试调用/调用切断-->服务状态周期性试探(间隔15s/5s)-->限流逐渐放开/10%幅度/30%/50%/80%/100%
 					>灾备：同城灾备/异地灾备。5种集群：主备/主从/多主/对等集群/非对等集群
 						>多机热备：运行 keepalived 的节点 被 设置虚ip，有仅一个被设置，其他未设置；节点故障时立刻其他节点设置虚ip 实现故障转移。keepalived(心跳+选主策略)
 						>一主多备：
 						>冗余：双电源、双网卡、多机房；
 						>隔离：物理隔离
+				>增加补偿措施：限流的部分，先记录到日志 或者 记录到消息中心 存储起来，如果业务可以--则等待消费而补偿；否则也可以进行统计。	
 				---业务逻辑实现方面：代码方面：享元模式、消除冗余、消除重量级操作；(通过codereview,单机压测，全链路压测发现问题: 内存泄露、死循环、死锁、线程文件使用)
+				---微服务问题：还有更多。类似服务下了,ip未在客户端下。
 			>可用性方案：可用性是表象(已发生的统计；未发生的承诺：不可服务的时间的比例<)；稳定性是性质，可提高可用性；
 				>稳定性说明一年内崩溃的次数，可靠性说明每次崩溃的时间：一年只崩一次(稳定)，一次只需30s恢复(可靠)。。可用性是不可用时间：崩的次数*平均恢复时间。
 			>高并发方案：高并发是表象(吞吐量)(网站/服务/单机吞吐量的提高的优化措施；瓶颈确定、替代方案)；高性能是性质，可提高并发度；
@@ -169,6 +236,7 @@
 					>数据复用：缓存；
 				>减少流量压力：增加分流、增加冗余节点、无状态对等节点
 					>集群部署：
+				--以上总结：模型：链式调用模型来展示：三处优化：1.缩短请求和返回的路径--异步；2.多个连续步的并行--多线程并行；3.某个步的消除--复用(数据/连接/线程)
 			>高性能方案：
 			>安全方案：加密套件
 			>升级方案：流量切换(摘掉节点(配置))、流量排空、节点服务升级更换、节点重启、加入节点(配置)、服务检测、版本回滚；灰度升级；
@@ -296,9 +364,120 @@
 		>MVCC: 是一种事务访问多个版本的记录的策略(访问哪一个)，入参一个：隔离级别；访问动作：读、写；
 	>系统：中间件
 		>redis: 数据怎么组织、存储、查询、变更；是否支持索引、是否支持事务；统一架构模型；
+			>一致性hash:
+			>分片：
 		>mysql:
 		>dubbo: x个过程+y个策略+z个算法
+		>消息系统：架构过程
+			>背景/痛点/阻碍/瓶颈：直接调用太耗时、事件发送/推送/广播不支持；
+			>基本需求明确：一个高性能的高可靠的事件发送、推送、拉取系统
+				>领域明确：事件、发送方(生产者)、事件中心、接收方(消费者)
+					>各领域的基本属性和基本行为：
+						>事件：事件类型、事件内容、事件所属的目的地名称(topic)
+						>生产者：构造事件、发送事件给事件中心、收取响应
+						>事件中心：接收事件、发送响应、管理事件(分派到它要求的目的地--某队列)、接收消费者注册请求、响应注册请求、管理注册的消费者、推送事件给消费者、接收响应、回应拉取事件请求
+						>消费者：发送注册请求到事件中心(感兴趣的事件类型/带某标签)、接收注册回应、接收事件、回应本次接收体验、拉取某类型/标签/主题的事件、回应拉取后的体验
+					>若干项服务流程：设计的高性能、高稳定、高可靠；开发者使用简便、扩展简便(替换某组件)；
+						>消费者注册：
+							>流程环节：
+								>构造请求：模板/建造者
+									>实现方案的确定：
+										>理想方案的特征：约束
+											>特征进一步确定的必然：
+												>归结出一般的函数模型/服务模型：
+													>方案的装饰/补充：
+													>方案的使用方法：
+								>请求序列化：+编码+压缩？
+								>使用通信框架承载发送：netty/nio/bio/http
+									>理想方案的特征：约束。直接调tcp/ip发送；无阻塞；异步获取结果；通信安全；
+											>特征进一步确定的必然：多端口单线程监听，epoll事件回调；TLS使用；
+												>归结出一般的函数模型/服务模型：异步非阻塞IO模型
+													>方案的装饰/补充：补充使用便利性：对象的序列化放在通信框架上(过滤链上)
+													>方案的使用方法：直接入参：对象；回调：发送成功/收到处理结果成功；
+								>获取结果：同步/异步 
+						>消费者拉取：
+						>生产者发送：
+						>事件中心推送/响应：
+		>传输层协议：
+			>TCP: 单播
+				>连接建立：3次握手，确定双向链路通畅。
+					>同时打开：则4个数据包
+					>半开：客户端在ESTABLISHED时崩溃；重启后新建连接；原来那个在服务端还存在--是个半开连接；
+					>连接建立超时：指数回退 方式 重试 
+				>发送数据包格式：
+					>包内容：序列号+端口+置位+校验和; 窗口大小+确认号。置位：SYN+ACK+FIN,RST(连接取消而重置/端口没有进程监听)+CWR(拥塞窗口减)
+					>包大小：不固定长度(包里有长度)
+				>包异常的处理：丢失、重复、差错、乱序时分别的处理
+					>丢失：缓冲区滑动窗口内有数据没收到ack，超时(RTT估计而确定)重发(重传计时器)
+					>重复：丢弃 
+					>差错：验证出错则丢弃
+					>乱序：数据首字节在原数据中的字节偏移量+长度，先缓冲；发送SACK 告知重传；
+				>包异常的预防：
+					>拥塞控制：初始阶段，滑动窗口根据返回ACK而指数增大；超过阈值而减半后线性增长；
+				>结束连接：4次挥手，双方独立停止连接；
+				--TCP状态转换：
+					>连接：客户端3：CLOSED->SYN_SENT->ESTABLISHED; 服务端3：LISTEN->SYN_RCVD:->ESTABLISHED 
+					>关闭：客户端3：FIN_WAIT_1->FIN_WAIT_2/CLOSING->TIME_WAIT(2MSL)/TIME_WAIT ; 服务端3：CLOSE_WAIT->LAST_ACK->CLOSED 
+				--TCP保活：2h没收到报文,发9次保活报文，每次间隔75s; 都失败则发送重置报文；	
+			>UDP:	
+		>日志：
+			>日志系统的领域驱动设计：
+				>目标：本质上是一个日志数据存储系统；
+					>理想形态：要求支持并发调用、非阻塞返回。
+						>具体实现：则先对环节精细的明确，定为：先缓存、格式化 后再批量存储到磁盘的 日志存储系统。
+			>log4j2: 在架构和环节上的优化：LMAX Disruptor的使用(无锁的线程间通信库)。
+				>Append的过程：追加event的过程：
+					>RollingFileAppender: 编码之后写入了 ByteBufferDestination，具体过程是调用后者的write方法，内部以synchronized方式写mmap或者FileOutputStream(具体走哪个看ByteBufferDestination实现类型)。
+					>MemoryMappedFileAppender: 写入 manager内的ByteBuffer，也或是写入 FileOutputStream (具体看是否设置立即刷 或者 LogEvent是批的最后一个)
+					>AsyncAppender: 事件转Log4jLogEvent，内部有queue,可能是由DisruptorBlockingQueueFactory创建DisruptorBlockingQueue，或普通的ArrayBlockingQueueFactory创建的ArrayBlockingQueue
+						>事件落地路由策略：
+							>异步：logMessageInBackgroundThread()-->则先 queue.put(logEvent)  (一个AsyncAppender只有一个后台线程)
+								>建立后台线程和后台线程处理queue时机：配置类设置/工厂设置时调用了@start()方法：启动了后台线程AsyncThread, run里：循环中queue.take()然后调用appender来消耗callAppenders(event)，queue为空则event的批为最后一个--就会刷到FileOutputStream；
+							>同步：logMessageInCurrentThread()->则直接调同步的appender开始刷入缓存ByteBufer或者磁盘：thread.callAppenders(logEvent)-->appender.append(event)
+						>Disruptor的使用: 写：抢位(条件为tail-head<size)->成功则设置值+增加tail-->失败自旋。读：抢位(条件为head<tail)-->成功则读取值后置空+增加head-->失败自旋。模型： 一条整数线, head --- tail 各自增长变化/忽近忽远。
+							>LongAdder 的使用：提高并发更新度和降低冲突概率。而采用的内部数组分散存各个值。总和才是真正的值。tail/head的值。
+							>ContendedAtomicLong 的使用：消除伪共享，先内部新建长度为16的long数组整体对象--AtomicLongArray,而把要存的long放在index=8的位置，则前7后8个元素，则它不会受到其他变量更新的影响而重新加载所在缓存行--因为一定独享/确保了独享一个缓存行。 tailCursor/headCursor的值。
+							>新值设置位号slot的确定：tailSeq & mask 因为tailSeq虽然不断增大，但是对于低32位来看,是周期的自增的--到最大后下次为0.
+							--写抢位对tailCursor cas,而用headCache当作条件。读抢位对headCursor cas,而用tailCache当作条件。
+							--真正实现类：MultithreadConcurrentQueue 非 DisruptorBlockingQueue---后者是在前者基础上做了 非空非满的激活和读空写满的阻塞。
+				>info()的过程：从Logger到Appender:。。先到队列，再到流，再到磁盘。
+					>先转为Message格式：
+						>如org.apache.logging.log4j.core.Logger 实现：转Message后转调策略来处理-->转调配置:配置类先 继续转为LogEvent--->然后就是熟悉的调用Appender来处理了org.apache.logging.log4j.core.config.LoggerConfig.processLogEvent()
+						>如org.apache.logging.log4j.core.async.AsyncLogger 实现： 内部AsyncLoggerDisruptor 对象---start()中新建了com.lmax.disruptor.dsl.Disruptor对象---新建时新建了RingBuffer对象。具体过程：直接用RingBuffer来发布事件：通过sequence找到Object[] 位置，因为每个位置都初始化为了RingBufferLogEvent元素，所以直接将message设置进去即可。--->然后sequencer发布可用：在availableBuffer中标记位。
+							>Event的消费：新建Disruptor时@handleEventsWith()方法即是消费线程的启动：回调handler:Log4jEventWrapperHandler , 新建的处理器BatchEventProcessor封装为EventProcessorInfo加到了consumerRepository, 在Disruptor.start()时候 executor.execute(eventprocessor)---对于BasicExecutor ：非常粗暴：直接新建Thread并启动。所以总共启动了额外的一个线程：运行起来执行BatchEventProcessor.processEvents():里面直接一个一个从RingBuffer里取，后使用回调类处理@eventHandler.onEvent() 后面就是常见的使用配置类loggerConfig.logToAsyncLoggerConfigsOnCurrentThread()处理--到调用Appender处理。RingBuffer满的时候也会直接logToAsyncLoggerConfigsOnCurrentThread()处理。
+			>slfj: 
+				>封装为内部事件后缓存到：LinkedBlockingQueue 
+				>缓存数据的消费：o.s.LoggerFactory吸干队列元素，反射调用Logger实现类log()方法执行来消耗。
+				>API:
+					>org.slf4j.LoggerFactory.getLogger(name): 可能有各map的整理过程；接着：都会获取一个 工厂实例@getILoggerFactory() 然后调用工厂的.getLogger(name)方法来获取一个 new Logger 实例
+						>获取工厂实例的实现：核心为org.slf4j.impl.StaticLoggerBinder 类的静态方法获取。但是这个类在多个包中都有实现：logback-classic.jar/slf4j-log4j2.jar 里都有。
+							>对于logback-classic.jar里的实现：则返回 new LoggerContext 实例; 对应的getLogger()返回的是：ch.qos.logback.classic.Logger 。。工厂的静态块进行了配置读取：系统配置logback.configurationFile > 文件 > logback-test.xml > logback.groovy > logback.xml 
+							>对于slf4j-log4j1.jar里的实现：则返回 new Log4jLoggerFactory 实例：对应的getLogger()返回的是：org.apache.log4j.Logger 接口的实现：Log4jLoggerAdapter <-- org.apache.log4j.spi.NOPLogger/org.apache.log4j.spi.RootLogger / org.apache.log4j.Logger 且都是通过 LogManager 获取。这个Manager:静态块就在执行：加载 系统配置log4j.configuration > 文件 log4j.xml >log4j.properties, 后具体的使用配置器吸收而初始化。
+							>对于log4j-slf4j-impl-2.jar里的实现：则返回 Log4jLoggerFactory 实例：对应getLogger()返回的是：org.apache.logging.slf4j.Log4jLogger 可能 产生：SimpleLoggerContext/LoggerContext/SLF4JLoggerContext
+							>选择哪个包里的实现：随机的。因为是有可能在classpath上find url时候发现这个类的多个url,那么直接 StaticLoggerBinder.getSingleton() 方式让虚拟机自己选择找哪个包里的实现。
+						>SubstituteLoggerFactory.getLogger(): 是新增：name -- SubstituteLogger() 实例 这样的k-v 到内部的logers:map里
+			>spring-jcl: spring-boot内部代码使用的日志接口
+				>日志接口：
+					>原生接口：log4j,slf4j
+					>统一接口：Log/o.a.c.l.LogFactory
+					>适配类：SLf4jLog/Log4jLog/JavaUtilLog；对应适配的原生接口：Logger/ExtendedLogger/java.util.logging.Logger。对应适配器：Slf4jAdapter/Log4jAdapter。
+					>统一适配器：LogAdapter
+						>决定使用哪个适配器/适配类： 依次看各个具体log类是否可以加载：log4j_slf4j桥接 > log4j直接 > slf4j spi实现类 > slf4j api实现类 >java.util.logging.Logger
 	>应用问题处理：
+		>用户授权/用户认证问题：
+			>授权： 给合法主体授予相关资源的访问权限(允许访问/拒绝访问 xxx资源)。(使用第三方认证)
+				>Oauth: 认证用户身份-->颁发token
+					>请求授权码(先查看权限再决定是否返回)-->请求token(同时code失效)(token不携带用户信息)-->带上token请求资源
+						>资源服务器：根据token查认证服务器得到userid,后执行请求；
+						>认证服务器：token-userid的映射查找服务提供；			
+				--授权之后访问资源：带上access_token		
+			>认证：	确认用户是否为系统中合法主体(非合法主体直接当作游客)(提供用户名+密码)(返回token)。
+				>JWT:
+					>特殊格式的Token: base64(header.payload.signature)  其中， signature=f(payload),payload=base64(json) header=xxx_RSA之类(签名算法--只有服务器知道私钥)；从而token既有效又绑定用户；payload有时称为claims
+					>资源服务器：独立完成签名的验证。payload中有用户信息；
+					>认证服务器：颁发jwt格式的token;
+				--认证之后访问资源：带上token 
+		>mysql主从同步问题：更少延迟、更快恢复；
 		>缓存问题：4类
 			>缓存穿透：
 				>产生原因/条件：数据库不存在的key不会被缓存；
@@ -327,7 +506,73 @@
 							>方案的用法： 请求缓存后，查数据库的框架；
 				>区分具体方案的维度/模型/流程： 
 					>完全不查数据库：缓存不过期+同步更新；(依然有redis不可用时未应对的问题)
-		>CMS GC问题：
+		>CMS GC问题：CMS+ParNew组合.延迟-吞吐量-容量 的权衡； 小堆 CMS, 大堆G1(>2G<64G)、超大堆ZGC
+			--问题引起的表象：RT上涨、GC耗时增大、线程block增多、慢查询增多、CPU负载高；
+			--TLAB: Eden中的一块内存；每个TLAB都是线程独享的；
+			--Java8内存结构：栈：虚拟机栈、本地方法调用栈、程序计数器； 堆：Young:Eden+TLAB+s0/s1 ,Old:Tenured+Humongous(超过分区大小50%的对象), 运行时常量池:符号引用+字面量；非堆区：MetaSpace: 压缩类空间+编译代码+域和方法数据； 本地内存：JNI的+Direct的+Stack的； 代码缓存：JIT 代码和编译
+			--分配和收集对象：对象地址操作：Unsafe#allocate/free
+				>收集算法：标记-清除：时间开销-和存活对象数正相关； 标记-整理：开销-和存活对象数+对象大小都相关；复制算法：开销-只和存活对象大小相关(可达可视)
+				>收集器：G1-吞吐量为目标-多核大内存-分区后分代；CMS-一次最大暂停时间-可用性为目标--分代后分区；ZGC-低延迟-大内存
+				>指标：延迟：单次停顿时间；吞吐量：总的停顿时间占比；
+				>调优条件：GC吞吐量>=99.99%, 即如果单次延迟平均30ms，则300s才进行一次GC，即5min一次；满足不了就要调优；第二：最大GC时间<TP9999 否则也要调优；
+				>在线平台：gceasy\heaphero\fastthread 也是GC日志分析工具
+					>GC Cause: 分配失败、并发模式失败(old预留空间不足,收集器退化)、FullGC分配失败、晋升失败(old空间不够装young)、GCLocker InitiatedGC(JNI临界区执行时阻塞其他线程也阻塞GC线程)
+				>对象存活时间和应用类型关系：IO交互型：RPC之类，存活时间短；Young区大些；   MEM计算型：存活时间长--Old区大些；	
+			>动态扩容引起的空间震荡：-Xmx 和-Xms设置不一致，导致动态的扩容和缩容----从而导致触发CMS GC(其他：达到阈值、大对象担保失败、晋升失败、MetaSpace空间不足、手动System.gc);
+				>显式GC: 导致FullGC,STW 。但也可以触发GC来保证DirectByteBuffer的清理工作可以及时完成；
+			>显式GC的去与留：
+			>MetaSpace区OOM：常量池等字面量、类静态变量、符号引用 都移到了Heap, 1.8后PermGen也没有了，只有MetaSpace;
+				>jvm向os申请内存：mmap接口 实现；每次2MB,加到链表中；
+				>Klass MetaSpace + NoKlass MetaSpace: Class文件的类解析后的数据结构存放的位置 + 常量池/Method
+				>查看哪个包下加载的Class更多：jcmd pid GC.class_stats|awk '{print$13}'|sed 's/\(.*\)\.\(.*\)/\1/g'|sort |uniq -c|sort -nrk1 
+					>查看类加载详细信息：-XX:+TraceClassLoading -XX:+TraceClassUnloading
+			>过早晋升：最大晋升年龄：-XX:MaxTenuringThreshold
+				>原因：Young/Eden区过小；Old区大小不一定要很大；Old区大小=活跃对象/FullGC后存活的对象的3倍作有即可；新生代>old区大小也可以；2倍都行；
+			>CMS Old GC频繁：吞吐量下降多；
+				>启动原因：1.阈值判断：默认92%；2.Young GC失败过；-XX:CMSClassUnloadingEnabled 3.System.gc  
+			>单次CMS Full GC 耗时长：单次STW>1s
+				>init mark: GC roots开始的标记
+				>Final Remark: Card Table的遍历、Reference实例的清理并加入到Reference维护的pend_list;  收集元数据信息：class unloading, 清理 SystemDictionary\CodeCache\SymbolTable\StringTable
+					>调节参数：-XX:+PrintReferenceGC 可以在日志清晰展示CMS Final Remark 阶段：1. ParNew 标记的 软引用、弱引用、Final Reference、虚引用、JNI虚引用 分别有多少 2. class unloading 、symbol table(符号引用)、string table 的清理耗时
+						>调参2：-XX:+ParallelRefProcEnabled 对Reference进行并行处理
+						>调参3：cms-remark阶段 类卸载，jdk8默认开启了：-XX:-CMSClassUnloadingEnabled  。。减少耗时，可以关闭；
+					>内存分析工具：MAT, JProfiler
+						>FinalReference 的分析：看 eclipse的MAT 的 dominator tree; 加-XX:+HeapDumpOnOutOfMemoryError 就是看对象数量：java.lang.ref.Finalizer会很多；
+							>实现了Object.finalize()方法的实例：会被创建一个Finalizer实例--看门狗--引用前面用户对象，且被Finalizer类引用-->新生代Eden回收无法清空看门狗-->新生代GC完成后才将对象放入内部的ReferenceQueue-->Finalizer守护线程弹出队列中元素，执行finalize()方法，同时Finalizer类不再引用这个对象；--->下一轮新生代Eden回收就可以回收了。但是Finalizer守护线程优先级低，回收慢，保留多，从而java.lang.OutOfMemoryError: GC overhead limit exceeded
+			>内存碎片和收集器退化：退化后STW时间可能十几秒
+				>单线程串行STW： 标记-清理-压缩 
+				>退化原因：
+					>晋升失败：Survivor放不下，Old也放不下；
+						>原因1：短时间Old快速填满---晋升太早；
+						>原因2；内存碎片--大对象没有足够连续空间
+					>并发模式失败：Concurrent Mode Failure , Old回收阈值太高，在回收结束前，预留的内存空间不够存不断产生的浮动垃圾	
+				>调参：优化
+					>-XX: UseCMSCompactAtFullCollection=true 开启 FullGC后空间整理；
+					>-XX: CMSFulGCsBeforeCompaction=n 控制多少次普通FullGC后进行一次带压缩的FullGC  ，可以实现通过 -XX:PrintFLSStatistics 来观察内存碎片率
+					>-XX: CMSInitailingOccupancyFraction 让 CMS GC尽早执行，比例降低；同时配置：-XX:+UseCMSInitialingOccupancyOnly
+					>-XX: +CMSScavengeBeforeRemark 提前触发一次Young GC, 防止后续晋升太多对象；
+			>堆外内存OOM：top 命令查看 java进程的res 和 -Xmx比较；
+				>原因：Unsafe#allocateMemory,  ByteBuffer#allocateDirect, 或者用JNI调用native code申请的内存没有释放；
+				>分析工具：NMT 
+					>项目启动：添加-XX:NativeMemoryTracking=detail , 使用命令 jcmd pid VM.native_memory detail 查看内存分布(堆内内存、Code区域、Unsafe/DirectBuffer申请的内存;不含Native Code申请的)
+				>调参：优化 
+					>控制最大堆外内存申请值：-XX:MaxDirectMemorySize=size jdk8中默认和-Xmx一样；
+					>检测堆外内存是否释放：-XX:+DisableExplicitGC 去掉；
+				>分析工具2：Google perftools(malloc时接替) + Btrace 分析 JNI调用的Native Code 申请的内存未释放 
+					>Btrace: java 追踪、监控工具。直接打印出调用栈(而不是看日志里的调用栈)
+			>JNI引发的GC问题：GC Cause=GCLocker
+				>添加：-XX:+PrintJNIGCStalls 可以打印出发生JNI调用时的线程；
+				>JDK升级到14： 避免重复GC: JDK-80488556
+			--参数加入：
+				>-XX:+HeapDumpOnOutOfMemoryError 
+				>基本参数：-XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:PrintGCTimeStamps 
+				>时间相关：-XX:+PrintGCApplicationConcurrentTime -XX:+PrintGCApplicationStoppedTime 如STW时间
+				>年龄相关：-XX:+PrintTenuringDistribution
+				>空间变化：-XX:+PrintHeapAtGC
+				>引用相关：-XX:+PrintReferenceGC
+			--一般指引：
+				>禁用偏向锁：并发激烈时，偏向锁升级到轻量级锁，消除偏向锁时需要STW,开销大；所以 -XX-UseBiasedLocking
+				>真正分配物理内存：-XX:+AlwaysPreTouch
 	>源码：
 		>java:
 			>ConcurrentHashMap: 数据结构+算法 
@@ -339,6 +584,16 @@
 			>Selector:
 		>spring: 各个过程
 			>刷新的过程：
+			>事务开启到提交/回滚的过程：
+				>事务传播级别：
+					>已有事务时：
+						>需要新事务：REQUERED_NEW(有则悬挂-新建事务)/NESTED(父事务建立回滚点-建立子事务)(子事务回滚-父事务回滚到保存点)(父事务回滚-子事务也回滚了-因为子事务还没提交)
+						>利用当前事务：REQUERED/SUPPORT/MANDATORY
+						>不需要当前事务：NOT_SUPPORT(有则悬挂)/NEVER(有则抛异常)
+					>没有事务时：
+						>必须要先有事务：MANDATORY(没有就抛出异常)
+						>新建事务：REQUERED_NEW/NESTED/REQURED
+						>就没有事务：SUPPORT/NEVER
 		>spring-boot:各个过程 
 			>启动的过程：
 		>dubbo: 各个过程 
@@ -354,3 +609,21 @@
 		>jdbc:
 		>tomcat:
 		>rocketmq:
+	>架构：
+		>领域驱动设计：
+			>目的：发现业务问题(逻辑问题/缺陷/漏洞)，发现新业务。
+			>设计过程|确定过程：确定领域对象(属性和服务)--->
+				>领域对象：对象服务：
+					>对象属性：跟所处哪个系统无关的，固有的必不可少的属性；对象信息；区分不同对象实例的维度；
+					>对象服务：服务需要被调用/被使用(被其他对象/被cpu)。服务使用过程中可能需要留下记录、发出事件；(表明服务的进展)。可被执行的操作。1.改变属性的服务；2.消耗属性的服务；3.处理输入的服务；4.输出数据的服务；
+				>概念结构：共享的概念层次 
+					>类继承关系：继承、实现
+					>类依赖方式：参数注入依赖、属性添加依赖、向中心代理发事件--(完全解耦)
+				>综合服务：使用多个对象的服务来产生整体服务；	
+					>服务描述：精确用词用度量来描述我们到底提供了一个怎样的服务；---->然后对其中的具体的词进行抽象--->层层抽象，得到更加广泛的服务、更一般的服务---->再具体化，得到全新的服务；。。。这种思考活动要多多进行(当前有的服务 当作验证) (这才是真正的商业思考)
+						>尝试发现业务问题：就要梳理完整的业务逻辑;业务发展逻辑；服务逻辑;服务发展逻辑。(这才是真正的商业思考, 且是我的独特优势)(规划和执行)
+							>梳理发展的业务逻辑：业务发展逻辑、业务规划逻辑；。能发展起来、发展壮大的业务逻辑；
+							>梳理衰落的业务逻辑：肯定发展慢、且最终发展不起来、最终会失败的发展逻辑；不稳定的发展逻辑；不可靠的发展逻辑；性能不高的发展逻辑；不安全的发展逻辑；不便于扩展的发展逻辑；并行请求处理不过来的发展逻辑
+								>具体发展过程及其抽象：(也是发现有前途的公司的方法)(自定向下，由抽象到具体)
+									>所有环节的确定：每个环节不可再分
+									>所有环节的选择: 每个环节具体做了什么事、怎么选择的、选择了什么；
