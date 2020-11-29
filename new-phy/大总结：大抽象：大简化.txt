@@ -290,6 +290,18 @@
 		>概念结构模型：
 		>JVM内存模型：
 		>线程模型：
+			>线程本地：ThreadLocal 
+				>线程的私有背包：t.threadlocals = new ThreaddLocalMap()	用户线程无法访问。
+				>线程的私有背包的对外接口：只能通过任何ThreadLocal 实例来访问到, 且实例不同，访问到的是背包的不同包包。
+				>ThreadLocalMap:
+					>expungeStaleEntry(index): 将index位置清空，且将它后面相邻的清空(key=null) 或者搬开到右边空位(key!=null)；
+					>cleanSomeSlots(int i, int n): 从i开始找空key，找到则调上述方法进行清空且相邻清空或搬开。总共进行log2(n)轮，所以对于空key-null-空key-null...这样的数据布局，就不会清完毕。
+					>rehash()：执行条件：i+1位开始连续log2(n)位上都没发现过空key--为null或者非空key, 且体积达到阈值。处理：先遍历entry[],处理掉所有的空key,如果此时size>=3/4阈值，则开始resize()扩容。
+						>扩容过程：先2倍长新Enry[],后逐个迁移：如果此时变为了一个空key, 则清空它，否则hash定新位--有元素则右找至非空位。遍历完成后，新阈值=新len*2/3, 新数组替换原数组；
+					>set(): 用key的hash定位,如有元素了，key同则替换值，空key则@replaceStaleEntry()即可能替换可能设置；如果没元素 则直接new Entry(key,v)替换；然后判定是否需要rehash需要则做。	
+						>@replaceStaleEntry(slot,key,v): 寻找slot的非空左相邻中最左的空key位--s1，寻找非空右相邻i, 如果它是空key 且 s1==slot,则s1设置为i, 否则它不是空key且其k==key,则更其value=v,且交换元素i和元素slot, 如果slot==s1,那么s1=i；无论如何，接着都会：清空搬开s1开始的元素@expungeStaleEntry(),后开始清扫这一位开始的空key:@cleanSomeSlots(),清扫完成则返回。如果右找中遇到了null位了则直接将slot位置设置为新的Entry(key,v),如果s1 != slot则 清空搬开s1开始元素后开始清扫。
+					>get(): 用key的hash定位，如果有元素且key同，则返回v; 如果没元素则没元素；如果有元素但是空key, 则顺便清空和搬开一下@expungeStaleEntry(); 如果有元素但是key不相同，则继续寻找下一个元素--看key同/空key/key不同，直到找到或者遇到空元素才退出--返回Null:@getEntryAfterMiss()
+						>没有先set()而get(): 则会设置一个初始v=null进去。创建map也设置null进去。k就是调用ThreadLocal
 			>线程池：Thread/ThreadLocal/ThreadPoolExecutor
 				>数据结构：1 queue + n worker......status
 				>状态：running->shutdown->tinying->terminated; 第二种：running->stop->tinying->terminated
@@ -340,7 +352,7 @@
 					>线程池调参：corePoolsize = qps * task_time; maxPoolsize = qps * task_count * task_time, queue_size = qps * (task_count - 1) * task_time 可能导致等待任务太多；因此可以：corePoolsize=maxPoolsize, maxPoolsize = 2*maxPoolsize, queue_size=minPoolsize。另外，队列不要太长，就算直接用主线程来执行;所以可以固定：queue_size=minPoolSize---这样相当于每个core worker只有一个备份任务。
 						>cpu核数参考：
 						>自动调参：实时监控-动态调参-线程池监控/服务监控
-						>一般规律：核心来处理到达的所有请求：corePoolsize=qps * task_count * task_time, 队列来缓冲小部分请求，但队列里的请求不能等待太久，< 1个请求处理的时间，如=0.5*1个请求处理的时间(系数必须<1才能使得排队不比串行执行慢)，则 queue_size=0.5*corePoolsize, 而最大worker数则是直接处理的最大线程数，应该和cpu核数有关，经过模型推导(等待时间+切换时间+执行时间)，得到 进行并发更快的极限并发数=k*t1*(n-1)/((k-1)*t2), t2是线程上线文切换耗时：大约2ms, t1是单个task执行耗时如20ms, k是一个请求分解的并行任务数如4,n是cpu核心数如8；得出并行请求数为93，即 maxPoolsiz=93*4=372, 而在此极限时并行执行时间约等于串行执行的时间，一个请求的串行执行时间=20ms*4=80ms,加上其他处理20ms，则100ms,所以1s内可以串行10批，从而可以支撑的qps=93*10=930。。而如果采用串行方案，则支撑的qps=8*10=80,所以充分利用并行，在不输串行时间条件下，qps可以暴涨10倍。而如果要并行时的耗时降低为40ms即为降低一半或者到2/3,则推导出统一公式k*t1*(n-q)/(t2*(qk-1)+k*t1*(q-1)),q就是一次请求的串行时间是并行时间的倍数；可以发现，此时qps基本不变。即说明8核的效果可以要么提高qps到11倍但是响应时间为串行时间，或者响应时间为一半但qps不变。
+						>一般规律：核心来处理到达的所有请求：corePoolsize=qps * task_count * task_time, 队列来缓冲小部分请求，但队列里的请求不能等待太久，< 1个请求处理的时间，如=0.5*1个请求处理的时间(系数必须<1才能使得排队不比串行执行慢)，则 queue_size=0.5*corePoolsize, 而最大worker数则是直接处理的最大线程数，应该和cpu核数有关，经过模型推导(等待时间+切换时间+执行时间)，得到 进行并发更快的极限并发数=k*t1*(n-1)/((k-1)*t2), t2是线程上线文切换耗时：大约2ms, t1是单个task执行耗时如20ms, k是一个请求分解的并行任务数如4,n是cpu核心数如8；得出并行请求数为93，即 maxPoolsiz=93*4=372, 而在此极限时并行执行时间约等于串行执行的时间，一个请求的串行执行时间=20ms*4=80ms,加上其他处理20ms，则100ms,所以1s内可以串行10批，从而可以支撑的qps=93*10=930。。而如果采用串行方案，则支撑的qps=8*10=80,所以充分利用并行，在不输串行时间条件下，qps可以暴涨10倍。而如果要并行时的耗时降低为40ms即为降低一半或者到2/3,则推导出统一公式m=k*t1*(n-q)/(t2*(qk-1)+k*t1*(q-1)),q就是一次请求的串行时间是并行时间的倍数；可以发现，此时qps基本不变。即说明8核的效果可以要么提高qps到11倍但是响应时间为串行时间，或者响应时间为一半但qps不变。两个好处可以得其一：因为q大则m小,m小则q大
 			>用户线程和内核线程的映射：一对一，多对一，多对多
 			>调度方式：java线程：强占式调度---由系统分配执行时间	
 		>网络IO模型：阻塞/非阻塞(手动api查结果)，同步/异步(回调通知结果)：
@@ -510,6 +522,17 @@
 								>发布序号：仅仅更新了设置了availableBuffer: int[] 可读的index位置也是sequence & indexMask 得来；存放的int值是：sequence>>log2(size) 的低32位--是标记；存放之后processorNotifyCondition.signalAll()唤醒读取；而如果要读的序号值>可读的序号值：就条件等待processorNotifyCondition.await()
 								>处理事件：是更新了自己的sequence
 								>数组里的元素逐个字节进行操作：取得偏移量：UNSAFE.arrayBaseOffset(int[].class) 和元素大小：UNSAFE.arrayIndexScale(int[].class) 和取某对象的某偏移量开始的int值：UNSAFE.getIntVolatile(availableBuffer, bufferAddress)
+						>log4j2中对Disruptor的使用：processor维护自己的sequence--标记读到的位置；RingBuffer.Sequencer则维护自己的cursor来标记写到的位置；当cur<process_seq就会读线程就会等待；当不可写则写线程LockSupport.parkNanos(1)稍微停车而继续自旋。
+							>从 handleEventsWith()开始；
+								>Ringbuffer用序号器新建一个SequenceBarrier：被多个BatchEventProcessor共用，同时共用一个RingBuffer,内部自有新建且初始化的一个sequence，且dependentSequence=handle方法透传的Sequence(序号器未存)--->但是更新到了ringBuffer.sequencer.gatingSequences。
+									>BatchEventProcessor被多线程执行起来之后：取自己内部的sequence的值并加1，传调给sequenceBarrier.waitFor(nextSequence)，等待。作为期望的sequence，当读取了下一轮可读的event后，sequence被设置为最后读取索引+1，继续waitFor()
+									>SequenceBarrier的等待：转调内部策略来等待可用序号waitStrategy.waitFor()。然后调序号器来获取最大已发布序号：@sequencer.getHighestPublishedSequence()这时就会查序号器 内部 自己的 availableBuffer 设置位，比较看哪个位可读了--显然这没问题--直接读无cas。
+									>BlockingWaitStrategy策略的等待：条件等待，条件为 从序号器 透传过来的cursor<期望的sequence。一旦条件被激活，则cursor值肯定变了，透传过来的dependentSequence也肯定变了---且是>=期望的sequence的值(从而从期望sequence到dependentSequence都是可读的)；
+								>一个Disruptor: 内部一个RingBuffer。一次创建后的创建事件处理器，只创建一个SequenceBarrier
+								>一个RingBuffer: 内部一个 新建的 MultiProducerSequencer，就是用这个序号器创建一个SequenceBarrier: sequencer.newBarrier()
+								>一个MultiProducerSequencer： 内部有自建的一个序号 cursor--初始为0, 透传给 ProcessingSequenceBarrier的cursorSequence， waitStrategy也透传给它了
+							>RingBuffer.publish(long sequence)都做了什么：转给序号器发布：sequencer.publish() 内部仅仅更新了 它独有的int[]availableBuffer的相应位置的值--直接更无cas；然后调用策略进行唤醒 条件等待：。
+							>RingBuffer.publishEvent()都做了什么：先序号器占位： sequencer.next()，后再转换事件和发布唤醒@translateAndPublish()。很自然的，序号器占位，就是更新它的cursor增加n了，和前面阻塞等待匹配。同时因为序号器内部还有一个自己的gatingSequenceCache，也会更。
 				>info()的过程：从Logger到Appender:。。先到队列，再到流，再到磁盘。
 					>先转为Message格式：
 						>如org.apache.logging.log4j.core.Logger 实现：转Message后转调策略来处理-->转调配置:配置类先 继续转为LogEvent--->然后就是熟悉的调用Appender来处理了org.apache.logging.log4j.core.config.LoggerConfig.processLogEvent()
