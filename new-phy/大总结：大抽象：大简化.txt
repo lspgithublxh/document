@@ -294,35 +294,41 @@
 				>数据结构：1 queue + n worker......status
 				>状态：running->shutdown->tinying->terminated; 第二种：running->stop->tinying->terminated
 					>可入队列可取任务：running  
-						>此时提任务-->(增worker->入队列->增worker->拒绝策略)
+						>此时提任务-->(增worker->入队列->增worker->拒绝策略(默认抛异常))
 						>此时worker刚刚区得任务：消费一次中断interrupted，后执行任务。
-						>此时worker正在执行任务：
+						>此时worker正在执行任务：完后去拉取任务
 						>此时worker正在拉取任务的阻塞中：
 						>此时worker去拉取任务：总可以到poll()/take()方法
 					>禁入队列可取任务：shutdown 
 						>此时提任务-->(拒绝策略)。  如果提空任务-->(任务队列非空则新增worker，否则拒绝策略)
 						>此时worker刚刚区得任务：消费一次中断interrupted，后执行任务。
-						>此时worker正在执行任务：
+						>此时worker正在执行任务：完后去拉取任务
 						>此时worker正在拉取任务的阻塞中：
 						>此时worker去拉取任务：队列非空可以到poll()/take()方法，否则返回null导致worker退出
 					>禁入队列不取任务：stop 
 						>此时提任务-->(拒绝策略)。提空任务-->拒绝策略
-						>此时worker刚刚取得任务：调它的线程的中断,后执行任务。后拉取任务抛出中断异常---因为线程中断后执行sleep/轻量级锁的条件对象await()时都直接抛中断异常,但Object.wait()则继续阻塞
-						>此时worker正在执行任务：
+						>此时worker刚刚取得任务：调它的线程的中断,后执行任务。
+						>此时worker正在执行任务：完后去拉取任务
 						>此时worker正在拉取任务的阻塞中：
 						>此时worker去拉取任务：直接返回null导致woker退出
 					>tinying
 						>此时提任务-->(拒绝策略)。提空任务-->拒绝策略
 						>此时worker刚刚取得任务：调它的线程的中断
-						>此时worker正在执行任务：
+						>此时worker正在执行任务：完后去拉取任务
 						>此时worker正在拉取任务的阻塞中：
 						>此时worker去拉取任务：直接返回null导致woker退出
 					>terminated
 						>此时提任务-->(拒绝策略)。提空任务-->拒绝策略
 						>此时worker刚刚取得任务：调它的线程的中断
-						>此时worker正在执行任务：
+						>此时worker正在执行任务：完后去拉取任务
 						>此时worker正在拉取任务的阻塞中：
 						>此时worker去拉取任务：直接返回null导致woker退出
+					--注：队列take/poll底层都是条件对象的await()	
+					--注：线程中断后执行sleep/轻量级锁的条件对象await()时都直接抛中断异常,但Object.wait()则继续阻塞
+					--注：正在lock()中的线程被中断了，则park()唤醒，但还是继续排队继续park(),只是lock()退出前最后一步更新当前线程是已中断状态/自中断。
+				>关闭：shutdown()：更新状态为shutdown-->调每个非lock()<非重入锁>中的 worker的中断-->尝试终止：若队列非空则返回,若还有worker则中断一个后返回，否则就更新状态为tidying-0，成功后设置为terminated-0
+				>立即关闭：shutdownNow(): 更新状态为stop-->调每个worker的中断-->强行提取队列中任务-->尝试终止：若还有worker则中断一个后返回，否则就更新状态为tidying-0，成功后设置为terminated-0
+				>拒绝策略：1.poll一个后再提交当前任务；2.默认：抛拒绝异常
 				>引入技巧：简化措施、简便方法、高效手段
 					>原子的更新2个小整数：将这两个小整数放在一个long整数的高低位；然后同时对这个long整数进行cas 的位运算即可。ctl:运行状态和worker数
 				>常见问题：
@@ -331,6 +337,10 @@
 					>将线程状态改为未中断相当于处理了中断"中断过了"：Thread.interrupted() 返回原状态，后改变线程中断状态为 未中断。导致sleep()执行时不会抛异常。
 					>测试线程是否中断不改状态：Thread::isInterrupted()
 					>线程池中提交的任务抛出异常：捕获异常，处理(尝试终止-->未成则新增worker)，后继续外抛-->最终到Thread.run()方法抛出异常-->从而线程退出结束。
+					>线程池调参：corePoolsize = qps * task_time; maxPoolsize = qps * task_count * task_time, queue_size = qps * (task_count - 1) * task_time 可能导致等待任务太多；因此可以：corePoolsize=maxPoolsize, maxPoolsize = 2*maxPoolsize, queue_size=minPoolsize。另外，队列不要太长，就算直接用主线程来执行;所以可以固定：queue_size=minPoolSize---这样相当于每个core worker只有一个备份任务。
+						>cpu核数参考：
+						>自动调参：实时监控-动态调参-线程池监控/服务监控
+						>一般规律：核心来处理到达的所有请求：corePoolsize=qps * task_count * task_time, 队列来缓冲小部分请求，但队列里的请求不能等待太久，< 1个请求处理的时间，如=0.5*1个请求处理的时间(系数必须<1才能使得排队不比串行执行慢)，则 queue_size=0.5*corePoolsize, 而最大worker数则是直接处理的最大线程数，应该和cpu核数有关，经过模型推导(等待时间+切换时间+执行时间)，得到 进行并发更快的极限并发数=k*t1*(n-1)/((k-1)*t2), t2是线程上线文切换耗时：大约2ms, t1是单个task执行耗时如20ms, k是一个请求分解的并行任务数如4,n是cpu核心数如8；得出并行请求数为93，即 maxPoolsiz=93*4=372, 而在此极限时并行执行时间约等于串行执行的时间，一个请求的串行执行时间=20ms*4=80ms,加上其他处理20ms，则100ms,所以1s内可以串行10批，从而可以支撑的qps=93*10=930。。而如果采用串行方案，则支撑的qps=8*10=80,所以充分利用并行，在不输串行时间条件下，qps可以暴涨10倍。而如果要并行时的耗时降低为40ms即为降低一半或者到2/3,则推导出统一公式k*t1*(n-q)/(t2*(qk-1)+k*t1*(q-1)),q就是一次请求的串行时间是并行时间的倍数；可以发现，此时qps基本不变。即说明8核的效果可以要么提高qps到11倍但是响应时间为串行时间，或者响应时间为一半但qps不变。
 			>用户线程和内核线程的映射：一对一，多对一，多对多
 			>调度方式：java线程：强占式调度---由系统分配执行时间	
 		>网络IO模型：阻塞/非阻塞(手动api查结果)，同步/异步(回调通知结果)：
@@ -490,9 +500,16 @@
 						>Disruptor的使用: 写：抢位(条件为tail-head<size)->成功则设置值+增加tail-->失败自旋。读：抢位(条件为head<tail)-->成功则读取值后置空+增加head-->失败自旋。模型： 一条整数线, head --- tail 各自增长变化/忽近忽远。
 							>LongAdder 的使用：提高并发更新度和降低冲突概率。而采用的内部数组分散存各个值。总和才是真正的值。tail/head的值。
 							>ContendedAtomicLong 的使用：消除伪共享，先内部新建长度为16的long数组整体对象--AtomicLongArray,而把要存的long放在index=8的位置，则前7后8个元素，则它不会受到其他变量更新的影响而重新加载所在缓存行--因为一定独享/确保了独享一个缓存行。 tailCursor/headCursor的值。
-							>新值设置位号slot的确定：tailSeq & mask 因为tailSeq虽然不断增大，但是对于低32位来看,是周期的自增的--到最大后下次为0.
+							>新值设置位号slot的确定：tailSeq & mask 因为tailSeq虽然不断增大，但是对于低32位来看,是周期的自增的--到最大后下次为0.。前提：数组长度：2^n。前提2：tailSeq为long,从0开始；100w/s，用3w年。
 							--写抢位对tailCursor cas,而用headCache当作条件。读抢位对headCursor cas,而用tailCache当作条件。
 							--真正实现类：MultithreadConcurrentQueue 非 DisruptorBlockingQueue---后者是在前者基础上做了 非空非满的激活和读空写满的阻塞。
+						>LMAX Disruptor的使用：
+							>生产者：调序号器cas自增值-当作占位--->调RingBuffer获取该位的LongEvent,设置生产值-->调RingBuffer发布事件(该位可读了)
+							>消费者：建立Disruptor时，调用了它的handleEventsWith()方法---就提交了封装了handler的任务processor到线程池--->processor从而循环拉取RingBuffer中可读位，后调handler来处理，处理后sequece设置为读到的最后一位。
+								>发布事件：tryPublishEvents()则更新了sequencer
+								>发布序号：仅仅更新了设置了availableBuffer: int[] 可读的index位置也是sequence & indexMask 得来；存放的int值是：sequence>>log2(size) 的低32位--是标记；存放之后processorNotifyCondition.signalAll()唤醒读取；而如果要读的序号值>可读的序号值：就条件等待processorNotifyCondition.await()
+								>处理事件：是更新了自己的sequence
+								>数组里的元素逐个字节进行操作：取得偏移量：UNSAFE.arrayBaseOffset(int[].class) 和元素大小：UNSAFE.arrayIndexScale(int[].class) 和取某对象的某偏移量开始的int值：UNSAFE.getIntVolatile(availableBuffer, bufferAddress)
 				>info()的过程：从Logger到Appender:。。先到队列，再到流，再到磁盘。
 					>先转为Message格式：
 						>如org.apache.logging.log4j.core.Logger 实现：转Message后转调策略来处理-->转调配置:配置类先 继续转为LogEvent--->然后就是熟悉的调用Appender来处理了org.apache.logging.log4j.core.config.LoggerConfig.processLogEvent()
