@@ -666,6 +666,123 @@
 			--一般指引：
 				>禁用偏向锁：并发激烈时，偏向锁升级到轻量级锁，消除偏向锁时需要STW,开销大；所以 -XX-UseBiasedLocking
 				>真正分配物理内存：-XX:+AlwaysPreTouch
+		>JVM调优问题：分配、迁移对象、GC
+			>Minor GC的直接原因： 
+				>分配时-Eden区没有足够空间进行分配：进行MinorGC;(后进行分配，大对象则直接分配到老年代)
+					>Minor GC进行中：最后迁移对象时，如果S1不足，则转移到Old区；如果对象年龄超域则转移到Old区；
+					--注：动态年龄计算：遍历对象时：新生代对象按年龄分组排序，超过一半的对象都小于的那个年龄 就设置为 下一次 晋升年龄阈值；
+					--注：根搜索只在MinorGC,CMS是老代全堆扫描+扫卡表对应的新代。为降低CMS单次停顿时间(和让gctime和业务波动保持一致-无明显毛刺)：remark前MinorGC一次--开启 CMSScavengeBeforeRemark + CMSMaxAbortablePrecleanTime(等待MinorGC触发的时间--超时不再等)
+				>Full GC过程中：标记阶段，如preclean?
+				>JVM执行到标记为安全点的指令时：进行一次GC信号检测(JVM根据内存占用发出的)，检测到了则停止所在线程而进行GC；
+					>安全点：入循环结束处等产生对象少的地方；
+				>线程在阻塞结束时：检测JVM是否在GC中，是就等待GC完成。线程进入阻塞，即进入安全区域，会标记安全；
+					>注：JVM会检测各个线程的安全状态，都安全了才进行GC.
+			>Full GC的直接原因：(不是Full GC频繁的原因)
+				>Old区有关：
+					>老区使用率达到阈值：(已经存放)
+						>形成的可能原因：
+							>转移到老区的对象的累积：
+								>检测方法：gc日志+堆区查看命令如jmap
+									>积累直接可能原因：一个请求里业务产生了大量对象/查询数据库产生的结果-对象大/被老区对象持有；
+					>MetaSpace使用率太高：已经没有新空间分配给新的元数据。		
+				>Young区转移过来有关：(还未存放到old区)
+					>老区连续可用空间不足存储转移过来的对象：尽管使用率还没达到阈值；仅因为内存碎片太多。
+					>老区剩余空间不足存储转移过来的对象：尽管使用率没达到阈值，且也没内存碎片；仅因为转移过来的太多。
+				>Minor GC前触发：
+					>判断老区最大可用连续空间大小是否大于新生代所有对象总空间：
+						>是：则MinorGC安全；进行MinorGC
+						>否：进行空间分配担保：退一步判断 老区最大可用连续空间大小是否大于历次晋升到老年代的对象的平均大小：
+							>是： 则进行MinorGC
+							>否： 先进行一次FullGC，(再MinorGC)
+				>显示GC：System.gc()
+			>从GC日志统计查看某JVM实际GC原因：gceasy工具。java9开始G1为默认。
+				>
+			>从Hotspot源码gcCause.cpp看所有可能GC原因：28 case。其他补充看gceasy具体报告。
+				>System.gc(): Runtime.getRuntime().gc()都可能/自项目/3rd lib/rmi/jmx。手动消除。(框架-继承;lib-引用)显示gc并发进行：-XX:+ExplicitGCInvokesConcurrent。如果用了rmi:则-Dsun.rmi.dgc.server.gcInterval=n来控制System.gc()周期--默认60min。
+				>alot类：FullGCAlot/ScavengeAlot/
+				>profiler类：Allocation Profiler
+				>jvmTI有关: jvmtiEnv ForceGC
+				>gc locker： GCLocker Initiated GC 
+				>heap 监视：heap inspection Initiated GC 
+				>heap dump: heap dump Initiated GC 
+					>原因：从应用dump堆的命令执行前触发full gc: 如jcmd/jmap/profilers。因此没有绝对必要，不要执行这些命令。
+				>白盒相关：whitebox Initiated YoungGC/Concurrent Mark/Full GC 
+				>没有或未知：no gc/unknown GCCause
+				>分配失败：allocation failure
+					>原因：1.应用创建了太多无法快速回收的对象。2.堆区碎片太多导致直接分配到old区失败。
+					>解法：1.-XX:ConcGCThreads增大让垃圾回收更快。2.-XX:InitiatingHeapOccupancyPercent调小而更早进入标记阶段而可能避免FullGC。3.因连续空间不足但有大对象要分配而触发FullGC,通过增大region大小：XX:G1HeapRegionSize 来降低因为大对象导致的空间浪费。
+				>Tenured区满：Tenured Generation Full 
+				>元数据有关：Metadata GC Threshold/Clear Soft References
+					>原因： 1.元数据空间太小；2.类加载器泄漏(可能小)
+					>解法： 1.增大元空间-XX:MetaspaceSize
+				>CMS直接有关：CMS Generation Full;CMS Intial Mark/Final Remark/Concurrent Mark 
+				>Old Generation有关：Old Generation Expanded On Last Scavenge/Too Full To Scanvenge
+				>可适应大小政策：Ergonomics
+				>G1直接有关：G1 Evacuation Pause/Humongous Allocation  
+					>原因：疏散暂停--因为old空间不足存晋升的s1/eden对象； 
+					>解法： 1.-XX:G1ReservePercent增大可以更早GC避免疏散时才GC 2.-XX:InitiatingHeapOccupancyPercent调小来更早进标记阶段。3.-XX:ConcGCThreads增大来垃圾回收更快。4.增大-Xmx堆区增大
+					>解法2：对于Humongouse Allocation: 因为对象大小>1/2*region_size就会独占region，造成内存碎片，所以增大region:-XX:G1HeapRegionSize来避免放到H region.
+				>对话命令触发run：Diagnostic Commend
+				>上次gc造成：ILLEGAL VALUE - last gc cause
+			>OOM的类型和直接原因：(Full GC可能造成OOM)
+				>Java heap space: 
+					>原因：1.对象无法在堆区分配。2.应用无意hold住对象导致无法被回收。3.	使用了fininalize()方法。
+					>解法：1.增大堆区-Xmx. 2.修复内存泄漏。
+				>GC overhead limit exceeded: 垃圾回收耗时占比超过98% 但只回收了不到2%的空闲堆区。
+					>解法：1.增大-Xmx堆区。2.禁用-XX:-UseGCOverheadLimit 。3.修复内存泄漏。
+				>Requested array size exceeds VM limit: 申请分配的数组大小超过了堆区大小。
+				>Permgen space: Permgen区耗尽越界。
+					>解法：1.增大Permgen:XX:MaxPermSize . 2.重启应用而不是重新部署。
+				>Metaspace: java8开始的本地内存区域，存类元数据，耗尽则抛出这个错误类型。
+					>解法：1.增大元数据空间 -XX:MaxMetaSpaceSize。 2.减少堆大小。3.增大服务器的内存。4.修复可能由应用造成的这样的结果。
+				>Unable to create new native thread: 没有内存去创建新线程；本地内存空间不足。
+					>解法：1.给机器更多内存；2.减少java 堆大小。3.修复可能的线程泄漏。4.增大用户最大进程数限制：ulimit -a 。5.减少线程栈大小-Xss
+				>Kill process or sacrifice child: 在极端低内存条件下，OS核心任务-OOM Killer会杀掉进程；
+					>解法：1.迁移进程。2.增大内存。
+				>stack_trace_with_native_method: 本地方法遇到了分配失败。(另：在顶帧为native时打印栈trace)
+					>解法：1. Use OS native utilities to diagnose
+			>CPU高的原因：
+				>不安全的Full GC: 高CPU消耗--造成响应时间恶化--SLAs就受影响。FullGC越少越好。检测：gceasy
+					>表现：某个时刻进行了很多次FullGC,但回收的byte很少。
+					>原因：空间太少，要分配的太多。如尖峰流量到来时。
+					>解法：增大heap.-Xmx3G .2.增大元数据空间。3.扩节点。
+				-减少GC Pause: 1.增大年轻代大小-Xmn减少晋升数-减少耗时的FullGC 2.使用G1自动调参。3.增大内存避免磁盘交换。--查看每个进程的交换率--专门脚本。	4.考虑增加Gc thread count.来降低Times: real time。注意：user:cpu花在用户代码的时间,sys:cpu花在系统代码的时间;real: 阻塞时间+本线程所有代码执行时间。--查看io阻塞活动：sar -d -p 1  5.堆不要太大，8G/6G足够,18G太大了--尽管FullGC频率降低但每次更耗时--太多需要回收。6.cms时的优化：-XX:+CMSScavengeBeforeRemark  让gc任务在多个线程间更工作平衡。
+				-提高吞吐量：即降低gc时间占比。
+					>降低原因：1.暂停长。2.内存泄漏(继续造成频繁的FullGC)。3.不安全的FullGC.4.应用等待CPU/IO
+					>
+			>MEM高的原因：
+				>内存泄漏： 
+					>处理措施：
+						>启动应用：10min后捕获heap dump--内存快照；jmap -dump:format=b,file=<file-path><pid>。。启动：需要带参启动：-XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=<file-path>。。其他导heap dump方法：jcmd <pid> GC.heap_dump <file-path>
+						>比较前后两次heap dump: 增长的那部分objects就可以认为是造成内存泄漏的部分(占用内存的不能被回收的垃圾)。HeapHero.io为分析查看heap dump的工具。
+						--JvituralVM/JMX/Jconsole/也可以捕获到heap dump。在应用中也可以：com.sun.management:type=HotSpotDiagnostic MBean 捕获到。
+					>处理措施2：
+						>诊断工具：gceasy 在线gc日志分析/Eclipse MAT堆heap dump分析工具
+							>验证是否内存泄漏：1.grep日志看是否有OOM 2.上传gclog到gceasy,看分析结果是否内存泄漏
+						>找到具体的泄漏对象：1.健康时候的heap dump 。2.问题时候的heap dump (cpu出现尖刺/应用无响应/OOM) 3.heap dump传给mat,后找到最多的5个对象；前后对比，如果有对象明显增长了，则它们就是泄漏的对象；
+						>找到泄漏对象对应的代码：1.mat工具找出引用了这些泄漏对象的对象，由这些引用判断是哪处代码产生的。
+				>不安全的Full GC:		
+			>DISK IO高的原因：虚拟内存交换/日志刷入；
+			>需要GC优化的标志：1.单次停顿时间超过了TP9999(低延迟) ; 2.GC吞吐量小于了99.99%
+				>TP9999: 百分之99.99的调用用时。
+				>GC的吞吐量：单位时间内的非GC时间占比。因为GC而导致的吞吐量从100%降低到的那个值。即：1 - 一次GC平均占用的时间/触发GC的平均周期。例如：平均30ms,5min一次，则GC吞吐量降低了0.01%为100%
+					>gc.meantime: 或者jstat可以查看平均MinorGC耗时：而从jconsole的堆内存使用变化曲线可以得知MinorGC周期：。例如观察到eclipse某回：15ms/1min,则吞吐量99.975%
+			>G1最优配置：
+				>-XX:MaxGCPauseMillis: 设置后，-XX:NewRadio,-Xmn不能设置。其他CMS/Parrallel配置也不要；
+				>-XX:+UseStringDeduplication: 对spring-boot项目可以考虑：1.8 update20之后，来减少堆中重复字符串；
+				>可以考虑调整的：1.region大小：-XX:G1HeapRegionSize=n 2.GC用时比例分配：-XX:GCTimeRatio=12即7.69%
+				>-XX:ParallelGCThreads=n: STW阶段并行的线程数-如垃圾回收线程。核数<=8则同核数，否则5/8*核数 
+				>-XX:ConcGCThreads=n: 并发标记线程数--和用户线程一起运行的。1/4*并行线程数
+				>可以考虑调整：3.-XX:InitiatingHeapOccupancyPercent=45 触发 marking cycles 的堆使用率
+				>年轻代有关：1.-XX:G1NewSizePercent=5 年轻代占堆区的比例的最小值 2.-XX:G1MaxNewSizePercent=60 年轻代使用率的最大值
+				>老区有关：1.-XX:G1OldCSetRegionThresholdPercent=10 在mixed garbage collection cycle阶段回收老区regions数的比率(占堆区大小)。(即默认回收垃圾最多的不超过10%的region)
+				>空闲的堆空间的保持比率：-XX:G1ReservePercent=10
+				>不推荐使用的：-XX:+UseGCLogFileRotation不好。XX:+UseCompressedOops 不需要设置。
+			>G1 GC监控：原因分析。(三大问题：内存泄漏、GC问题、OOM)
+				>jvm启动参数配置：java8 为 -XX:+PrintGCDetails -XX:+PrintGCDateStamps -Xloggc:{file-path}  java9为：-Xlog:gc*:file={file-path}  file-path就是gc日志写入位置。
+				>使用gceasy分析gclog文件：对每次gc分类汇总，得出每类gc的回收次数、回收平均耗时/最大耗时/总耗时，总耗时占全类的比例。
+					>gceasy报告：1.全类原因-每类的优化措施；2.吞吐量、延迟、耗时长分布。3.各gc阶段次数和耗时统计。4.字节创建总量/字节晋升总量/字节创建速率/字节晋升速率.5.内存泄漏(8类) 6.Tenured区对象年龄分组统计。7.jvm参数如：-XX:GCLogFileSize=2048000 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/scratch/oracle/product/wls_1221/user_projects/domains/orb_domain/info/heaps -XX:InitialHeapSize=1073741824 -XX:+ManagementServer -XX:MaxHeapSize=6442450944 -XX:NumberOfGCLogFiles=10 -XX:+ParallelRefProcEnabled -XX:+PrintGC -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintTenuringDistribution -XX:+UseCompressedClassPointers -XX:+UseCompressedOops -XX:+UseG1GC -XX:-UseGCLogFileRotation
+						>
 	>源码：
 		>java:
 			>ConcurrentHashMap: 数据结构+算法 
@@ -720,3 +837,16 @@
 								>具体发展过程及其抽象：(也是发现有前途的公司的方法)(自定向下，由抽象到具体)
 									>所有环节的确定：每个环节不可再分
 									>所有环节的选择: 每个环节具体做了什么事、怎么选择的、选择了什么；
+
+>参考资料：
+1.G1：https://blog.gceasy.io/2020/06/02/simple-effective-g1-gc-tuning-tips/#more-4051							
+2.OOM：https://tier1app.files.wordpress.com/2014/12/outofmemoryerror2.pdf		
+3.内存泄漏：https://blog.heaphero.io/2018/03/27/how-to-diagnose-memory-leaks/
+4.内存交换：https://gceasy.io/gc-recommendations/long-pause-solution.jsp
+5.暂停时间减少：https://gceasy.io/gc-recommendations/long-pause-solution.jsp
+6.吞吐量提高：https://gceasy.io/gc-recommendations/through-solution.jsp
+7.内存泄漏的处理：https://gceasy.io/gc-recommendations/memory-leak-solution.jsp
+8.问题复现jar:https://blog.gceasy.io/2020/10/23/buggy-app-simulate-performance-problems/#more-4247
+9.cpu耗时分析：https://www.linuxtechi.com/generate-cpu-memory-io-report-sar-command/
+10.美团技术：https://tech.meituan.com/2017/12/29/jvm-optimize.html
+11.时间管理能力-桥水基金创始人雷·达里奥的《原则》
