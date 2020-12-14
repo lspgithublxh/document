@@ -1,0 +1,151 @@
+>每个动作和目标，都可以升级，所以要专门定义分开。
+>spring: 类的寻找、实例化、调用介入、释放(bean的生命周期各个阶段-全程参与)。
+	>类的寻找： 
+		>全部位置：
+			>配置文件：spring-boot-autoconfigure.jar/spring.factories 包含：大量Configuration/Listener/Initializer/Filter/Analyzer/Provider
+				>所有Jar里的spring.factories被加载的位置：spring-core.jar/SpringFactoriesLoader.class::loadSpringFactories(classLoader) 方法里面查找spring.factories文件的实现：直接classLoader.getResources()加载到的全部。
+					>调用加载spring.factories里各种具体类型内容的地方：
+						>1.SpringApplication 加载Listener之类时：
+						>2.启动类的@SpringBootApplication注解的解析时：
+							>此注解上有@EnableAutoConfiguration注解：
+								>此注解@Import了 AutoConfigurationImportSelector 这个选择器：选择器直接实例化。后调用它的@processGroupImports()-->@getImports()时：去获取自动配置实体时 显式 用SpringFactoriesLoader从spring.factories里 加载 EnableAutoConfiguration.class 类型的全部配置类--一般得到130个配置类名--再经过OnClassCondition/OnWebApplicationConditon/OnBeanCondition过滤之后只有27个(如包括org.springframework.boot.autoconfigure.websocket.servlet.WebSocketServletAutoConfiguration)。
+								>此注解上有@AutoConfigurationPackage注解：引入了 AutoConfigurationPackages.Registrar 这个仓库。
+					
+		>bd类型：
+			>增加属性：
+			>resolvedClass: 
+			>普通类：
+			>接口：
+	>实例化：
+		>实例化方式：
+		>初始化方式：
+		>实例处理方式：
+	>每个实例的bean化的方式：启动类就是第一个配置类。
+		>配置类里方法上@Bean:
+		>配置类上某个注解是一个被@Import(registry)注解的类：从而配置解析类 解析 配置类的@Import注解的时候 发现是registry类型 从而 添加到配置类的importBeanDefinitionRegistrars属性，后 refresh()调BeanFactoryPostProcessor处理时候 走 配置类 后 统一取配置类的这个属性来 调用些仓库的注册bean方法来注册了若干个bean。
+			>registry注册的bean类型：
+				>BeanFactoryPostProcessor: 在refresh()时候会直接专门调用所有的bean工厂处理器(从beanFacotry里取的)。
+				>BeanPostProcessor: 在refresh()里有专门直接的调用bf里的所有bean后置处理器注册到处理器属性beanPostProcessors。在getBean()初始化bean:initializeBean()里面专门调用这个属性beanPostProcessors。
+		>配置类上某个注解是一个被@Import(ImportSelector)注解的类:  从而配置解析类 解析 配置类的@Import注解的时候 发现是 selector 类型 调selector类的@selectImports()获取className集合，每个都当作类来注册，然后每个类还当作selector递归处理。
+			>选择的类名类型：
+				>ImportBeanDefinitionRegistrar: 在refresh()调 BeanFactoryPostProcessor 处理时 包含对 配置类处理器 的处理，而 配置类解析器 获取了所有配置类，而配置类有4处候选bean可以被引入，其中包括 通过配置类的 ImportBeanDefinitionRegistrar 列表 来注册 bd.
+				>@Configuration/@Component: 即当作是配置类来处理。配置类里一般有多个@Bean方法。
+		--扫项目下包加载类/扫jar中配置文件/...	
+		>配置类上某个注解是一个被@Import(其他)注解的类：则当作是配置类来解析处理。
+	>调用介入：
+		>动态代理：拦截器/方法拦截器
+	>释放回收：
+		>销毁方法：
+>tomcat:
+	>spring-boot中创建过程：
+		>ApplicationContext: onRefresh()刷新
+			>创建webserver:
+				>配置上下文：TomcatEmbeddedContext
+	>结构：
+		>服务器应用上下文：AbstractApplicationContext:ServletWebServerApplicationContext
+			>服务器工厂：ServletWebServerFactory:TomcatServletWebServerFactory
+				>服务器：TomcatWebServer
+					>Tomcat： Tomcat	有生命周期LifecycleBase
+						>服务器：Server:StandardServer 有生命周期LifecycleBase
+							>服务：	Service/StandardService  (有生命周期LifecycleBase)
+								>引擎：Engine/StandardEngine (有生命周期LifecycleBase) 继承了 容器 ContainerBase/Container
+									>标准主机：Host:StandardHost 继承了容器 ContainerBase/Container
+										>上下文：Context:StandardContext:TomcatEmbeddedContext 继承了容器 ContainerBase/Container 有生命周期LifecycleBase 
+											>上下文监听器：LifecycleListener:FixContextListener
+											>webapp加载器：Loader:WebappLoader
+											>jar浏览器：JarScanner:StandardJarScanner
+												>浏览过滤器：JarScanFilter:StandardJarScanFilter
+											>默认servlet: StandardWrapper:<DefaultServlet> 继承了容器 ContainerBase/Container	
+											>默认资源：WebResourceRoot:StandardRoot
+											>名称上下文监听器：NamingContextListener
+											>上下文管理器：StandardManager
+											>servlet上下文：应用上下文 ServletContext:ApplicationContext
+												>上下文面板：ApplicationContextFacade
+											>servlet容器初始化者：ServletContainerInitializer:WsSci:TomcatStarter(服务器工厂类时增加进来)
+												>服务端容器：WsServerContainer
+												>servlet容器初始化者：TomcatStarter.ServletContextInitializer[]=ServletWebServerApplicationContext/
+													>来源：bf里所有 ServletContextInitializer  类型的实现。包括：RegistrationBean:DynamicRegistrationBean:ServletRegistrationBean:DispatcherServletRegistrationBean
+														>来源：spring.factories中 自动配置 DispatcherServletAutoConfiguration.DispatcherServletConfiguration.DispatcherServlet/DispatcherServletRegistrationConfiguration.DispatcherServletRegistrationBean
+														>来源2：自动配置 中 HttpEncodingAutoConfiguration.CharacterEncodingFilter//FilterRegistrationBean //ApplicationFilterRegistration
+															>configure()配置时：封装为新的一个 FilterMap 放到上下文 TomcatEmbeddedContext.filterMaps 其他filer如：formContentFilter/requestContextFilter/WsFilter(Tomcat WebSocket (JSR356) Filter)/
+											>过滤器：FilterMap	
+								>连接器：Connector/Connector
+									>协议：org.apache.coyote.http11.Http11NioProtocol
+										>端点：AbstractJsseEndpoint/NioEndpoint/
+											>通道：ServerSocketChannel
+												>socket: ServerSocket 
+													>port: InetSocketAddress 就是 application.properties里配置的。
+											>安全上下文：SSLImplementation
+											>选择池：线程安全的 NioSelectorPool
+												>选择器：Selector
+											>事件调度：Poller 计票者。run型任务..。。一次请求新增一个
+												>事件：PollerEvent
+													>附件：SocketWrapperBase/NioSocketWrapper
+												>文件发送：SendfileData
+												>可读事件：SocketEvent.OPEN_READ
+												>可写事件：SocketEvent
+											>事件处理：SocketProcessorBase:SocketProcessor	转用处理器处理。
+										>处理器：Handler:ConnectionHandler
+											>处理器：Processor:AbstractProcessorLight:Http11Processor 主要负责分发/service/日志处理。
+												>请求：Request
+													>请求信息：RequestInfo
+													>http请求：HttpServletRequest
+													>门面实现：RequestFacade
+												>响应：Response
+												>输入缓冲：Http11InputBuffer
+												>服务方法: service()
+													>适配器：继续服务方法。Adapter:CoyoteAdapter 报头解析 
+														>连接器：Connector
+															>取服务：Service
+																>取容器：Engine	
+																	>取管道：Pipeline:StandardPipeline
+																		>阀门：Valve:ValveBase:StandardHostValve:StandardWrapperValve
+																			>Servlet: 获取：StandardWrapper
+																				>servletClass: org.springframework.web.servlet.DispatcherServlet
+																				>instance: DispatcherServlet
+																			>过滤器链：ApplicationFilterChain
+																				>嵌入Servlet:
+																				>嵌入过滤器：ApplicationFilterConfig->Filter
+																					>过滤器来源：LifecycleBase:LifecycleListener，包含 Tomcat$FixContextListener， TomcatServletWebServerFactory$StaticResourceConfigurer, StandardHost$MemoryLeakTrackingListener
+																			>执行过滤：doFilter()	
+																				>内部doFilter: internalDoFilter()
+																					>pos<n: 则继续走filter: Filter.doFilter(chain), pos++ , 而 chain作为参数
+																					>pos=n: 则走servlet: servlet.service(request, response) 此时就已经走企业级 接口：javax.servlet.Servlet
+																						>进一步：javax.servlet.http.HttpServlet 进一步则开始。模板是一层一层的，直到 org.springframework.web.servlet.DispatcherServlet.doDispatch()。
+														>认证授权：
+							>执行器服务：ScheduledExecutorService:ScheduledThreadPoolExecutor(注入的是java的ScheduledThreadPoolExecutor线程工厂TaskThreadFactory) -- 1.可以启动周期调度任务 ContainerBackgroundProcessorMonitor， 后者提交一个新的任务 ContainerBackgroundProcessor。
+				>上下文客户端：TomcatContextCustomizer:TomcatWebSocketServletWebServerCustomizer(在自动配置WebSocketServletAutoConfiguration里@Bean方法方式实例化,后者在spring.factories里EnableAutoConfiguration)
+					>增加WsSci到上下文：WsSci
+			>servlet上下文初始化器：ServletContextInitializerBeans:<ServletContextInitializer> 所有初始化器 从 bf里 获取 ServletContextInitializer 类型的实例 onStartup		
+				>
+>mysql：
+	>优化：
+		>减少B+树分裂合并调整：id顺序增加的插入。
+		>sql合并为1条：减少解析、创建事务、binlog日志刷盘数量和频率。
+>java:
+	>线程池:
+		>任务抛出异常：worker抛出异常->线程抛出异常；正常的worker死亡而已。
+>其他中间方案：
+	>websocket: 
+		>参考。https://www.cnblogs.com/ttjsndx/p/9268800.html
+		>refresh()时： 
+			>服务端点输出者：ServerEndpointExporter 的实例化。
+				>注册端点：用户写的类，注册到 ServerContainer:WsWebSocketContainer:WsServerContainer
+					>路径：UriTemplate
+>业务重点：
+	>要维护的数据组织：CURD
+		>数据的层次结构：数据的抽象关系。
+		
+>技术关系：
+	>dubbo/Feiclient->dubbo/Service-->baomidou-->mybatis-->sharding-jbdc-->druid-->jdbc-->mysql
+	>源代码：关键是抽象它实现的功能模型(抽象一般的语言概念来描述)。
+	>扩展性：就是把 1."改"类(增删改代码) 完成的事 转换为 "增" 类 来完成(从而不丢失记录)。2."静态数据" 改为 "动态函数获取"(lamda表达式/共享配置)。3."简单两步if-else" 改为 一个函数实现。4.约定规范-减少映射和判断(同一含义的属性在不同表中同一字段名称)。5.深度介入框架实现功能过程中的每个阶段/环节
+		
+>项目：
+	>能否看到所有的问题：发现的所有问题/可以做的事情。
+		>数据库：
+			>字段设计：价格是否表示为分-准确同时更小空间(避免位数更多而自动四舍五入)。
+		>业务：
+			>名称：controller-->api
+	>存在的所有的痛点：	
+			
