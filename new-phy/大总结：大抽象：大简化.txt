@@ -783,6 +783,8 @@
 				>使用gceasy分析gclog文件：对每次gc分类汇总，得出每类gc的回收次数、回收平均耗时/最大耗时/总耗时，总耗时占全类的比例。
 					>gceasy报告：1.全类原因-每类的优化措施；2.吞吐量、延迟、耗时长分布。3.各gc阶段次数和耗时统计。4.字节创建总量/字节晋升总量/字节创建速率/字节晋升速率.5.内存泄漏(8类) 6.Tenured区对象年龄分组统计。7.jvm参数如：-XX:GCLogFileSize=2048000 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/scratch/oracle/product/wls_1221/user_projects/domains/orb_domain/info/heaps -XX:InitialHeapSize=1073741824 -XX:+ManagementServer -XX:MaxHeapSize=6442450944 -XX:NumberOfGCLogFiles=10 -XX:+ParallelRefProcEnabled -XX:+PrintGC -XX:+PrintGCDetails -XX:+PrintGCTimeStamps -XX:+PrintTenuringDistribution -XX:+UseCompressedClassPointers -XX:+UseCompressedOops -XX:+UseG1GC -XX:-UseGCLogFileRotation
 						>
+			>CMS最优配置：
+				>
 	>源码：
 		>java:
 			>ConcurrentHashMap: 数据结构+算法 
