@@ -20,6 +20,12 @@
 		>实例化方式：
 		>初始化方式：
 		>实例处理方式：
+		>属性上的占位符替换值的过程：
+			>从该bean的实例化的@populateBean()开始：最后会调 BeanPostProcessor:InstantiationAwareBeanPostProcessor:AutowiredAnnotationBeanPostProcessor.postProcessPropertyValues()处理---->发现自动绑定的元数据：InjectionMetadata：发现过程：这个bean的所有属性/方法 上有@Autowired/@Value/@Inject 三个之一且 注解属性required=true, 则这个Field/Method需要自动绑定，封装为AutowiredMethodElement而加到集合；----->元数据注入属性值：metadata.inject(bean, beanName, pvs)--->遍历每个需要注入的属性: 进行注入 InjectedElement:element.inject(target, beanName, pvs) -->依赖解析@beanFactory.resolveDependency() 就是发现 这个name/type的属性 需要注入的bean/val的过程：
+				>先通过解析器获取建议值：ContextAnnotationAutowireCandidateResolver:QualifierAnnotationAutowireCandidateResolver.getSuggestedValue() 获取注解的 value属性的值：--->这个值可能是占位符表达式,需要解析：
+					>转解析器 PropertySourcesPlaceholderConfigurer: resolveStringValue() --->转到 AbstractPropertyResolver.resolveRequiredPlaceholders()解析：-->PropertyPlaceholderHelper.parseStringValue() 此方法会递归；---> 将占位符 当作key  尝试找到它的值：PropertySourcesPropertyResolver.getProperty()-->找的方法，从资源匹配中找：遍历 propertySources:PropertySources， 对每个资源 PropertySource： 从它的source里取：StandardServletEnvironment:source.getProperty(key)-->再转到 PropertySourcesPropertyResolver:propertyResolver.getProperty(key) 取-->最后到 DefaultConfig.getProperty() 取：System.getProperty(key)-->如果为空，尝试从 Properties:m_configProperties.getProperty()-->没有则从：System.getenv(key)取 。如果还没有：
+						>转 ConfigPropertySource: getProperty(), 而此时 m_configProperties 属性 有很多远程值：。。如果没有，退回到 PropertySourcesPropertyResolver.getProperty()里 取下一个 propertySources:propertySource： CompositePropertySource:propertySources 有6个-->每个 PropertySource 都有多个远程属性；终究可以找到。。整个过程看：数据就是来自 解析器 的 属性源；PropertySourcesPlaceholderConfigurer.propertySources:PropertySource.source.propertyResolver.propertySources.PropertySource.propertySources.PropertySource.DefaultConfig:source。。。简化为：AbstractPropertyResolver.resolveRequiredPlaceholders()-->doResolvePlaceholders()-->	PropertySourcesPropertyResolver.getProperty()-->CompositePropertySource.getProperty()-->ConfigPropertySource.getProperty()-->DefaultConfig.
+				>
 	>每个实例的bean化的方式：启动类就是第一个配置类。
 		>配置类里方法上@Bean:
 		>配置类上某个注解是一个被@Import(registry)注解的类：从而配置解析类 解析 配置类的@Import注解的时候 发现是registry类型 从而 添加到配置类的importBeanDefinitionRegistrars属性，后 refresh()调BeanFactoryPostProcessor处理时候 走 配置类 后 统一取配置类的这个属性来 调用些仓库的注册bean方法来注册了若干个bean。
@@ -32,6 +38,7 @@
 				>@Configuration/@Component: 即当作是配置类来处理。配置类里一般有多个@Bean方法。
 		--扫项目下包加载类/扫jar中配置文件/...	
 		>配置类上某个注解是一个被@Import(其他)注解的类：则当作是配置类来解析处理。
+	
 	>调用介入：
 		>动态代理：拦截器/方法拦截器
 	>释放回收：
@@ -122,16 +129,151 @@
 	>优化：
 		>减少B+树分裂合并调整：id顺序增加的插入。
 		>sql合并为1条：减少解析、创建事务、binlog日志刷盘数量和频率。
+		>语句优化:	
+			>update: 
+			>select: 
+				>小表驱动大表：
+					>原因：in 是：外表走索引，内表走遍历；所以适合内表数量少的-索引加在外表上。 exists 是： 外表走遍历，内表走索引；所以适合外表数量少的-索引加在内表上。
+				>order by: 优化掉 Using filesort。 一个是 最左匹配，则where里用=。order by 完整索引列，则也可以。
+			>explain比较：
+				>select_type: simple--简单查询；primary--最外层查询； subquery---映射为子查询； derived---子查询；union--联合查询；union result--使用联合查询的结果；
+				>type: 连接的连接类型：const(使用常量通过主键唯一索引找到)-->eq_ref(通过其他列值给唯一索引找到,如inner join 一一索引列连接)-->ref(非唯一性索引找到)->range(范围扫描索引列)-->index(遍历索引树)-->all(遍历全表)	
+				>key_len: 索引长度 越短越好
+				>ref: 索引的哪一列被使用了
+				>where: using where ---查询可收益于不同的索引；using index--使用覆盖索引(辅助索引+主键select) ， using tempory--结果排序使用临时表；using filesort---使用外部索引排序
+			>limit的使用：找到结果就返回；提前终止，避免全表扫描；	limit 1;
+			>业务：ip地址用整数---方便范围查询； 分页查询；统计行数--如果id自增则用max(id)就可；
+			>order by: 可以不使用；
+			>执行计划可视化：Mysql WorkBench；show profiling; 日志状态查看；
+		>对表加读写锁：myisam
+			>操作： A会话执行：lock table tablename read;
+			>效果： A会话释放表锁之前,不能继续更新该表，也不能读其他表；B此时更新该表则会被阻塞；。。如果A加的是写锁，类似。
+		>对行加读写锁：先 set autocommit=0;	两个会话则一个先update, 而另一个会话update同一条数据；但第一个还没有手动commit ;就会阻塞；在repeated read隔离级别下是成立的。
+			>效果2：A:update 执行了但没有执行commit; B: 执行update同一条数据会阻塞，不同数据会成功；插入数据会成功(但是A是看不到的--因为可重复读的隔离级别)；
+			>效果3：A:insert 执行了一条数据但没有commit;B:执行 insert同一个id的数据会阻塞(A提交后B直接报重复key)，不同id则会成功；update同一条id数据也会阻塞；但是update其他数据会成功；
+				>说明：A先占用了行锁-X锁；(独占性质的行锁)
+			>效果4：A:update where > 则会加next-key lock；已有数据和空隙 行上的锁都会被占用；B:update 已有范围内记录会阻塞；不存在的记录会成功-0条；insert所在间隙会阻塞；
+			>效果5：A:select >= for update 也会加行锁和间隙锁；从而B再 select >= for update也会被阻塞；update/insert自然也会被阻塞；
+		>设置是否自动提交：是对 会话 级别设置的；不同的会话则不同；且各自的设置不会互相影响其他会话的是否自动提交 配置；
+		>设置事务隔离级别：也是会话 级别 设置的；SET transaction_isolation = 'REPEATABLE-READ'	;SELECT @@transaction_isolation; 不同会话 事务 的隔离级别 不同；
+		>锁耗时统计：SHOW STATUS LIKE 'innodb_row_lock%'; 总共锁时；平均每次锁时；总共锁次数；
+		>未使用索引会加表锁：A: UPDATE a SET rate = 2.5 WHERE rate = 2.11 如果rate列没有索引 那么 会加表锁；B: 此时如果 update 的某行即便rate != 2.11 也会被阻塞；
+			>说明2： 如果 update 的where 发生了 整形转字符 这样的自动类型转换 导致 索引失效 自然也会加表锁；
+		>系统查询：
+			SELECT @@transaction_isolation; -- mysql8 可重复读； 
+			SELECT VERSION(); -- 查看mysql 版本
+			SHOW VARIABLES LIKE '%auto%' -- 是否开启自动提交
+			SHOW STATUS LIKE 'innodb_row_lock%'; -- 锁耗时统计
+			SHOW ENGINE INNODB STATUS; -- 查看 sql使用到的锁
+		>查询全部执行过的sql: SHOW VARIABLES LIKE '%general%' 全局日志里。	
+		>sql执行过程：
+			>临时表：inner join 合并结果。SHOW STATUS LIKE 'CREATE%'，SHOW VARIABLES LIKE '%HEAP%'， 先使用内存临时表(memory存储引擎)，后使用磁盘临时表(myisam存储引擎)；
+				>间接使用： group by b order by a； 长字符串列group by ；
+			>派生表：子查询 ，存在内存中；尽量不*查。无法增加索引，比临时表慢；(子查询替换为使用视图---实际效果并不好)
+			>inner join : 配合on使用 来匹配后一张表的记录 得到 结果，最后才where，所以where条件只能对第一个表关联，所以条件加到on上更好；
+			>update A inner join B set A.t=B.t where: 如果A表 连接后 中间表膨胀了，比如A中1条关联了B中2条；那么 set 的时候 只会把B的第一条的值设置到A。。。。另外一方面，应该要加限制条件让结果表不膨胀--和A表一一对应；。。所以一定要准确关联一一关联写足关联在on上--避免膨胀产生的问题。where会限制结果集，然后才set执行；
+				>注意：A left join B on  , on中 独立加对 A的限制 如A.id<1, 结果集中仍然是A的全部结果；left join 中的on 只影响 A中某行是否关联，但A中的某行一定保留(尽管一行没有关联到--由于对A的限制A.id<3)；但是inner join 则不一样，on 中 如果 限制了A(A.id<3)，则结果集中就没有限制的A的记录(A.id>=3的都没有)；
+			>子查询： 
+				>join 后的子查询可以；但是where 后面的子查询：exists() 是 外表遍历， 内表索引--外表数量少则可以；
+					
+	>死锁问题：
+		>阻塞：update时候有其他语句正在update 而事务未提交;
+		>问题1：update 语句执行了3min, 查看show processlist 发现在 sending data。explain 语句出现：Using where; Using index; Using join buffer (Block Nested Loop)
+			>update 特征： update a inner join b on xx inner join c on xx 
 >java:
 	>线程池:
 		>任务抛出异常：worker抛出异常->线程抛出异常；正常的worker死亡而已。
+	>jvm：
+		>优化：		
 >其他中间方案：
-	>websocket: 
+	>websocket: 在tomcat-embed实现中。
 		>参考。https://www.cnblogs.com/ttjsndx/p/9268800.html
 		>refresh()时： 
 			>服务端点输出者：ServerEndpointExporter 的实例化。
 				>注册端点：用户写的类，注册到 ServerContainer:WsWebSocketContainer:WsServerContainer
 					>路径：UriTemplate
+		>前端发起subscribable时：	后端启动一个任务 ExecutorSubscribableChannel.SendTask	
+			>消息处理：UserDestinationMessageHandler/SimpleBrokerMessageHandler/WebSocketAnnotationMethodMessageHandler
+				>消息解析：DefaultUserDestinationResolver
+					>设置sessionId和targetDestination: 订阅路径 "-user" sessionId
+				>将处理后的消息发送：SimpMessagingTemplate
+					>通道发送：ExecutorSubscribableChannel
+						>内部发送：再次以运行任务方式执行。对 SimpleBrokerMessageHandler 这个handler的handlerMessageInternel()处理是不同的：分消息类型处理。
+							>message类型：1.根据destina 从订阅仓库AbstractSubscriptionRegistry 发现所有的订阅者：
+								>发现订阅者的实际过程：SessionRegistry 内部维护了 ConcurrentMap<String, SessionInfo> sessions;
+									>SessionInfo信息里有：Map<String, Subscription> subscriptionMap；匹配出 sessionid--destination; 通过sessionid得到 SessionInfo..最终得到一个sessionId的所有匹配到的subscriptionIds(因为一个消息可能可以匹配到多个destination)
+										>对匹配的每个substriptions都向sessionInfo对应的用户发送消息：SessionInfo.MessageChannel:AbstractMessageChannel
+		>前端发起普通连接：
+			>线程池新增一个任务：SocketProcessor:SocketProcessorBase:Runnable。 新增并执行。
+				>转给Handler处理：AbstractProtocol.ConnectionHandler
+					>转到处理器：Http11Processor:AbstractProcessor:AbstractProcessorLight
+						>转内部适配器：CoyoteAdapter.service()
+							>直接调到Valve来Invoke: Connector:connector.getService().getContainer().getPipeline().getFirst().invoke() 而这个 Valve=StandardEngineValve, 内部调主机转：host.getPipeline().getFirst().invoke(request, response)-->StandardHostValve-->又到上下文转：context.getPipeline().getFirst().invoke(request, response):::StandardContextValve--->包装类转：wrapper.getPipeline().getFirst().invoke(request, response):::StandardWrapperValve---->包装类就到过滤器链： filterChain.doFilter():::ApplicationFilterChain----->就到一个个过滤器：filter.doFilter(request, response, this):::OncePerRequestFilter/CharacterEncodingFilter/FormContentFilter/RequestContextFilter/WsFilter
+								>filter处理完：开始servlet:servlet.service(request, response):DispatcherServlet:FrameworkServlet:HttpServletBean:HttpServlet 然后分方法处理：METHOD_HEAD/METHOD_POST/METHOD_PUT/METHOD_DELETE/METHOD_OPTIONS/METHOD_TRACE/METHOD_GET
+									>转用Handler处理器处理：HttpRequestHandlerAdapter， 处理时，需要注入请求匹配到的6种handlerMappings之一：WebSocketHandlerMapping/RequestMappingHandlerMapping/BeanNameUrlHandlerMapping/RouterFunctionMapping/SimpleUrlHandlerMapping/WelcomePageHandlerMapping..。。。mapping里的handlerMap属性：string--Handler映射的构建过程：BeanPostProcessor 处理SimpleUrlHandlerMapping时从simpleUrlHandlerMapping.urlMap 转移到 AbstractUrlHandlerMapping.handlerMap
+										>匹配方法：如请求路径匹配。核心方法：AbstractUrlHandlerMapping.getHandlerInternal() 匹配结果：HandlerExecutionChain:取里面的handler:SockJsHttpRequestHandler， 来处理请求：
+											>转给DefaultSockJsService: 分路径sockJsPath 处理：/, /info, /iframe[0-9-.a-z_]*.html/websocket
+												>对/info: 转给 AbstractSockJsService.InfoHandler 处理，然后分方法处理：HttpMethod.GET/OPTIONS
+													>对get: 设置返回的多媒体类型：application/json; 缓冲：no-store, no-cache, must-revalidate, max-age=0， 返回内容：{"entropy":-758209608,"origins":["*:*"],"cookie_needed":true,"websocket":true} 然后写到输出流：response.getBody().write(content.getBytes()) 关闭。
+					>转给内部确定的处理器:UpgradeProcessorInternal 此时按照socket status分发：	
+						>实际分发者：WsHttpUpgradeHandler 按状态分发。
+							>对OPEN_READ状态：使用 WsFrameServer 处理。 读状态继续分：
+								>WAITING状态：转给 WsFrameBase 处理。
+									>注册回调关闭：WsSession
+										>实际给：StandardWebSocketHandlerAdapter 回调。
+											>再转发给：SockJsWebSocketHandler
+												>再：WebSocketServerSockJsSession
+													>再：ExceptionWebSocketHandlerDecorator	
+														>再：LoggingWebSocketHandlerDecorator
+															>再内部的：StompSubProtocolHandler
+																>再： ExecutorSubscribableChannel
+		>前端发起断开连接：
+			>线程池新增一个任务：ExecutorSubscribableChannel.SendTask
+				>转处理器：SimpleBrokerMessageHandler。分消息类型.。。此类实例来源：自动配置方法@Bean:DelegatingWebSocketMessageBrokerConfiguration:AbstractMessageBrokerConfiguration.SimpleBrokerMessageHandler
+					>DISCONNECT: SUBSCRIBE/CONNECT/MESSAGE
+						>还是用通道：ExecutorSubscribableChannel
+							>还是用Handler: SubProtocolWebSocketHandler 有生命周期LifecycleBase， 所以start()时候就将自己添加到了AbstractSubscribableChannel.handlers里；(同理 WebSocketAnnotationMethodMessageHandler/SimpleBrokerMessageHandler/UserDestinationMessageHandler 也是)
+								>转handler: StompSubProtocolHandler  ：内部先 需要查出 WebSocketSession ,最后走内部方法 sendToClient() 。
+									>取消息命令类型：StompCommand.MESSAGE/CONNECTED/ERROR 分别处理。
+										>CONNECTED: 发送一个 SessionConnectedEvent 事件。从session取 heartbeat 和 Principal 用户。则转用ApplicationEventPublisher 来发送：属于spring-context服务。
+											>取消息的负载：准备发送给客户端：先编译，后以二进制 或者text 形式 : 使用 WebSocketSession 发送： session.sendMessage()
+												>最终使用WebSocketClientSockJsSession/XhrClientSockJsSession 来发送负载：
+													>后者转用XhrTransport 发送：转 RestTemplateXhrTransport
+														>转用 RestOperations 来发送：即spring-web的 restTemplate POST方法发。
+															>转ClientHttpRequest ： SimpleBufferingClientHttpRequest 。采用 FileCopyUtils.copy(bufferedOutput, this.connection.getOutputStream()) 将消息内容放到 connection:HttpURLConnection 输出流里。
+													>前者转WebSocketSession来发送：sendInternal(TextMessage) sendMessage(TextMessage)
+														>具体实现AbstractSockJsSession:sendMessageInternal(String message) 加入缓冲 messageCache:Queue<String> 然后开始刷新：flushCache() 
+															>刷数据实现1：PollingSockJsSession
+																>只刷数据：writeFrame(frame) 来源：SockJsFrame.messageFrame(messageCodec, messages)
+															>刷数据实现2：StreamingSockJsSession 
+																>先刷数据：writeFrame(SockJsFrame) 创建的frame=SockJsFrame.messageFrame(messageCodec, message)
+																	>writeFrame()的实现：AbstractSockJsSession.writeFrameInternal(frame) 就转到了AbstractHttpSockJsSession 来实现 ， 就是写入输出流里。
+																>再发心跳：调度方式：scheduleHeartbeat() writeFrame(SockJsFrame) 创建的frame=SockJsFrame.heartbeatFrame() 就是 new SockJsFrame("h");即发一个h回去。 然后递归scheduleHeartbeat()
+													--对 HttpRequestHandlerServlet 里的 service()方法，转其 HttpRequestHandler  实现调用，而实现类可以是 SockJsHttpRequestHandler  -->转到 SockJsService -->TransportHandlingSockJsService-->AbstractHttpSendingTransportHandler-->AbstractHttpSockJsSession-->PollingSockJsSession 这时开始批量写回数据：PollingSockJsSession:AbstractSockJsSession:AbstractHttpSockJsSession-->ServerHttpResponse:response.getBody().write()即消息写入了输出流里。
+													
+		>日志输出：
+			>创建bean:WebSocketMessageBrokerStats 时：用 TaskScheduler 调度任务来打印。
+	>allopo：配置 ..client-->metaserver-->eurake-->config service-->mysql   。。。注册/发现/直连。。修改配置/推送-fallback拉取(adminservice-->mysql-->configservice(定期查mysql)-->client)
+		>配置：属性结构+n套取值(不同环境/集群)
+		>拉取本地配置：
+		>拉取远程配置：并更新到本地；配置中心修改后实时生效；
+			>使用：@EnableApolloConfig 配置 + @Value 取值；
+		>参考：https://www.jianshu.com/p/5d9806493c0f	
+		>spring-boot中的启动：
+			>注册bean: 属性资源处理 PropertySourcesProcessor/ApolloAnnotationProcessor(特定注解的解析处理器)/SpringValueProcessor(spring注解的解析识别@Value)/SpringValueDefinitionProcessor(spring占位符表达式$#解析器)/ApolloJsonValueProcessor(@ApolloJsonValue解析器)(找到占位符表达式的值：StringValueResolver/BeanExpressionResolver/ExpressionParser 实际完成)
+				>初始化获取配置：根据名称空间：PropertySourcesProcessor.initializePropertySources()-->ConfigService.getConfig(namespace)	
+					>转到管理器：DefaultConfigManager， 通过DefaultConfigFactoryManager 获取配置工厂ConfigFactory:DefaultConfigFactory；
+						>新建默认配置：new DefaultConfig(ConfigRepository) 注入配置工厂：配置工厂的获取：本地配置工厂 LocalFileConfigRepository (也会尝试远程获取)， 远程配置工厂：RemoteConfigRepository (创建时就远程获取@trySync()) :AbstractConfigRepository.trySync() -->sync()-->模板模式：LocalFileConfigRepository:loadFromLocalCacheFile() RemoteConfigRepository:loadApolloConfig()
+							>远程下载：
+								>RemoteConfigRepository: 
+									>loadApolloConfig()
+										>ConfigServiceLocator：updateConfigServices() 开启事务方式：
+											>HttpUtil: 返回数据结构：List<ServiceDTO>
+												>HttpURLConnection
+										>封装查询url: assembleQueryConfigUrl() 结果如：http://10.0.197.95:8001/configs/gtc-service-v4/default/platform.cloudt?ip=10.2.96.11
+										>使用url发起连接查询配置：ApolloConfig	
+									>scheduleLongPollingRefresh()： 远程调度开启
+										>转发给 RemoteConfigLongPollService: startLongPolling()长连接开始；-->doLongPollingRefresh()  无限循环里，每隔5s 带事务(cat) 地 调 getConfigServices()-->即使用 ConfigServiceLocator 来请求；List<ServiceDTO> --->进一步 assembleLongPollRefreshUrl()构造请求url--> 再发起http连接 获取到结果  ApolloConfigNotification 列表--->对每个通知---是通知变化 所在名称空间，从而根据这个名称空间再去查真正的全部配置：remoteConfigRepository.onLongPollNotified()--->trySync()-->sync()
 >业务重点：
 	>要维护的数据组织：CURD
 		>数据的层次结构：数据的抽象关系。
