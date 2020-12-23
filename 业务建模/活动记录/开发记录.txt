@@ -24,7 +24,7 @@
 			>从该bean的实例化的@populateBean()开始：最后会调 BeanPostProcessor:InstantiationAwareBeanPostProcessor:AutowiredAnnotationBeanPostProcessor.postProcessPropertyValues()处理---->发现自动绑定的元数据：InjectionMetadata：发现过程：这个bean的所有属性/方法 上有@Autowired/@Value/@Inject 三个之一且 注解属性required=true, 则这个Field/Method需要自动绑定，封装为AutowiredMethodElement而加到集合；----->元数据注入属性值：metadata.inject(bean, beanName, pvs)--->遍历每个需要注入的属性: 进行注入 InjectedElement:element.inject(target, beanName, pvs) -->依赖解析@beanFactory.resolveDependency() 就是发现 这个name/type的属性 需要注入的bean/val的过程：
 				>先通过解析器获取建议值：ContextAnnotationAutowireCandidateResolver:QualifierAnnotationAutowireCandidateResolver.getSuggestedValue() 获取注解的 value属性的值：--->这个值可能是占位符表达式,需要解析：
 					>转解析器 PropertySourcesPlaceholderConfigurer: resolveStringValue() --->转到 AbstractPropertyResolver.resolveRequiredPlaceholders()解析：-->PropertyPlaceholderHelper.parseStringValue() 此方法会递归；---> 将占位符 当作key  尝试找到它的值：PropertySourcesPropertyResolver.getProperty()-->找的方法，从资源匹配中找：遍历 propertySources:PropertySources， 对每个资源 PropertySource： 从它的source里取：StandardServletEnvironment:source.getProperty(key)-->再转到 PropertySourcesPropertyResolver:propertyResolver.getProperty(key) 取-->最后到 DefaultConfig.getProperty() 取：System.getProperty(key)-->如果为空，尝试从 Properties:m_configProperties.getProperty()-->没有则从：System.getenv(key)取 。如果还没有：
-						>转 ConfigPropertySource: getProperty(), 而此时 m_configProperties 属性 有很多远程值：。。如果没有，退回到 PropertySourcesPropertyResolver.getProperty()里 取下一个 propertySources:propertySource： CompositePropertySource:propertySources 有6个-->每个 PropertySource 都有多个远程属性；终究可以找到。。整个过程看：数据就是来自 解析器 的 属性源；PropertySourcesPlaceholderConfigurer.propertySources:PropertySource.source.propertyResolver.propertySources.PropertySource.propertySources.PropertySource.DefaultConfig:source。。。简化为：AbstractPropertyResolver.resolveRequiredPlaceholders()-->doResolvePlaceholders()-->	PropertySourcesPropertyResolver.getProperty()-->CompositePropertySource.getProperty()-->ConfigPropertySource.getProperty()-->DefaultConfig.
+						>转 ConfigPropertySource: getProperty(), 而此时 m_configProperties 属性 有很多远程值：。。如果没有，退回到 PropertySourcesPropertyResolver.getProperty()里 取下一个 propertySources:propertySource： CompositePropertySource:propertySources 有6个-->每个 PropertySource 都有多个远程属性；终究可以找到。。整个过程看：数据就是来自 解析器 的 属性源；PropertySourcesPlaceholderConfigurer.propertySources:PropertySource.source.propertyResolver.propertySources.PropertySource.propertySources.PropertySource.DefaultConfig:source。。。简化为：AbstractPropertyResolver.resolveRequiredPlaceholders()-->doResolvePlaceholders()-->	PropertySourcesPropertyResolver.getProperty()-->CompositePropertySource.getProperty()-->ConfigPropertySource.getProperty()-->DefaultConfig.getProperty()
 				>
 	>每个实例的bean化的方式：启动类就是第一个配置类。
 		>配置类里方法上@Bean:
@@ -106,7 +106,7 @@
 															>取服务：Service
 																>取容器：Engine	
 																	>取管道：Pipeline:StandardPipeline
-																		>阀门：Valve:ValveBase:StandardHostValve:StandardWrapperValve
+																		>阀门：Valve:ValveBase:StandardHostValve:StandardWrapperValve 只有invoke(Request request, Response response)方法 有实际有意义的内容；-->内部核心：调 StandardWrapper:container.allocate()-->内部就是@loadServlet()来构建实际servlet并初始化--->后利用来创建过滤器链@ApplicationFilterFactory.createFilterChain()-->过滤器部分来自： wrapper.getParent():StandardContext.filterMaps--->后开始执行过滤器链：@filterChain.doFilter(request.getRequest(), response.getResponse())-->内部记录了位置，如果前面则filterConfig.getFilter().doFilter()，最后了则取之前创建过滤器而注入的 javax.servlet.Servlet:servlet.service(request, response)来执行。
 																			>Servlet: 获取：StandardWrapper
 																				>servletClass: org.springframework.web.servlet.DispatcherServlet
 																				>instance: DispatcherServlet
@@ -125,6 +125,13 @@
 					>增加WsSci到上下文：WsSci
 			>servlet上下文初始化器：ServletContextInitializerBeans:<ServletContextInitializer> 所有初始化器 从 bf里 获取 ServletContextInitializer 类型的实例 onStartup		
 				>
+	>dispatcherServlet的注入过程：
+		>自动配置类DispatcherServletConfiguration 实例化里面的@Bean方法： 这个bean：DispatcherServlet 
+		>自动配置类DispatcherServletAutoConfiguration实例化里面的@Bean方法：这个bean: DispatcherServletRegistrationBean:ServletRegistrationBean:DynamicRegistrationBean:RegistrationBean:ServletContextInitializer 会注入 DispatcherServlet 实例 到 ServletRegistrationBean.servlet属性。同时强制设置 DynamicRegistrationBean.name=“dispatcherServlet”
+		>创建Tomcat过程中：调 StandardContext.startInternal()时：方法里专门 调 注入的 initializers 来执行它们的启动方法：ServletContainerInitializer.onStartup(); (此时已经进入refresh()阶段，所以自然是从工厂里取出ServletContextInitializer.class类型注入的) ，典型的 实现类是：TomcatStarter，所以调 TomcatStarter.onStartup()--->内部又转调它实例化时注入的ServletContextInitializer[]: 执行它们的@onStartup(),有个实例是方法引用，即转执行 ServletWebServerApplicationContext.selfInitialize()-->里面也是 先获取 ServletContextInitializer.class的所有实例 逐个执行 它的@onStartup(servletContext)，实例就有：DispatcherServletRegistrationBean
+			>转执行 RegistrationBean.onStartup(): 此时顺势就获取到了 里面之前设置了的 servlet 及其名字，然后注入上下文：@servletContext.addServlet(name, this.servlet)， 这个上下文为 入参传入的：ApplicationContextFacade 类型；---->方法内部 转调 context.addServlet(), 这个内部context:ApplicationContext 类型--->方法内部 又 先获取属性 ApplicationContext.context:TomcatEmbeddedContext 来找到 servletName 对应的引擎-->context.findChild(servletName) 这个引擎：Wrapper:StandardWrapper, 然后调用它的设置serlvetClass():wrapper.setServletClass(servlet.getClass().getName())---->自然就设置到了它的属性：StandardWrapper.servletClass 里。。
+		>创建Tomcat过程中：调 StandardContext.startInternal() 执行了initializers.onStartup()之后，会调用 StandardContext.loadOnStartup()-->内部先获取所有的Wrapper:每个执行它们的@load()方法---->内部实现则核心：@loadServlet()---->内部即将上一步获取的 servletClass 属性上存的完整限定名称 反射方式实例化@instanceManager.newInstance(servletClass)
+		>tomcat服务器启动时：调 TomcatWebServer.start()-->performDeferredLoadOnStartup()-->TomcatEmbeddedContext.deferredLoadOnStartup()-->TomcatEmbeddedContext.load(Wrapper wrapper)-->也是转调 Wrapper.load()-->同上。	
 >mysql：
 	>优化：
 		>减少B+树分裂合并调整：id顺序增加的插入。
@@ -274,10 +281,31 @@
 										>使用url发起连接查询配置：ApolloConfig	
 									>scheduleLongPollingRefresh()： 远程调度开启
 										>转发给 RemoteConfigLongPollService: startLongPolling()长连接开始；-->doLongPollingRefresh()  无限循环里，每隔5s 带事务(cat) 地 调 getConfigServices()-->即使用 ConfigServiceLocator 来请求；List<ServiceDTO> --->进一步 assembleLongPollRefreshUrl()构造请求url--> 再发起http连接 获取到结果  ApolloConfigNotification 列表--->对每个通知---是通知变化 所在名称空间，从而根据这个名称空间再去查真正的全部配置：remoteConfigRepository.onLongPollNotified()--->trySync()-->sync()
+		>获取到的配置如何更新到bean里：sync()获取到配置 ApolloConfig： 转到 Properties ，调监听器RepositoryChangeListener:DefaultConfig 处理：比较新旧配置，明确 增删改，封装到 ConfigChange， 再到 ConfigChangeEvent，调 ConfigChangeListener:AutoUpdateConfigChangeListener 处理：从 ConfigChangeEvent 获取所有改变了的key: 	对每个key, 从仓库获取值集合：SpringValueRegistry-->Collection<SpringValue> 每个SpringValue 就是 bean-field-placeholder ,bean-method-placeholder的封装体，即这个bean-field上用了本key的值注解，显然就要对每个更新：AutoUpdateConfigChangeListener.updateSpringValue() ：
+			>首先解析获取新的值：-->AutoUpdateConfigChangeListener.resolvePropertyValue()-->PlaceholderHelper:placeholderHelper.resolvePropertyValue(), 具体实现：
+				>核心还是解析占位符$表达式：AbstractBeanFactory.resolveEmbeddedValue()-->PropertyPlaceholderHelper.replacePlaceholders()--> 先解析出 占位符 ,后找占位符的值 PropertyPlaceholderConfigurer.PropertyPlaceholderConfigurerResolver:placeholderResolver.resolvePlaceholder(placeholder): 
+					>寻找占位符的值的过程：PropertyPlaceholderConfigurer.resolvePlaceholder(), 因为PropertyPlaceholderConfigurerResolver实例创建时 注入了Properties， 实际就是从PropertyPlaceholderConfigurerResolver的Properties里获取的；
+				>核心2：如果有bean表达式解析器，则要对解析的结果评估后再返回：evaluateBeanDefinitionString():beanFactory.getBeanExpressionResolver().evaluate(value):StandardBeanExpressionResolver
+					>转 expressionParser.parseExpression().getValue(sec): TemplateAwareExpressionParser 实现：转 SpelExpressionParser  解析spel表达式：最后 得到 SpelExpression.SpelNodeImpl.TypedValue.value
+			>然后更新注入到bean-field：springValue.update(value)-->就是反射注入：injectField()/injectMethod()
+			--SpringValue的封装过程：每个bean实例化之后：BeanPostProcessor:SpringValueProcessor:ApolloProcessor.postProcessBeforeInitialization().processField()-->找@Value注解的Field, 封装到 new SpringValue(key, bean, field), key就是$表达式/#表达式；后注册到 SpringValueProcessor.SpringValueRegistry
+			--拉取的远程配置在本地的存储：PropertySourcesProcessor:BeanFactoryPostProcessor 中处理：@initializePropertySources():
+				>新增 new CompositePropertySource(“ApolloPropertySources”)对象：对每个名称空间，进行一次拉取-对拉取的每个配置：ConfigService.getConfig(namespace)-->经过处理：configPropertySourceFactory.getConfigPropertySource()转为ConfigPropertySource后加入 CompositePropertySource.propertySources:Set。。同时对每个ConfigPropertySource，增加同一个 监听器this.source.addChangeListener(listener)：new AutoUpdateConfigChangeListener..实际就是AbstractConfig.m_listeners:List<ConfigChangeListener>
+					>注意获取配置的过程：ConfigService.getConfig(namespace)
+						>交给 DefaultConfigManager-->DefaultConfigFactory-->new DefaultConfig(repository)注入的仓库=new LocalFileConfigRepository()->创建时:trySyncFromUpstream()-->updateFileProperties():获取已经拉下来的配置m_fileProperties:Properties，准备持久化到磁盘：persistLocalCacheFile():@m_fileProperties.store(out)
+				>如果 enviroment:StandardServletEnvironment 里的属性源propertySources:MutablePropertySources 有"ApolloBootstrapPropertySources"属性了，将CompositePropertySource 加到它后面，否则放在第一位；MutablePropertySources.propertySourceList:List .PropertySource ..从而实际属性的沉淀者就是：ConfigPropertySource.source:DefaultConfig.m_configProperties:Properties
+			--RemoteConfigRepository启动的周期刷新：schedulePeriodicRefresh()--> m_executorService.scheduleAtFixedRate() 5min执行一次trySync()->sync()->loadApolloConfig()得到 ApolloConfig-->通知监听器：fireRepositoryChange()-->RepositoryChangeListener:DefaultConfig.onRepositoryChange(Properties)入参就是新通知， 获取具体变更Map<String, ConfigChange>:(key=属性名)(过程中新属性会保存到本地DefaultConfig.m_configProperties)后：fireConfigChange(ConfigChangeEvent)-->通知监听器：AutoUpdateConfigChangeListener.onChange(ConfigChangeEvent):
+				>获取全部增删改的key: 遍历，获取每个key所用在所有的bean-field:通过 springValueRegistry.get(beanFactory, key) 获取到 Multimap<String, SpringValue>， 得到每个配置key所被用在的bean-field的集合，那么下一个只需要将key对应的value设置到bean-field即可；即遍历 key-Collection<SpringValue>： 对每个SpringValue: 执行 updateSpringValue(val)--->过程分2步：先获取到属性对应的值value=@resolvePropertyValue(springValue) 后 将值设置到Field:@springValue.update(value)。。。注意：key对应的值不在ConfigChangeEvent里，而还是在 enviroment 的属性源里，所以还是通过resolvePropertyValue(springValue)来获取的-->内部就是通过 统一的 placeholderHelper.resolvePropertyValue()
+					>实现也分两步：	
+						>先 @beanFactory.resolveEmbeddedValue(SpringValue.placeholder) 得到一个值。
+							>核心实现：PropertyPlaceholderHelper.replacePlaceholders()-->parseStringValue()就是常见的。
+								>进一步交给：PropertyPlaceholderConfigurerResolver.resolvePlaceholder()->PropertyPlaceholderConfigurer.this.resolvePlaceholder(placeholderName, props, systemPropertiesMode) 核心依赖数据就是它的Properties:props属性。此属性来源：PropertyResourceConfigurer.postProcessBeanFactory()-->PropertyPlaceholderConfigurer.processProperties()
+						>后通过评估表达式解析器处理：@evaluateBeanDefinitionString(val)-->即：beanFactory.getBeanExpressionResolver().evaluate(value)得到；
+        
 >业务重点：
 	>要维护的数据组织：CURD
 		>数据的层次结构：数据的抽象关系。
-		
+	>基于 数+动作/服务+参数 编程：面向函数编程。	
 >技术关系：
 	>dubbo/Feiclient->dubbo/Service-->baomidou-->mybatis-->sharding-jbdc-->druid-->jdbc-->mysql
 	>源代码：关键是抽象它实现的功能模型(抽象一般的语言概念来描述)。
