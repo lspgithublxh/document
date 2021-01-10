@@ -1,0 +1,488 @@
+>每个动作和目标，都可以升级，所以要专门定义分开。
+>spring: 类的寻找、实例化、调用介入、释放(bean的生命周期各个阶段-全程参与)。
+	>类的寻找： 
+		>全部位置：
+			>配置文件：spring-boot-autoconfigure.jar/spring.factories 包含：大量Configuration/Listener/Initializer/Filter/Analyzer/Provider
+				>所有Jar里的spring.factories被加载的位置：spring-core.jar/SpringFactoriesLoader.class::loadSpringFactories(classLoader) 方法里面查找spring.factories文件的实现：直接classLoader.getResources()加载到的全部。
+					>调用加载spring.factories里各种具体类型内容的地方：
+						>1.SpringApplication 加载Listener之类时：
+						>2.启动类的@SpringBootApplication注解的解析时：
+							>此注解上有@EnableAutoConfiguration注解：
+								>此注解@Import了 AutoConfigurationImportSelector 这个选择器：选择器直接实例化。后调用它的@processGroupImports()-->@getImports()时：去获取自动配置实体时 显式 用SpringFactoriesLoader从所有jar里的 spring.factories里 加载 EnableAutoConfiguration.class 类型的全部配置类项--一般得到130个配置类名--再经过OnClassCondition/OnWebApplicationConditon/OnBeanCondition过滤之后只有27个(如包括org.springframework.boot.autoconfigure.websocket.servlet.WebSocketServletAutoConfiguration)。或者在@AutoConfigurationImportSelector.selectImports()里也直接使用SpringFactoriesLoader 来获取 spring.factories里的所有	EnableAutoConfiguration.class的配置实现类类名 返回。
+									>有的jar里的类被引入 只有一种路径：即通过 它的 spring.factories 里的 org.springframework.boot.autoconfigure.EnableAutoConfiguration= 自动配置项的值：。比如spring-cloud-netflix-zuul.jar ,而它的spring.factories里的自动配置项=org.springframework.cloud.netflix.zuul.ZuulServerAutoConfiguration,org.springframework.cloud.netflix.zuul.ZuulProxyAutoConfiguration
+									>自动配置类 中具体的类 实例化 后被使用的场景：注意配置类 自己的属性也可以@Autowired注入属性。1.被用bf.getBean(Type)获取接口的实例方式被使用(如过滤器/监听器/)。2.类加载时static{}自己启动了相关初始化init()代码。3.
+								>此注解上有@AutoConfigurationPackage注解：引入了 AutoConfigurationPackages.Registrar 这个仓库。
+				>例外：有的自动配置类不会被加载：因为该自动配置类需要的Class在classpath上没有：明显报红。	
+		>bd的构造：(属性值的注入和使用)
+			>属性填充：
+				>增加属性：
+				>增加方法：注入方法 如 初始化方法 到 bd.initMethodName。
+				>设置 
+			>普通类的bd：
+			>接口类的bd：
+				>1.动态代理： 
+				>2.指定专门类：专门 new RootBeanDefinition()填充 后放到bdf
+					>配置 mbd.resolvedTargetType: 如resolvedTargetType=org.mybatis.spring.mapper.MapperFactoryBean, beanClass=org.mybatis.spring.mapper.MapperFactoryBean 有时 会设置 isFactoryBean=true
+	>实例化：根据bd
+		>实例化方式：
+			>接口的专门指定类的bd的实例化：如 dao接口类的 指定类 MapperFactoryBean 的初始化：
+		>初始化方式：普通感知设置步骤1 + 核心调用步骤3：即1.感知设置之后，2.用全部 BeanPostProcessor 的初始化前置(依次转换)和后置方法(依次转换) 包裹 @invokeInitMethods() 初始化方法。初始化方法 (依次执行)：1.InitializingBean.afterPropertiesSet() 2.bd.initMethodName 属性 上的方法名。
+		>实例处理方式：
+		>属性上的占位符替换值的过程：
+			>从该bean的实例化的@populateBean()开始：最后会调 BeanPostProcessor:InstantiationAwareBeanPostProcessor:AutowiredAnnotationBeanPostProcessor.postProcessPropertyValues()处理---->发现自动绑定的元数据：InjectionMetadata：发现过程：这个bean的所有属性/方法 上有@Autowired/@Value/@Inject 三个之一且 注解属性required=true, 则这个Field/Method需要自动绑定，封装为AutowiredMethodElement而加到集合；----->元数据注入属性值：metadata.inject(bean, beanName, pvs)--->遍历每个需要注入的属性: 进行注入 InjectedElement:element.inject(target, beanName, pvs) -->依赖解析@beanFactory.resolveDependency() 就是发现 这个name/type的属性 需要注入的bean/val的过程：
+				>先通过解析器获取建议值：ContextAnnotationAutowireCandidateResolver:QualifierAnnotationAutowireCandidateResolver.getSuggestedValue() 获取注解的 value属性的值：--->这个值可能是占位符表达式,需要解析：
+					>转解析器 PropertySourcesPlaceholderConfigurer: resolveStringValue() --->转到 AbstractPropertyResolver.resolveRequiredPlaceholders()解析：-->PropertyPlaceholderHelper.parseStringValue() 此方法会递归；---> 将占位符 当作key  尝试找到它的值：PropertySourcesPropertyResolver.getProperty()-->找的方法，从资源匹配中找：遍历 propertySources:PropertySources， 对每个资源 PropertySource： 从它的source里取：StandardServletEnvironment:source.getProperty(key)-->再转到 PropertySourcesPropertyResolver:propertyResolver.getProperty(key) 取-->最后到 DefaultConfig.getProperty() 取：System.getProperty(key)-->如果为空，尝试从 Properties:m_configProperties.getProperty()-->没有则从：System.getenv(key)取 。如果还没有：
+						>转 ConfigPropertySource: getProperty(), 而此时 m_configProperties 属性 有很多远程值：。。如果没有，退回到 PropertySourcesPropertyResolver.getProperty()里 取下一个 propertySources:propertySource： CompositePropertySource:propertySources 有6个-->每个 PropertySource 都有多个远程属性；终究可以找到。。整个过程看：数据就是来自 解析器 的 属性源；PropertySourcesPlaceholderConfigurer.propertySources:PropertySource.source.propertyResolver.propertySources.PropertySource.propertySources.PropertySource.DefaultConfig:source。。。简化为：AbstractPropertyResolver.resolveRequiredPlaceholders()-->doResolvePlaceholders()-->	PropertySourcesPropertyResolver.getProperty()-->CompositePropertySource.getProperty()-->ConfigPropertySource.getProperty()-->DefaultConfig.getProperty()
+				>
+		>实例属性的来源：如何快速找到一个属性是哪个地方注入的？(对第三方的类)(总共哪些注入入口)
+			>反射方式属性填充：@populateBean()里将bd:AbstractBeanDefinition.propertyValues:PropertyValues 处理后 根据属性名拼接"set"后找到对应的方法后 反射的方式将值设置到bean里。例子：MapperFactoryBean这个实现类的 抽象父类 SqlSessionDaoSupport 的 sqlSessionTemplate 属性的值(多态量)就是 这种方式反射设置的(可以发现没有任何代码引用方式进行设置)。
+				>propertyValues的值的来源：1.mbd初始化时设置进去的；2.populateBean()时autowireByType()中unsatisfiedNonSimpleProperties()的实现：获取类及其父类的所有属性BeanWrapper.CachedIntrospectionResults.propertyDescriptors 并过滤掉基本类型属性 而得到的属性名称，再DependencyDescriptor从bf里查找到对应的实例bean(并会检查属性是否是Map/List之类), 然后放到k-v:MutablePropertyValues 里。
+	>每个实例的bean化的方式：启动类就是第一个配置类。
+		>配置类里方法上@Bean:
+		>配置类上某个注解是一个被@Import(registry)注解的类：从而配置解析类 解析 配置类的@Import注解的时候 发现是registry类型 从而 添加到配置类的importBeanDefinitionRegistrars属性，后 refresh()调BeanFactoryPostProcessor处理时候 走 配置类 后 统一取配置类的这个属性来 调用些仓库的注册bean方法来注册了若干个bean。
+			>registry注册的bean类型：
+				>BeanFactoryPostProcessor: 在refresh()时候会直接专门调用所有的bean工厂处理器(从beanFacotry里取的)。
+				>BeanPostProcessor: 在refresh()里有专门直接的调用bf里的所有bean后置处理器注册到处理器属性beanPostProcessors。在getBean()初始化bean:initializeBean()里面专门调用这个属性beanPostProcessors。
+		>配置类上某个注解是一个被@Import(ImportSelector)注解的类:  从而配置解析类 解析 配置类的@Import注解的时候 发现是 selector 类型 调selector类的@selectImports()获取className集合，每个都当作类来注册，然后每个类还当作selector递归处理。
+			>选择的类名类型：
+				>ImportBeanDefinitionRegistrar: 在refresh()调 BeanFactoryPostProcessor 处理时 包含对 配置类处理器 的处理，而 配置类解析器 获取了所有配置类，而配置类有4处候选bean可以被引入，其中包括 通过配置类的 ImportBeanDefinitionRegistrar 列表 来注册 bd.
+				>@Configuration/@Component: 即当作是配置类来处理。配置类里一般有多个@Bean方法。
+		--扫项目下包加载类/扫jar中配置文件/...	
+		>配置类上某个注解是一个被@Import(其他)注解的类：则当作是配置类来解析处理。
+	>方法注入：
+	>属性注入：
+	>调用介入：
+		>动态代理：拦截器/方法拦截器
+	>释放回收：
+		>销毁方法：
+>tomcat:
+	>spring-boot中创建过程：
+		>ApplicationContext: onRefresh()刷新
+			>创建webserver:
+				>配置上下文：TomcatEmbeddedContext
+	>结构：
+		>服务器应用上下文：AbstractApplicationContext:ServletWebServerApplicationContext
+			>服务器工厂：ServletWebServerFactory:TomcatServletWebServerFactory
+				>服务器：TomcatWebServer
+					>Tomcat： Tomcat	有生命周期LifecycleBase
+						>服务器：Server:StandardServer 有生命周期LifecycleBase
+							>服务：	Service/StandardService  (有生命周期LifecycleBase)
+								>引擎：Engine/StandardEngine (有生命周期LifecycleBase) 继承了 容器 ContainerBase/Container
+									>标准主机：Host:StandardHost 继承了容器 ContainerBase/Container
+										>上下文：Context:StandardContext:TomcatEmbeddedContext 继承了容器 ContainerBase/Container 有生命周期LifecycleBase 
+											>上下文监听器：LifecycleListener:FixContextListener
+											>webapp加载器：Loader:WebappLoader
+											>jar浏览器：JarScanner:StandardJarScanner
+												>浏览过滤器：JarScanFilter:StandardJarScanFilter
+											>默认servlet: StandardWrapper:<DefaultServlet> 继承了容器 ContainerBase/Container	
+											>默认资源：WebResourceRoot:StandardRoot
+											>名称上下文监听器：NamingContextListener
+											>上下文管理器：StandardManager
+											>servlet上下文：应用上下文 ServletContext:ApplicationContext
+												>上下文面板：ApplicationContextFacade
+											>servlet容器初始化者：ServletContainerInitializer:WsSci:TomcatStarter(服务器工厂类时增加进来)
+												>服务端容器：WsServerContainer
+												>servlet容器初始化者：TomcatStarter.ServletContextInitializer[]=ServletWebServerApplicationContext/
+													>来源：bf里所有 ServletContextInitializer  类型的实现。包括：RegistrationBean:DynamicRegistrationBean:ServletRegistrationBean:DispatcherServletRegistrationBean
+														>来源：spring.factories中 自动配置 DispatcherServletAutoConfiguration.DispatcherServletConfiguration.DispatcherServlet/DispatcherServletRegistrationConfiguration.DispatcherServletRegistrationBean
+														>来源2：自动配置 中 HttpEncodingAutoConfiguration.CharacterEncodingFilter//FilterRegistrationBean //ApplicationFilterRegistration
+															>configure()配置时：封装为新的一个 FilterMap 放到上下文 TomcatEmbeddedContext.filterMaps 其他filer如：formContentFilter/requestContextFilter/WsFilter(Tomcat WebSocket (JSR356) Filter)/
+											>过滤器：FilterMap	
+								>连接器：Connector/Connector
+									>协议：org.apache.coyote.http11.Http11NioProtocol
+										>端点：AbstractJsseEndpoint/NioEndpoint/
+											>通道：ServerSocketChannel
+												>socket: ServerSocket 
+													>port: InetSocketAddress 就是 application.properties里配置的。
+											>安全上下文：SSLImplementation
+											>选择池：线程安全的 NioSelectorPool
+												>选择器：Selector
+											>事件调度：Poller 计票者。run型任务..。。一次请求新增一个
+												>事件：PollerEvent
+													>附件：SocketWrapperBase/NioSocketWrapper
+												>文件发送：SendfileData
+												>可读事件：SocketEvent.OPEN_READ
+												>可写事件：SocketEvent
+											>事件处理：SocketProcessorBase:SocketProcessor	转用处理器处理。
+										>处理器：Handler:ConnectionHandler
+											>处理器：Processor:AbstractProcessorLight:Http11Processor 主要负责分发/service/日志处理。
+												>请求：Request
+													>请求信息：RequestInfo
+													>http请求：HttpServletRequest
+													>门面实现：RequestFacade
+												>响应：Response
+												>输入缓冲：Http11InputBuffer
+												>服务方法: service()
+													>适配器：继续服务方法。Adapter:CoyoteAdapter 报头解析 
+														>连接器：Connector
+															>取服务：Service
+																>取容器：Engine	
+																	>取管道：Pipeline:StandardPipeline
+																		>阀门：Valve:ValveBase:StandardHostValve:StandardWrapperValve 只有invoke(Request request, Response response)方法 有实际有意义的内容；-->内部核心：调 StandardWrapper:container.allocate()-->内部就是@loadServlet()来构建实际servlet并初始化--->后利用来创建过滤器链@ApplicationFilterFactory.createFilterChain()-->过滤器部分来自： wrapper.getParent():StandardContext.filterMaps--->后开始执行过滤器链：@filterChain.doFilter(request.getRequest(), response.getResponse())-->内部记录了位置，如果前面则filterConfig.getFilter().doFilter()，最后了则取之前创建过滤器而注入的 javax.servlet.Servlet:servlet.service(request, response)来执行。
+																			>Servlet: 获取：StandardWrapper
+																				>servletClass: org.springframework.web.servlet.DispatcherServlet
+																				>instance: DispatcherServlet
+																			>过滤器链：ApplicationFilterChain
+																				>嵌入Servlet:
+																				>嵌入过滤器：ApplicationFilterConfig->Filter
+																					>过滤器来源：LifecycleBase:LifecycleListener，包含 Tomcat$FixContextListener， TomcatServletWebServerFactory$StaticResourceConfigurer, StandardHost$MemoryLeakTrackingListener
+																			>执行过滤：doFilter()	
+																				>内部doFilter: internalDoFilter()
+																					>pos<n: 则继续走filter: Filter.doFilter(chain), pos++ , 而 chain作为参数
+																					>pos=n: 则走servlet: servlet.service(request, response) 此时就已经走企业级 接口：javax.servlet.Servlet
+																						>进一步：javax.servlet.http.HttpServlet 进一步则开始。模板是一层一层的，直到 org.springframework.web.servlet.DispatcherServlet.doDispatch()。
+														>认证授权：
+							>执行器服务：ScheduledExecutorService:ScheduledThreadPoolExecutor(注入的是java的ScheduledThreadPoolExecutor线程工厂TaskThreadFactory) -- 1.可以启动周期调度任务 ContainerBackgroundProcessorMonitor， 后者提交一个新的任务 ContainerBackgroundProcessor。
+				>上下文客户端：TomcatContextCustomizer:TomcatWebSocketServletWebServerCustomizer(在自动配置WebSocketServletAutoConfiguration里@Bean方法方式实例化,后者在spring.factories里EnableAutoConfiguration)
+					>增加WsSci到上下文：WsSci
+			>servlet上下文初始化器：ServletContextInitializerBeans:<ServletContextInitializer> 所有初始化器 从 bf里 获取 ServletContextInitializer 类型的实例 onStartup		
+				>
+	>dispatcherServlet的注入过程：
+		>自动配置类DispatcherServletConfiguration 实例化里面的@Bean方法： 这个bean：DispatcherServlet 
+		>自动配置类DispatcherServletAutoConfiguration实例化里面的@Bean方法：这个bean: DispatcherServletRegistrationBean:ServletRegistrationBean:DynamicRegistrationBean:RegistrationBean:ServletContextInitializer 会注入 DispatcherServlet 实例 到 ServletRegistrationBean.servlet属性。同时强制设置 DynamicRegistrationBean.name=“dispatcherServlet”
+		>创建Tomcat过程中：调 StandardContext.startInternal()时：方法里专门 调 注入的 initializers 来执行它们的启动方法：ServletContainerInitializer.onStartup(); (此时已经进入refresh()阶段，所以自然是从工厂里取出ServletContextInitializer.class类型注入的) ，典型的 实现类是：TomcatStarter，所以调 TomcatStarter.onStartup()--->内部又转调它实例化时注入的ServletContextInitializer[]: 执行它们的@onStartup(),有个实例是方法引用，即转执行 ServletWebServerApplicationContext.selfInitialize()-->里面也是 先获取 ServletContextInitializer.class的所有实例 逐个执行 它的@onStartup(servletContext)，实例就有：DispatcherServletRegistrationBean
+			>转执行 RegistrationBean.onStartup(): 此时顺势就获取到了 里面之前设置了的 servlet 及其名字，然后注入上下文：@servletContext.addServlet(name, this.servlet)， 这个上下文为 入参传入的：ApplicationContextFacade 类型；---->方法内部 转调 context.addServlet(), 这个内部context:ApplicationContext 类型--->方法内部 又 先获取属性 ApplicationContext.context:TomcatEmbeddedContext 来找到 servletName 对应的引擎-->context.findChild(servletName) 这个引擎：Wrapper:StandardWrapper, 然后调用它的设置serlvetClass():wrapper.setServletClass(servlet.getClass().getName())---->自然就设置到了它的属性：StandardWrapper.servletClass 里。。
+		>创建Tomcat过程中：调 StandardContext.startInternal() 执行了initializers.onStartup()之后，会调用 StandardContext.loadOnStartup()-->内部先获取所有的Wrapper:每个执行它们的@load()方法---->内部实现则核心：@loadServlet()---->内部即将上一步获取的 servletClass 属性上存的完整限定名称 反射方式实例化@instanceManager.newInstance(servletClass)
+		>tomcat服务器启动时：调 TomcatWebServer.start()-->performDeferredLoadOnStartup()-->TomcatEmbeddedContext.deferredLoadOnStartup()-->TomcatEmbeddedContext.load(Wrapper wrapper)-->也是转调 Wrapper.load()-->同上。	
+>mysql：
+	>优化：
+		>减少B+树分裂合并调整：id顺序增加的插入。
+		>sql合并为1条：减少解析、创建事务、binlog日志刷盘数量和频率。
+		>语句优化:	
+			>update: 
+			>select: 
+				>小表驱动大表：
+					>原因：in 是：外表走索引，内表走遍历；所以适合内表数量少的-索引加在外表上。 exists 是： 外表走遍历，内表走索引；所以适合外表数量少的-索引加在内表上。
+				>order by: 优化掉 Using filesort。 一个是 最左匹配，则where里用=。order by 完整索引列，则也可以。
+			>explain比较：
+				>select_type: simple--简单查询；primary--最外层查询； subquery---映射为子查询； derived---子查询；union--联合查询；union result--使用联合查询的结果；
+				>type: 连接的连接类型：const(使用常量通过主键唯一索引找到)-->eq_ref(通过其他列值给唯一索引找到,如inner join 一一索引列连接)-->ref(非唯一性索引找到)->range(范围扫描索引列)-->index(遍历索引树)-->all(遍历全表)	
+				>key_len: 索引长度 越短越好
+				>ref: 索引的哪一列被使用了
+				>where: using where ---查询可收益于不同的索引；using index--使用覆盖索引(辅助索引+主键select) ， using tempory--结果排序使用临时表；using filesort---使用外部索引排序
+			>limit的使用：找到结果就返回；提前终止，避免全表扫描；	limit 1;
+			>业务：ip地址用整数---方便范围查询； 分页查询；统计行数--如果id自增则用max(id)就可；
+			>order by: 可以不使用；
+			>执行计划可视化：Mysql WorkBench；show profiling; 日志状态查看；
+		>对表加读写锁：myisam
+			>操作： A会话执行：lock table tablename read;
+			>效果： A会话释放表锁之前,不能继续更新该表，也不能读其他表；B此时更新该表则会被阻塞；。。如果A加的是写锁，类似。
+		>对行加读写锁：先 set autocommit=0;	两个会话则一个先update, 而另一个会话update同一条数据；但第一个还没有手动commit ;就会阻塞；在repeated read隔离级别下是成立的。
+			>效果2：A:update 执行了但没有执行commit; B: 执行update同一条数据会阻塞，不同数据会成功；插入数据会成功(但是A是看不到的--因为可重复读的隔离级别)；
+			>效果3：A:insert 执行了一条数据但没有commit;B:执行 insert同一个id的数据会阻塞(A提交后B直接报重复key)，不同id则会成功；update同一条id数据也会阻塞；但是update其他数据会成功；
+				>说明：A先占用了行锁-X锁；(独占性质的行锁)
+			>效果4：A:update where > 则会加next-key lock；已有数据和空隙 行上的锁都会被占用；B:update 已有范围内记录会阻塞；不存在的记录会成功-0条；insert所在间隙会阻塞；
+			>效果5：A:select >= for update 也会加行锁和间隙锁；从而B再 select >= for update也会被阻塞；update/insert自然也会被阻塞；
+		>设置是否自动提交：是对 会话 级别设置的；不同的会话则不同；且各自的设置不会互相影响其他会话的是否自动提交 配置；
+		>设置事务隔离级别：也是会话 级别 设置的；SET transaction_isolation = 'REPEATABLE-READ'	;SELECT @@transaction_isolation; 不同会话 事务 的隔离级别 不同；
+		>锁耗时统计：SHOW STATUS LIKE 'innodb_row_lock%'; 总共锁时；平均每次锁时；总共锁次数；
+		>未使用索引会加表锁：A: UPDATE a SET rate = 2.5 WHERE rate = 2.11 如果rate列没有索引 那么 会加表锁；B: 此时如果 update 的某行即便rate != 2.11 也会被阻塞；
+			>说明2： 如果 update 的where 发生了 整形转字符 这样的自动类型转换 导致 索引失效 自然也会加表锁；
+		>系统查询：
+			SELECT @@transaction_isolation; -- mysql8 可重复读； 
+			SELECT VERSION(); -- 查看mysql 版本
+			SHOW VARIABLES LIKE '%auto%' -- 是否开启自动提交
+			SHOW STATUS LIKE 'innodb_row_lock%'; -- 锁耗时统计
+			SHOW ENGINE INNODB STATUS; -- 查看 sql使用到的锁
+		>查询全部执行过的sql: SHOW VARIABLES LIKE '%general%' 全局日志里。	
+		>sql执行过程：
+			>临时表：inner join 合并结果。SHOW STATUS LIKE 'CREATE%'，SHOW VARIABLES LIKE '%HEAP%'， 先使用内存临时表(memory存储引擎)，后使用磁盘临时表(myisam存储引擎)；
+				>间接使用： group by b order by a； 长字符串列group by ；
+			>派生表：子查询 ，存在内存中；尽量不*查。无法增加索引，比临时表慢；(子查询替换为使用视图---实际效果并不好)
+			>inner join : 配合on使用 来匹配后一张表的记录 得到 结果，最后才where，所以where条件只能对第一个表关联，所以条件加到on上更好；
+			>update A inner join B set A.t=B.t where: 如果A表 连接后 中间表膨胀了，比如A中1条关联了B中2条；那么 set 的时候 只会把B的第一条的值设置到A。。。。另外一方面，应该要加限制条件让结果表不膨胀--和A表一一对应；。。所以一定要准确关联一一关联写足关联在on上--避免膨胀产生的问题。where会限制结果集，然后才set执行；
+				>注意：A left join B on  , on中 独立加对 A的限制 如A.id<1, 结果集中仍然是A的全部结果；left join 中的on 只影响 A中某行是否关联，但A中的某行一定保留(尽管一行没有关联到--由于对A的限制A.id<3)；但是inner join 则不一样，on 中 如果 限制了A(A.id<3)，则结果集中就没有限制的A的记录(A.id>=3的都没有)；
+			>子查询： 
+				>join 后的子查询可以；但是where 后面的子查询：exists() 是 外表遍历， 内表索引--外表数量少则可以；
+					
+	>死锁问题：
+		>阻塞：update时候有其他语句正在update 而事务未提交;
+		>问题1：update 语句执行了3min, 查看show processlist 发现在 sending data。explain 语句出现：Using where; Using index; Using join buffer (Block Nested Loop)
+			>update 特征： update a inner join b on xx inner join c on xx 
+>java:
+	>线程池:
+		>任务抛出异常：worker抛出异常->线程抛出异常；正常的worker死亡而已。
+	>jvm：
+		>优化：		
+	>java并行操作：Stream	
+>其他中间方案：
+	>websocket: 在tomcat-embed实现中。
+		>参考。https://www.cnblogs.com/ttjsndx/p/9268800.html
+		>refresh()时： 
+			>服务端点输出者：ServerEndpointExporter 的实例化。
+				>注册端点：用户写的类，注册到 ServerContainer:WsWebSocketContainer:WsServerContainer
+					>路径：UriTemplate
+		>前端发起subscribable时：	后端启动一个任务 ExecutorSubscribableChannel.SendTask	
+			>消息处理：UserDestinationMessageHandler/SimpleBrokerMessageHandler/WebSocketAnnotationMethodMessageHandler
+				>消息解析：DefaultUserDestinationResolver
+					>设置sessionId和targetDestination: 订阅路径 "-user" sessionId
+				>将处理后的消息发送：SimpMessagingTemplate
+					>通道发送：ExecutorSubscribableChannel
+						>内部发送：再次以运行任务方式执行。对 SimpleBrokerMessageHandler 这个handler的handlerMessageInternel()处理是不同的：分消息类型处理。
+							>message类型：1.根据destina 从订阅仓库AbstractSubscriptionRegistry 发现所有的订阅者：
+								>发现订阅者的实际过程：SessionRegistry 内部维护了 ConcurrentMap<String, SessionInfo> sessions;
+									>SessionInfo信息里有：Map<String, Subscription> subscriptionMap；匹配出 sessionid--destination; 通过sessionid得到 SessionInfo..最终得到一个sessionId的所有匹配到的subscriptionIds(因为一个消息可能可以匹配到多个destination)
+										>对匹配的每个substriptions都向sessionInfo对应的用户发送消息：SessionInfo.MessageChannel:AbstractMessageChannel
+		>前端发起普通连接：
+			>线程池新增一个任务：SocketProcessor:SocketProcessorBase:Runnable。 新增并执行。
+				>转给Handler处理：AbstractProtocol.ConnectionHandler
+					>转到处理器：Http11Processor:AbstractProcessor:AbstractProcessorLight
+						>转内部适配器：CoyoteAdapter.service()
+							>直接调到Valve来Invoke: Connector:connector.getService().getContainer().getPipeline().getFirst().invoke() 而这个 Valve=StandardEngineValve, 内部调主机转：host.getPipeline().getFirst().invoke(request, response)-->StandardHostValve-->又到上下文转：context.getPipeline().getFirst().invoke(request, response):::StandardContextValve--->包装类转：wrapper.getPipeline().getFirst().invoke(request, response):::StandardWrapperValve---->包装类就到过滤器链： filterChain.doFilter():::ApplicationFilterChain----->就到一个个过滤器：filter.doFilter(request, response, this):::OncePerRequestFilter/WebRequestTraceFilter/ApplicationContextHeaderFilter/CharacterEncodingFilter/FormContentFilter/HiddenHttpMethodFilter/MetricsFilter/RequestContextFilter/WsFilter/WebStatFilter
+								>filter处理完：开始servlet:servlet.service(request, response):DispatcherServlet:FrameworkServlet:HttpServletBean:HttpServlet 然后分方法处理：METHOD_HEAD/METHOD_POST/METHOD_PUT/METHOD_DELETE/METHOD_OPTIONS/METHOD_TRACE/METHOD_GET
+									>转用Handler处理器处理：HttpRequestHandlerAdapter， 处理时，需要注入请求匹配到的6种handlerMappings之一：WebSocketHandlerMapping/RequestMappingHandlerMapping/BeanNameUrlHandlerMapping/RouterFunctionMapping/SimpleUrlHandlerMapping/WelcomePageHandlerMapping..。。。mapping里的handlerMap属性：string--Handler映射的构建过程：BeanPostProcessor 处理SimpleUrlHandlerMapping时从simpleUrlHandlerMapping.urlMap 转移到 AbstractUrlHandlerMapping.handlerMap
+										>匹配方法：如请求路径匹配。核心方法：AbstractUrlHandlerMapping.getHandlerInternal() 匹配结果：HandlerExecutionChain:取里面的handler:SockJsHttpRequestHandler， 来处理请求：
+											>转给DefaultSockJsService: 分路径sockJsPath 处理：/, /info, /iframe[0-9-.a-z_]*.html/websocket
+												>对/info: 转给 AbstractSockJsService.InfoHandler 处理，然后分方法处理：HttpMethod.GET/OPTIONS
+													>对get: 设置返回的多媒体类型：application/json; 缓冲：no-store, no-cache, must-revalidate, max-age=0， 返回内容：{"entropy":-758209608,"origins":["*:*"],"cookie_needed":true,"websocket":true} 然后写到输出流：response.getBody().write(content.getBytes()) 关闭。
+									--拓展：DispatcherServlet里调用的 Hanlder处理器链HandlerExecutionChain：来自: 遍历 内部 HandlerMapping(SimpleUrlHandlerMapping两个(/**,/webjars/**; **/favicon.ico分别有Handler:ResourceHttpRequestHandler)/WebSocketHandlerMapping一个(/websocket/**,有Handler:SockJsHttpRequestHandler))/RequestMappingHandlerMapping(则有拦截器6个如ResourceUrlProviderExposingInterceptor,拦截 /**,/webjars/**,/**/favicon.ico) 列表，找出可以匹配request的一个过滤器链就返回,匹配过程：如请求路径匹配的方式找到一个HandlerMethod 直接new HandlerExecutionChain()放入.handler，	再将 mapping的adaptedInterceptors:HandlerInterceptor放入interceptors。形成完整的chain: 拦截器适配器的生成(用来生成ModelAndView,生成过程被HandlerChain包围：chain.applyPreHandle()/chain.applyPostHandle())：DispatcherServlet里已经有 若干个HandlerAdapter:RequestMappingHandlerAdapter, 找出其中第一个support HandlerExecutionChain.handler的那个(往往只要chain.hanlder是MethodHandler就支持)。
+										>chain.applyPreHandle(): 就是调用 chain的所有拦截器HandlerInterceptor来处理。
+					>转给内部确定的处理器:UpgradeProcessorInternal 此时按照socket status分发：	
+						>实际分发者：WsHttpUpgradeHandler 按状态分发。
+							>对OPEN_READ状态：使用 WsFrameServer 处理。 读状态继续分：
+								>WAITING状态：转给 WsFrameBase 处理。
+									>注册回调关闭：WsSession
+										>实际给：StandardWebSocketHandlerAdapter 回调。
+											>再转发给：SockJsWebSocketHandler
+												>再：WebSocketServerSockJsSession
+													>再：ExceptionWebSocketHandlerDecorator	
+														>再：LoggingWebSocketHandlerDecorator
+															>再内部的：StompSubProtocolHandler
+																>再： ExecutorSubscribableChannel
+		>前端发起断开连接：
+			>线程池新增一个任务：ExecutorSubscribableChannel.SendTask
+				>转处理器：SimpleBrokerMessageHandler。分消息类型.。。此类实例来源：自动配置方法@Bean:DelegatingWebSocketMessageBrokerConfiguration:AbstractMessageBrokerConfiguration.SimpleBrokerMessageHandler
+					>DISCONNECT: SUBSCRIBE/CONNECT/MESSAGE
+						>还是用通道：ExecutorSubscribableChannel
+							>还是用Handler: SubProtocolWebSocketHandler 有生命周期LifecycleBase， 所以start()时候就将自己添加到了AbstractSubscribableChannel.handlers里；(同理 WebSocketAnnotationMethodMessageHandler/SimpleBrokerMessageHandler/UserDestinationMessageHandler 也是)
+								>转handler: StompSubProtocolHandler  ：内部先 需要查出 WebSocketSession ,最后走内部方法 sendToClient() 。
+									>取消息命令类型：StompCommand.MESSAGE/CONNECTED/ERROR 分别处理。
+										>CONNECTED: 发送一个 SessionConnectedEvent 事件。从session取 heartbeat 和 Principal 用户。则转用ApplicationEventPublisher 来发送：属于spring-context服务。
+											>取消息的负载：准备发送给客户端：先编译，后以二进制 或者text 形式 : 使用 WebSocketSession 发送： session.sendMessage()
+												>最终使用WebSocketClientSockJsSession/XhrClientSockJsSession 来发送负载：
+													>后者转用XhrTransport 发送：转 RestTemplateXhrTransport
+														>转用 RestOperations 来发送：即spring-web的 restTemplate POST方法发。
+															>转ClientHttpRequest ： SimpleBufferingClientHttpRequest 。采用 FileCopyUtils.copy(bufferedOutput, this.connection.getOutputStream()) 将消息内容放到 connection:HttpURLConnection 输出流里。
+													>前者转WebSocketSession来发送：sendInternal(TextMessage) sendMessage(TextMessage)
+														>具体实现AbstractSockJsSession:sendMessageInternal(String message) 加入缓冲 messageCache:Queue<String> 然后开始刷新：flushCache() 
+															>刷数据实现1：PollingSockJsSession
+																>只刷数据：writeFrame(frame) 来源：SockJsFrame.messageFrame(messageCodec, messages)
+															>刷数据实现2：StreamingSockJsSession 
+																>先刷数据：writeFrame(SockJsFrame) 创建的frame=SockJsFrame.messageFrame(messageCodec, message)
+																	>writeFrame()的实现：AbstractSockJsSession.writeFrameInternal(frame) 就转到了AbstractHttpSockJsSession 来实现 ， 就是写入输出流里。
+																>再发心跳：调度方式：scheduleHeartbeat() writeFrame(SockJsFrame) 创建的frame=SockJsFrame.heartbeatFrame() 就是 new SockJsFrame("h");即发一个h回去。 然后递归scheduleHeartbeat()
+													--对 HttpRequestHandlerServlet 里的 service()方法，转其 HttpRequestHandler  实现调用，而实现类可以是 SockJsHttpRequestHandler  -->转到 SockJsService -->TransportHandlingSockJsService-->AbstractHttpSendingTransportHandler-->AbstractHttpSockJsSession-->PollingSockJsSession 这时开始批量写回数据：PollingSockJsSession:AbstractSockJsSession:AbstractHttpSockJsSession-->ServerHttpResponse:response.getBody().write()即消息写入了输出流里。
+		>java作为客户端时：WsWebSocketContainer 里是websocket最底层的封装。
+			>WsWebSocketContainer： 握手连接时--实际发起的连接：表为ws://ccptest.glodon.com/ccp/cloud_computing 里面为 http://ccptest.glodon.com/ccp/cloud_computing/719/b0a9a092dee848b9953d5d56792528e6/websocket  增加的报头：Sec-WebSocket-Key/Connection/Sec-WebSocket-Version/Host/Upgrade 方法为 GET
+			>WsRemoteEndpointImplBase:WsRemoteEndpointImplClient: 发送订阅时--实际的消息发起和封装： 直接写到通道里: ["SUBSCRIBE\ndestination:/queue/app_message/GTCGBQWorker\nid:0\nreceipt:0\n\n\u0000"] 即直接在通道里写数据，不必再发连接。AsyncChannelWrapperNonSecure
+		>日志输出：
+			>创建bean:WebSocketMessageBrokerStats 时：用 TaskScheduler 调度任务来打印。
+	>allopo：配置 ..client-->metaserver-->eurake-->config service-->mysql   。。。注册/发现/直连。。修改配置/推送-fallback拉取(adminservice-->mysql-->configservice(定期查mysql)-->client)
+		>配置：属性结构+n套取值(不同环境/集群)
+		>拉取本地配置：
+		>拉取远程配置：并更新到本地；配置中心修改后实时生效；
+			>使用：@EnableApolloConfig 配置 + @Value 取值；
+		>参考：https://www.jianshu.com/p/5d9806493c0f	
+		>spring-boot中的启动：
+			>注册bean: 属性资源处理 PropertySourcesProcessor/ApolloAnnotationProcessor(特定注解的解析处理器)/SpringValueProcessor(spring注解的解析识别@Value)/SpringValueDefinitionProcessor(spring占位符表达式$#解析器)/ApolloJsonValueProcessor(@ApolloJsonValue解析器)(找到占位符表达式的值：StringValueResolver/BeanExpressionResolver/ExpressionParser 实际完成)
+				>初始化获取配置：根据名称空间：PropertySourcesProcessor.initializePropertySources()-->ConfigService.getConfig(namespace)	
+					>转到管理器：DefaultConfigManager， 通过DefaultConfigFactoryManager 获取配置工厂ConfigFactory:DefaultConfigFactory；
+						>新建默认配置：new DefaultConfig(ConfigRepository) 注入配置工厂：配置工厂的获取：本地配置工厂 LocalFileConfigRepository (也会尝试远程获取)， 远程配置工厂：RemoteConfigRepository (创建时就远程获取@trySync()) :AbstractConfigRepository.trySync() -->sync()-->模板模式：LocalFileConfigRepository:loadFromLocalCacheFile() RemoteConfigRepository:loadApolloConfig()
+							>远程下载：
+								>RemoteConfigRepository: 
+									>loadApolloConfig()
+										>ConfigServiceLocator：updateConfigServices() 开启事务方式：
+											>HttpUtil: 返回数据结构：List<ServiceDTO>
+												>HttpURLConnection
+										>封装查询url: assembleQueryConfigUrl() 结果如：http://10.0.197.95:8001/configs/gtc-service-v4/default/platform.cloudt?ip=10.2.96.11
+										>使用url发起连接查询配置：ApolloConfig	
+									>scheduleLongPollingRefresh()： 远程调度开启
+										>转发给 RemoteConfigLongPollService: startLongPolling()长连接开始；-->doLongPollingRefresh()  无限循环里，每隔5s 带事务(cat) 地 调 getConfigServices()-->即使用 ConfigServiceLocator 来请求；List<ServiceDTO> --->进一步 assembleLongPollRefreshUrl()构造请求url--> 再发起http连接 获取到结果  ApolloConfigNotification 列表--->对每个通知---是通知变化 所在名称空间，从而根据这个名称空间再去查真正的全部配置：remoteConfigRepository.onLongPollNotified()--->trySync()-->sync()
+		>获取到的配置如何更新到bean里：sync()获取到配置 ApolloConfig： 转到 Properties ，调监听器RepositoryChangeListener:DefaultConfig 处理：比较新旧配置，明确 增删改，封装到 ConfigChange， 再到 ConfigChangeEvent，调 ConfigChangeListener:AutoUpdateConfigChangeListener 处理：从 ConfigChangeEvent 获取所有改变了的key: 	对每个key, 从仓库获取值集合：SpringValueRegistry-->Collection<SpringValue> 每个SpringValue 就是 bean-field-placeholder ,bean-method-placeholder的封装体，即这个bean-field上用了本key的值注解，显然就要对每个更新：AutoUpdateConfigChangeListener.updateSpringValue() ：
+			>首先解析获取新的值：-->AutoUpdateConfigChangeListener.resolvePropertyValue()-->PlaceholderHelper:placeholderHelper.resolvePropertyValue(), 具体实现：
+				>核心还是解析占位符$表达式：AbstractBeanFactory.resolveEmbeddedValue()-->PropertyPlaceholderHelper.replacePlaceholders()--> 先解析出 占位符 ,后找占位符的值 PropertyPlaceholderConfigurer.PropertyPlaceholderConfigurerResolver:placeholderResolver.resolvePlaceholder(placeholder): 
+					>寻找占位符的值的过程：PropertyPlaceholderConfigurer.resolvePlaceholder(), 因为PropertyPlaceholderConfigurerResolver实例创建时 注入了Properties， 实际就是从PropertyPlaceholderConfigurerResolver的Properties里获取的；
+				>核心2：如果有bean表达式解析器，则要对解析的结果评估后再返回：evaluateBeanDefinitionString():beanFactory.getBeanExpressionResolver().evaluate(value):StandardBeanExpressionResolver
+					>转 expressionParser.parseExpression().getValue(sec): TemplateAwareExpressionParser 实现：转 SpelExpressionParser  解析spel表达式：最后 得到 SpelExpression.SpelNodeImpl.TypedValue.value
+			>然后更新注入到bean-field：springValue.update(value)-->就是反射注入：injectField()/injectMethod()
+			--SpringValue的封装过程：每个bean实例化之后：BeanPostProcessor:SpringValueProcessor:ApolloProcessor.postProcessBeforeInitialization().processField()-->找@Value注解的Field, 封装到 new SpringValue(key, bean, field), key就是$表达式/#表达式；后注册到 SpringValueProcessor.SpringValueRegistry
+			--拉取的远程配置在本地的存储：PropertySourcesProcessor:BeanFactoryPostProcessor 中处理：@initializePropertySources():
+				>新增 new CompositePropertySource(“ApolloPropertySources”)对象：对每个名称空间，进行一次拉取-对拉取的每个配置：ConfigService.getConfig(namespace)-->经过处理：configPropertySourceFactory.getConfigPropertySource()转为ConfigPropertySource后加入 CompositePropertySource.propertySources:Set。。同时对每个ConfigPropertySource，增加同一个 监听器this.source.addChangeListener(listener)：new AutoUpdateConfigChangeListener..实际就是AbstractConfig.m_listeners:List<ConfigChangeListener>
+					>注意获取配置的过程：ConfigService.getConfig(namespace)
+						>交给 DefaultConfigManager-->DefaultConfigFactory-->new DefaultConfig(repository)注入的仓库=new LocalFileConfigRepository()->创建时:trySyncFromUpstream()-->updateFileProperties():获取已经拉下来的配置m_fileProperties:Properties，准备持久化到磁盘：persistLocalCacheFile():@m_fileProperties.store(out)
+				>如果 enviroment:StandardServletEnvironment 里的属性源propertySources:MutablePropertySources 有"ApolloBootstrapPropertySources"属性了，将CompositePropertySource 加到它后面，否则放在第一位；MutablePropertySources.propertySourceList:List .PropertySource ..从而实际属性的沉淀者就是：ConfigPropertySource.source:DefaultConfig.m_configProperties:Properties
+			--RemoteConfigRepository启动的周期刷新：schedulePeriodicRefresh()--> m_executorService.scheduleAtFixedRate() 5min执行一次trySync()->sync()->loadApolloConfig()得到 ApolloConfig-->通知监听器：fireRepositoryChange()-->RepositoryChangeListener:DefaultConfig.onRepositoryChange(Properties)入参就是新通知， 获取具体变更Map<String, ConfigChange>:(key=属性名)(过程中新属性会保存到本地DefaultConfig.m_configProperties)后：fireConfigChange(ConfigChangeEvent)-->通知监听器：AutoUpdateConfigChangeListener.onChange(ConfigChangeEvent):
+				>获取全部增删改的key: 遍历，获取每个key所用在所有的bean-field:通过 springValueRegistry.get(beanFactory, key) 获取到 Multimap<String, SpringValue>， 得到每个配置key所被用在的bean-field的集合，那么下一个只需要将key对应的value设置到bean-field即可；即遍历 key-Collection<SpringValue>： 对每个SpringValue: 执行 updateSpringValue(val)--->过程分2步：先获取到属性对应的值value=@resolvePropertyValue(springValue) 后 将值设置到Field:@springValue.update(value)。。。注意：key对应的值不在ConfigChangeEvent里，而还是在 enviroment 的属性源里，所以还是通过resolvePropertyValue(springValue)来获取的-->内部就是通过 统一的 placeholderHelper.resolvePropertyValue()
+					>实现也分两步：	
+						>先 @beanFactory.resolveEmbeddedValue(SpringValue.placeholder) 得到一个值。
+							>核心实现：PropertyPlaceholderHelper.replacePlaceholders()-->parseStringValue()就是常见的。
+								>进一步交给：PropertyPlaceholderConfigurerResolver.resolvePlaceholder()->PropertyPlaceholderConfigurer.this.resolvePlaceholder(placeholderName, props, systemPropertiesMode) 核心依赖数据就是它的Properties:props属性。此属性来源：PropertyResourceConfigurer.postProcessBeanFactory()-->PropertyPlaceholderConfigurer.processProperties()
+						>后通过评估表达式解析器处理：@evaluateBeanDefinitionString(val)-->即：beanFactory.getBeanExpressionResolver().evaluate(value)得到；
+ 
+>spring-boot 配置文件 加载过程：ConfigFileApplicationListener。尝试 ./config/bootstrap.xml|yml|yaml|properties, 再到 ./config/application.xml|yml|yaml|properties
+	>
+>curator 是zk客户端：curator 的 分层模型、域模型  
+	>直接使用zk处：org.apache.curator.utils.DefaultZookeeperFactory:ZookeeperFactory.newZooKeeper()-->内部就 new ZooKeeper()初始化了客户端zk。
+		>来源：new CuratorFrameworkImpl() 实例化时，从入参builder里获取了ZookeeperFactory,然后层层注入：CuratorZookeeperClient-->ConnectionState-->HandleHolder, 而在 new HandleHolder.Helper()里，直接用zk工厂实例化得到zk 放到 zooKeeperHandle 属性。
+			>来源：CuratorFrameworkFactory.Builder.build():new CuratorFrameworkImpl(this)--:注入的factory就是写死的：new DefaultZookeeperFactory()。其他写死的：DefaultACLProvider
+				>来源：则是用户自己配置获取CuratorFramework。
+>spring-cloud ： 
+	>@SpringCloudApplication 注解： 被注解：@SpringBootApplication/@EnableDiscoveryClient/@EnableCircuitBreaker 服务发现客户端和电路熔断器 注解 是独有的。
+		>对于 @EnableDiscoveryClient 注解的@Import引入的类：EnableDiscoveryClientImportSelector---引入AutoServiceRegistrationConfiguration, 配置引入ConfigurationPropertiesBindingPostProcessorRegistrar/ConfigurationPropertiesBeanRegistrar 两个仓库，前一个仓库注入的是@EnableConfigurationProperties注解属性里配置的类，后一个仓库 引入两个bean: ConfigurationBeanFactoryMetaData:BeanFactoryPostProcessor/ConfigurationPropertiesBindingPostProcessor:BeanPostProcessor --属性绑定有关(@ConfigurationProperties上配置的属性)。。另外则是 父类 用 SpringFactoriesLoader 加载 spring.factories 里的 EnableDiscoveryClient 配置项的类名：就是 spring-cloud-netflix-eureka-client.jar里的 EurekaDiscoveryClientConfiguration---引入了bean: EurekaHealthCheckHandler/EurekaClientConfigurationRefresher。
+		>对于 @EnableCircuitBreaker 注解的@Import 引入的类：EnableCircuitBreakerImportSelector---直接用父类，父类用 SpringFactoriesLoader 加载 spring.factories 里的 EnableCircuitBreaker 配置项的 所有实现类名--spring-cloud-netflix-core里就是 HystrixCircuitBreakerConfiguration --- 里面有一个切面：HystrixCommandAspect(将对有@HystrixCommand/@HystrixCollapser注解的方法进行进行around拦截)。
+	>zuul: 网关：@EnableZuulProxy 被注解：@EnableDiscoveryClient/@EnableCircuitBreaker
+		>ZuulFilter的子类的管理：
+		>核心类：FilterRegistry内部 String--ZuulFilter 的map: filters . 这个仓库对象转入到 new FiltersEndpoint()里作为一个bean。
+			>ZuulFilterInitializer: 将自己的filers放到 自己的仓库属性 FilterRegistry 里。
+		>一次请求的处理过程：DispatcherServlet-->SimpleControllerHandlerAdapter-->ZuulController(为disptacherServlet匹配到的hanlder)-->父类：-->内部属性servletInstance=ZuulServlet-->路由到zuulRunner:ZuulRunner--->直接到 FilterProcessor-->找到匹配的过滤器ZuulFilter:RibbonRoutingFilter.run()(得到结果):SendResponseFilter-->执行runFilter():内部实现：写入tomcat:CoyoteOutputStream
+		>核心领域： ZuulFilter/ZuulServlet/RibbonRoutingFilter/LoadBalancerContext/AbstractLoadBalancerAwareClient/RibbonLoadBalancingHttpClient/HystrixCommand
+			>
+	>各种 Conditional的 定义 和 使用： 
+		>@Conditional(OnClassCondition.class)：@Conditional(DefaultDispatcherServletCondition.class)： 被注解的类 被注册之前需要满足的value指定的条件Condition：条件类都是继承SpringBootCondition/FilteringSpringBootCondition的,实现getMatchOutcome(context)方法，方法内部实现一般是从入参获取bf,然后获取bdMap里的相关信息，进行使用判断，然后返回一个ConditionOutcome对象--表明是否匹配及其说明信息。条件被使用：ConfigurationClassParser.processImports().processConfigurationClass()解析配置类的时候-->首先就是指挥/调用 ConditionEvaluator.shouldSkip()内Condition:condition.matches()内SpringBootCondition:getMatchOutcome()，匹配到了则skip不会解析这个配置类直接return。也在 processImports()内selector.getExclusionFilter()时：判断是否需要过滤： AutoConfigurationImportSelector.shouldExclude().filter()-->AutoConfigurationImportFilter.match()-->FilteringSpringBootCondition.match()
+			>配置例子：DispatcherServletRegistrationConfiguration上配置了，条件 的实现方法进行的判断 就是如果 bf里有 "dispatcherServlet" 名称的bean但是类型不是	DispatcherServlet,那么就不匹配。
+			>配置例子2：@ConditionalOnProperty(prefix = "spring.mvc.hiddenmethod.filter", name = "enabled", matchIfMissing = false)
+		>@ConditionalOnProperty(value = "hystrix.stream.endpoint.enabled", matchIfMissing = true): 被注解类 如果 在Environment 未发现value指定的属性，则使用matchIfMissing默认值。这个注解被@Conditional(OnPropertyCondition.class)注解---即是用这个条件OnPropertyCondition来实现它的功能的。注意Environment:PropertyResolver ， 所以从ConditionContext 获取到Environment后，可以用来查属性值：resolver.containsProperty(key)|resolver.getProperty(key)--->多态量的实现类：PropertySourcesPropertyResolver, 内部.propertySources:PropertySources属性来实际存储，如果取得的key的value有占位符，则调PropertyPlaceholderHelper 来解析和替换；最后有必要会调 conversionService来convert。
+		>@ConditionalOnWebApplication(type = Type.SERVLET) ：要求当前应用是servlet应用。
+			>配置例子：DispatcherServletAutoConfiguration上配置了。
+		>@ConditionalOnClass({ Endpoint.class, HystrixMetricsStreamServlet.class }) ：classpath上能发现指定的类-->因为内部实现是 Class.forName()反射来判断指定类是否可以被加载。自动配置类里使用。
+		>@ConditionalOnMissingClass("org.springframework.boot.actuate.health.Health")： 要求bf里还没有指定类bean--实现关键：metadata.getReturnTypeName()查看被注解bean类型。自动配置类里使用。被@Conditional(OnBeanCondition.class)注解，即用OnBeanCondition条件实现的。@ConditionalOnMissingBean 无参数则直接表示匹配。
+		>@ConditionalOnSingleCandidate(DataSource.class): bf里有 且是单例。
+		>@ConditionalOnBean(MultipartResolver.class): 要求bf里已经有了指定类bean。
+		>@ConditionalOnAvailableEndpoint
+		>@AutoConfigureAfter(ServletWebServerFactoryAutoConfiguration.class) 
+			>即在bd name的数组顺序上ServletWebServerFactoryAutoConfiguration就会先于DispatcherServletAutoConfiguration 
+			>例子2：TransactionAutoConfiguration 上@AutoConfigureAfter(DataSourceTransactionManagerAutoConfiguration.class)
+		>@ConfigurationProperties(prefix = "spring.mvc"): 被注解类的属性和外部.properties里的同名key绑定 并且这个被注解类被bean化到bf(证据)--->条件是这个被注解类需要被用在@EnableConfigurationProperties(WebMvcProperties.class)注解上。
+			>例子：数据库配置的封装：DataSourceAutoConfiguration 自动配置类上 @EnableConfigurationProperties(DataSourceProperties.class) 注解，而 DataSourceProperties上 @ConfigurationProperties(prefix = "spring.datasource")
+			>例子2： mybatis-plus: MybatisPlusAutoConfiguration 上 @EnableConfigurationProperties(MybatisPlusProperties.class)，MybatisPlusProperties 上 @ConfigurationProperties(prefix = Constants.MYBATIS_PLUS)
+			>例子3：spring-boot-autoconfigure.jar 里TransactionAutoConfiguration 上@EnableConfigurationProperties(TransactionProperties.class) TransactionProperties 上 @EnableConfigurationProperties(TransactionProperties.class)
+			>例子4：spring-boot-autoconfigure.jar 里 RedisAutoConfiguration 上@EnableConfigurationProperties(RedisProperties.class) RedisProperties上 @ConfigurationProperties(prefix = "spring.redis")
+			>例子5： spring-cloud-commons.jar 里 LoadBalancerAutoConfiguration 上@EnableConfigurationProperties(LoadBalancerRetryProperties.class) LoadBalancerRetryProperties 上 @ConfigurationProperties("spring.cloud.loadbalancer.retry")
+		>@EnableConfigurationProperties(WebMvcProperties.class): 将value类绑定其@ConfigurationProperties()指定的属性值 而 构造bd后 注册到 bdf.。ConfigurationPropertiesBeanRegistrar实现这个绑定和注册。
+		>@Order: 
+		>@AutoConfigureOrder(Ordered.HIGHEST_PRECEDENCE + 10): 自动配置类的bd定义顺序。
+		>@AliasFor(annotation = ConditionalOnMissingBean.class): 注解方法上的注解。
+		>@Primary: 优先绑定
+		>@ConditionalOnEnabledResourceChain : 也是基于@Conditional 实现。
+	>分布式锁：spring-cloud-alibaba	
+	>分布式事务：XADataSourceAutoConfiguration
+>baomidou：
+	>从spring到mybatis到baomidou的过程：bd构造注入bdf阶段，bean构造并注入bf阶段	
+		>MapperFactoryBean: 是一个工厂bean(在属性inject时就对每个Mapper新增了一个来获取getObject()实例)，所以看@getObject()-->getSqlSession().getMapper(this.mapperInterface)-->最终就是从MybatisMapperRegistry.getMapper()-->MapperProxyFactory.newInstance(sqlSession)-->生成Mapper的动态代理,h回调handler=MybatisMapperProxy。 mybatis-spring.jar 继承的 SqlSessionDaoSupport:mybatis-spring.jar有 sqlSessionTemplate:SqlSessionTemplate属性。而继承的 DaoSupport:spring-tx.jar
+			>SqlSessionTemplate: 实现在 mybatis-spring.jar 接口 在 SqlSession: mybatis.jar
+				>SqlSessionFactory:mybatis-spring.jar 实现在 DefaultSqlSessionFactory:mybatis.jar。。bean化是在自动配置类 MybatisPlusAutoConfiguration 里。用MybatisSqlSessionFactoryBean.-->调用new MybatisSqlSessionFactoryBuilder().build(targetConfiguration)--->父类new DefaultSqlSessionFactory(config)
+					>Configuration: mybatis.jar
+				>SqlSession:DefaultSqlSession  mybatis.jar
+					>Executor:mybatis.jar
+						>Transaction:mybatis.jar
+							>Connection: rt.jar
+		>MybatisMapperProxy: 回调类。运行阶段的接手类。它直接将接口、参数等封装到一个MybatisMapperMethod对象(构造时先根据接口名+方法名 从Configuration里取出 对应的 MappedStatement： 封装到 一个 SqlCommand对象里)，执行它.execute(SqlSession sqlSession, Object[] args)开始具体路由处理。---->根据SqlCommand表明的sql类型，分类转发，select类型下还会进一步区分。->
+			>MybatisMapperMethod：继续驱动查询进度，核心即指挥调sqlSession.selectList(command.getName(), param)	, 多态量的接口和实现也是mybatis-xxx.jar里的。
+				>SqlSession: 入参 多态量：SqlSessionTemplate，继续驱动进度。核心指挥调用 内部的动态代理类sqlSessionProxy(接口SqlSession,回调SqlSessionInterceptor).selectList(statement, parameter)，回调Handler也是mybatis里的。
+					>SqlSessionInterceptor:内部SqlSession接口的动态代理Hanlder。继续驱动进度。调用集合包括：1.调用SqlSessionUtils来间接从事务管理器获取真正的SqlSession ; 2. 如果1没有获取到则从工厂SqlSessionFactory.openSession()获取sql会话：DefaultSqlSession。
+						>SqlSessionUtils: 直接调用 TransactionSynchronizationManager.getResource(sessionFactory) 获取SqlSessionHolder,从而进一步获取SqlSession, 事务管理器来自spring-tx.jar。。如果没有则指挥 入参 SqlSessionFactory.openSession()获取 SqlSession, 而这个sessionFactory正是SqlSessionTemplate实例传过来的，而SqlSessionTemplate中的是自动配置实例化时 注入的 即这个实例为：DefaultSqlSessionFactory。最后得到 SqlSession 后尝试绑定到事务管理器TransactionSynchronizationManager.bindResource()条件是当前线程中的事务同步管理器是活跃的。
+							>TransactionSynchronizationManager： 内部ThreadLocal:resources 是sessionholder存储池。但是可能为null。这个数据的注入bindResource()时机：事务管理器 在事务启动异常时 重新开启事务时 AbstractPlatformTransactionManager.getTransaction(TransactionDefinition)，或者 DataSourceUtils.doGetConnection(DataSource)获取连接时：--->而这个DataSourceUtils的调用者：JdbcTemplate.execute()/Transaction:SpringManagedTransaction.openConnection()/DefaultSqlSession.getConnection()/DatabasePopulatorUtils.execute()/TransactionAwareInvocationHandler:InvocationHandler.invoke(), 最后一个是动态代理的Handler，这个动态代理生成类 就是TransactionAwareDataSourceProxy:DelegatingDataSource:DataSource,代理的接口ConnectionProxy
+							>DefaultSqlSessionFactory:  内部 核心指挥：1.从Configuration里取出Enviroment里的TransactionFactory-->这个来源来自MybatisSqlSessionFactoryBean.buildSqlSessionFactory()的实现代码里：实际正是如此--因为sqlSessionFactory的实例化方式就是这个；而这个实现里是明确注入Enviroment的transactionFactory=new SpringManagedTransactionFactory() 这个(顺便：MybatisSqlSessionFactoryBean里的dataSource也是直接自动配置类注入的)。 2. 调用这个事务工厂创建一个新事务：transactionFactory.newTransaction()-->即new SpringManagedTransaction(dataSource)这个事务。3.用configuration创建执行器：configuration.newExecutor()--而执行器类型则是配置mybatis-plus.executorType的值simple,所以新建了new MybatisSimpleExecutor:AbstractBaseExecutor:BaseExecutor:Executor, 可缓存而进一步封装到new MybatisCachingExecutor(executor)里，进一步封装拦截器进来：(拦截器为MybatisPlusAutoConfiguration的构造方法入参ObjectProvider<Interceptor[]> 注入的)(ObjectProvider:BeanObjectProvider:DependencyObjectProvider在DefaultListableBeanFactory里，调.getIfAvailable()就会进行实际按泛型类型从bf里获取)，即调interceptorChain.pluginAll(executor)将拦截器链内部List<Interceptor>逐个：interceptor.plugin(target) 层层包裹。常见拦截器：MybatisPlusInterceptor，包装过程：显然会是层层动态代理：Plugin.wrap(target, interceptor)-->内部取拦截器的@Intercepts.value的值形成类-方法set, 后开始构造动态代理：Proxy.newProxyInstance() 拦截器上注解的类就是要实现的接口，回调类是new Plugin(target, interceptor, signatureMap):InvocationHandler, 这个回调的invoke实现就是：取拦截器上注解的方法是否包括当前方法-->是则调当前的拦截器进行拦截interceptor.intercept(),否则直接方法反射。4.执行器封装到new DefaultSqlSession()返回。
+						>Method: 即调用者接口SqlSession.selectList()方法。接口方法 + 现在获取到的实例，从而可以继续驱动前进： method.invoke(sqlSession, args)-->自然就是调用 DefaultSqlSession.selectList()
+							>DefaultSqlSession: 继续驱动前进。调用配置取到匹配的MappedStatement,后用来 调用注入的Executor:MybatisCachingExecutor.query(statement,params),结果直接返回。因为Excutor是 Conficuration创建的，所以MybatisCachingExecutor 也是mybatis-plus里的，从而 重新回到了Mybatis-plus
+								>MybatisCachingExecutor: 包裹了 MybatisSimpleExecutor,继续驱动前进。核心指挥调用： 1.用ms.getBoundSql()取到绑定的sql:BoundSql, 2.获取缓存Key：CacheKey, 都是mybatis.jar的多态量。3.使用绑定的sql开启查询
+									>MappedStatement：获取绑定的sql: 回到了mybatis.jar。核心指挥 调用 1.ms内部属性sqlSource:SqlSource:DynamicSqlSource.getBoundSql(param) 获取绑定的Sql, 实际为RawSqlSource.getBoundSql(param)-->内部StaticSqlSource:sqlSource.getBoundSql(param)内部则直接new BoundSql()设置而返回。
+										>DynamicSqlSource: 它的创建：Configuration.getDefaultScriptingLanguageInstance()得到LanguageDriver:XMLLanguageDriver后调它的.createSqlSource(script)创建--核心就是这个脚本script；具体创建过程：将script封装到new TextSqlNode(script)再new DynamicSqlSource(configuration, textSqlNode)而生成。而LanguageDriver所在	SqlRunnerInjector--->在MybatisSqlSessionFactoryBuilder中创建并调用它inject()(都在mybatis.jar)--->在SqlSessionFactoryBean中 调用构建器构建，但实际上调用者则是MybatisPlusAutoConfiguration 自动配置里的@Bean sqlSessionFactory()内使用MybatisSqlSessionFactoryBean.getObject()来获取到:new DefaultSqlSessionFactory(config);同理 sqlSessionTemplate(SqlSessionFactory)也是这么构建的new SqlSessionTemplate()。。---->这个bean在初始化方法内调用执行，由 MapperScannerRegistrar 引入；且在mybatais-plus-boot-starter.jar/META-INF/spring-autoconfigure-metadata.properties里配置了--这个配置文件是用来控制实例化先后顺序的：由AutoConfigurationMetadataLoader加载, 在AutoConfigurationSorter.AutoConfigurationClass 中会使用--如查找实例化前需要实例化的类名:封装到new AutoConfigurationClass()里-->并被AutoConfigurationSorter.getInPriorityOrder().sortByAnnotation()(内部实现就是getClassesRequestedAfter(className)得到应该在className之前的classNames，因为采用的是LinkedHashSet所以迭代器访问转为数组-元素是链表顺序--所以得到的这些自动配置类名是严格先后顺序的,129个,第一个MessageSourceAutoConfiguration/2PropertyPlaceholderAutoConfiguration/4ServletWebServerFactoryAutoConfiguration/5DispatcherServletAutoConfiguration)调用获取到--->后者被AutoConfigurationImportSelector.sortAutoConfigurations().selectImports()获取到返回-->从而在ConfigurationClassParser.processImports()时被加载。
+									>AbstractBaseExecutor: 直接创建缓存键；new CacheKey();
+									>查询转给委托属性MybatisSimpleExecutor:AbstractBaseExecutor 来完成,转到执行器 BaseExecutor.query()走查询流程，实际doQuery()则走MybatisSimpleExecutor的实现：阶段目标1：使用configuration构造语句处理器：StatementHandler: 直接新建new RoutingStatementHandler()内部委托为具体和sql相关类型: 如 PreparedStatementHandler 类型，内部构建自己的属性：参数handler+结果handler： 如 ParameterHandler:MybatisParameterHandler,ResultHandler:DefaultResultSetHandler 并经过插件过滤器链interceptorChain的层层包装；。2.准备语句prepareStatement()-->实现为：StatementHandler.prepare()入参有BaseExecutor.SpringManagedTransaction:transaction.getConnection()获取到的Connection--->这个连接实际上被动态代理了：被ConnectionLogger这个Handler包裹。然后使用handler参数化设置handler.parameterize(stmt)-->MybatisParameterHandler:parameterHandler.setParameters()对每个参数ParameterMapping设置：JdbcType/TypeHandler 找到对应的数据类型handler来设置：handler.setParameter()如IntegerTypeHandler-->实现非常经典：转调多态量java.sql.PreparedStatement:ps.setInt(i, parameter)从而交接给rt.jar接口实现类:PreparedStatementLogger作为Handler的动态代理(代理了的PreparedStatement接口的实例是Connection的实例获取的自然是驱动的实例,自然是驱动的com.mysql.jdbc.PreparedStatement:mysql-connector-java.jar)(它的ResultSet结果集方法的反射调用后的ResultSet也会被动态代理--Handler=ResultSetLogger)。 3.利用1得到的StatementHandler实际查询:handler.query(stmt, resultHandler) -->转发给委托属性 PreparedStatementHandler.query()，实际转手给java.sql.PreparedStatement来执行：PreparedStatement:ps.execute() 多态量的实现为Handler=PreparedStatementLogger的动态代理，代理的java.sql.PreparedStatement的实现类：com.mysql.jdbc.JDBC42PreparedStatement 或者有间接的com.zaxxer.hikari.pool.ProxyPreparedStatement(内部委托给JDBC42PreparedStatement)，因此回调反射调就执行了ProxyPreparedStatement.execute(),进一步调委托com.mysql.jdbc.PreparedStatement.execute() 就转手给了驱动；4.3执行后则开始用结果集Handler获取结果：DefaultResultSetHandler:resultSetHandler.handleResultSets(ps)--->内部核心：转调java.sql.Statement:stmt.getResultSet()来获取结果，多态量的实现类即PreparedStatementLogger，结果集封装到ResultSetWrapper对象后，DefaultResultSetHandler.getDiscriminatorValue()最终通过IntegerTypeHandler.getNullableResult(ResultSet rs, String columnName)-->rs.getInt(columnName)获取结果
+			>数据源问题: DataSourceAutoConfiguration.PooledDataSourceAvailableCondition 中显式强行引用DataSourceBuilder, 其 build()方法可以创建数据源：依次尝试反射加载实例化和绑定：com.zaxxer.hikari.HikariDataSource/org.apache.tomcat.jdbc.pool.DataSource/org.apache.commons.dbcp2.BasicDataSource, 第一个会成功：因为@Configuration配置类PooledDataSourceConfiguration @Import了 DataSourceConfiguration.Hikari， 而此静态类@Configuration注解且有一个@Bean方法@dataSource(DataSourceProperties properties) 正是利用数据库配置DataSourceProperties-->封装了"spring.datasource"开头的.username/password/url/driverClassName  来创建；当Hikari 通过构造方法方式实例化后，当做配置类解析其内部@Bean就会创建这个数据源, 也是采用构造方法实例化HikariDataSource，。
+>mybatis:
+	>从spring到mybatis的过程：
+		>核心领域：领域层次(引用关系)(属性引用、入参引用、局部变量引用)
+			>dao接口类的指定类MapperFactoryBean的实例：MapperFactoryBean.mapperInterface=com.glodon.gtcp.gtc.dao.GtcCcpResolveTaskMapper 类的结构：MapperFactoryBean:SqlSessionDaoSupport:DaoSupport:InitializingBean/FactoryBean 
+			>Configuration:MybatisConfiguration：全配置
+				>MapperRegistry:MybatisMapperRegistry： MapperProxyFactory 仓库。同时用 MapperAnnotationBuilder 来解析 dao的xml。
+					>MapperProxyFactory/MybatisMapperProxyFactory: 每个实例包含mapperInterface类，它的方法创建的Mapper接口的实例：Proxy.newProxyInstance()为动态代理，反射回调接口为 MapperProxy
+						>MapperProxy/MybatisMapperProxy: 每个dao就有一个
+							>SqlSession: 
+					>MapperAnnotationBuilder:MybatisMapperAnnotationBuilder: @addMapper(Class<T> type) 解析dao 的xml	
+						>loadXmlResource()：加载xml为流(同包同dao名xml文件)
+							>XMLMapperBuilder: 
+								>具体解析xml流.获取<mapper>的namespace属性后，具体一个个<mapper>节点下的各个节点<>的解析。
+									>如 select|insert|update|delete: 每个节点用 XMLStatementBuilder.parseStatementNode() 解析，后用 MapperBuilderAssistant 解析 放到 MappedStatement.Builder 建造为 MappedStatement 对象放到 Configuration.mappedStatements:map, key=<>namespace.id 即名称空间+节点id
+										>XMLStatementBuilder:  解析节点用：@parseStatementNode()-->内部先判断sql类型，后从配置里取LanguageDriver调.createSqlSource()-->内部用XMLScriptBuilder.parseScriptNode()-->内部根据Xnode解析生成List<SqlNode>而 封装到 MixedSqlNode:rootSqlNode,进一步封装到new DynamicSqlSource(configuration, rootSqlNode)；在动态解析sql时候就用这个SqlNode结构来用参数替换 就得到具体的sql:rootSqlNode.apply(DynamicContext:context)上下文就是configuration+parameter
+											>SqlSource: DynamicSqlSource:
+												>MixedSqlNode: 解析构成实际sql: apply(context)
+													>TextSqlNode: 
+														>GenericTokenParser: .parse(text)	解析"${xxx}"
+															>BindingTokenParser:TokenHandler: @handleToken() 从绑定的参数里 取出 来使用： 如取 "_parameter"对应的参数值,后 ognl表达式处理：OgnlCache.getValue(content)即替换"ew.sqlSegment" 为 合法的sql带占位符的字符串" (ccp_task_id = #{ew.paramNameValuePairs.MPGENVAL1})" 
+											>MapperBuilderAssistant: 
+										>MapperBuilderAssistant: 
+									>如 /mapper/resultMap 如 /mapper/parameterMap 
+									>如 cache-ref: 解析放到 Configuration.cacheRefMap   
+									>如 cache: MapperBuilderAssistant 建造一个 Cache  放到 Configuration.caches:map
+								>用namespace的值当做类名反射加载 来当做mapper:	
+						>parseCache(): dao类上缓存注解的处理：CacheNamespace如果有 也会 用MapperBuilderAssistant  建造一个 Cache 加到 Configuration.caches:map
+						>dao的每个方法：调 @parseStatement(method)解析加入 configuration.mappedStatements；因为是先加入xml中的，所以如果dao里有重复的则不会加了。
+						>dao类上缓存空间引用注解的处理：CacheNamespaceRef 。目的，引用某个 Cache	
+						>注入mybatis-plus自己的基本CURD: 调用 GlobalConfigUtils.getSqlInjector(configuration).inspectInject(assistant, type) 实现---->核心为 因为dao继承了 BaseMapper 所以 直接获取它的这些基本curd方法，封装为AbstractMethod，逐个注入；m.inject()--->最终按m类型各自独立 调 builderAssistant.addMappedStatement()加入到Configuration.mappedStatements中。
+							>Insert:AbstractMethod 加入的过程： 阶段目标: 1.拼装脚本sql字符串:insert+表名+列+值。2.用1的sql创建数据源languageDriver.createSqlSource(configuration, sql, modelClass)-->核心为用XPathParser.evalNode("/script") 来获得脚本对应的XNode； 过程为将脚本转 Document-->XPath:xpath.evaluate(expression, root, returnType:QName) 从而交接 转到rt.jar, QName也是rt.jar提供的领域； 得到Node ,封装到新的XNode对象-->mybatis使用来封装到XMLScriptBuilder对象来解析.parseScriptNode() 结束SqlSource的创建。3.调MapperBuilderAssistant:builderAssistant.addMappedStatement()将insert这个方法段 加入到Configuration.mappedStatements
+								>XMLScriptBuilder: 解析Xnode节点： 阶段目标：1.解析Xnode为 MixedSqlNode: @parseDynamicTags(XNode)-->基本处理思想为：如果子节点是CDATA/TEXT类型则直接取出文本封装到new TextSqlNode()对象，如果不是动态sql则封装到StaticTextSqlNode；如果是ELEMENT类型则要取它name对应的Hanlder来专门处理：name=trim/where/set/foreach/if/choose/when/otherwise/bind等；handler则已经配置好了：直接找到NodeHandler-->如foreach对应的ForEachHandler， .handleNode(child),handle的过程就是递归获取节点属性+子节点MixedSqlNode, 最后一起封装到new ForEachSqlNode()对象里，然后顺序加到List<SqlNode> 集合里，解析完成自然将这个集合封装到new MixedSqlNode()对象里返回---：这个就是new DynamicSqlSource(configuration, rootSqlNode)的第二个参数。2.将1中DynamicSqlSource对象返回，从而结束 parseScriptNode()调用。
+									>parseDynamicTags()里： 遍历子节点时会对每个子节点重新封装：node.newXNode(children.item(i))这个转移数据的过程new XNode()-->内部会解析Node里的数据，CDATA/TEXT时直接取内容，后用PropertyParser.parse(data, variables)来解析替换占位符"${}"：GenericTokenParser+VariableTokenHandler 组合的方式解析parser.parse(string)
+						
+			>启用@MapperScan()开始，引入注册仓库 MapperScannerRegistrar, 注册 一个 新增的bd: MapperScannerConfigurer	
+>spring-tx: 小原理 
+	>@EnableTransactionManagement: 作用：@Import了 TransactionManagementConfigurationSelector 选择器--->selectImports()了两个类：AutoProxyRegistrar/ProxyTransactionManagementConfiguration--->后者是一个配置类，它引入了@Bean类：1. AnnotationTransactionAttributeSource(内部注入事务注解解析类SpringTransactionAnnotationParser实例-->效果：解析org.springframework.transaction.annotation.Transactional注解里的内容：propagation/isolation/rollbackFor后封装到RuleBasedTransactionAttribute:TransactionAttribute()对象里返回:被使用时机AnnotationTransactionAttributeSource.determineTransactionAttribute()--->使用TransactionAttribute的实际：TransactionAspectSupport.invokeWithinTransaction()--->进一步则是TransactionInterceptor.invoke(MethodInvocation invocation)使用：方法即MethodInterceptor的，而MethodInterceptor已经是aop里的多态接口,所以是被spring-aop.jar框架调用: org.springframework.aop.framework.ReflectiveMethodInvocation.proceed():这个类实现了ProxyMethodInvocation:MethodInvocation:Invocation:Joinpoint， 而这个ReflectiveMethodInvocation被:CglibMethodInvocation/JdkDynamicAopProxy.invoke()强行new来使用, 而这两个类实现了java.lang.reflect.InvocationHandler接口--所以是回调类, 且 JdkDynamicAopProxy被DefaultAopProxyFactory 强行new来使用-->后者进一步被ProxyCreatorSupport使用-->ProxyFactoryBean.getObject().getSingletonInstance()--->在AbstractInterceptorDrivenBeanDefinitionDecorator:BeanDefinitionDecorator里有使用,用来定义RootBeanDefinition.beanClass; 另外ProxyFactory也引用DefaultAopProxyFactory, 且ProxyFactory.getProxy(ClassLoader)被十分广泛的使用--如AbstractAutoProxyCreator:SmartInstantiationAwareBeanPostProcessor:BeanPostProcessor,这个抽象类的子类：AbstractAdvisorAutoProxyCreator:AnnotationAwareAspectJAutoProxyCreator/DefaultAdvisorAutoProxyCreator/BeanNameAutoProxyCreator/InfrastructureAdvisorAutoProxyCreator---最后这个被AopConfigUtils引用-->则在AopAutoConfiguration/AutoProxyRegistrar中-->仓库显然在@EnableAspectJAutoProxy注解引入)/2. TransactionInterceptor 拦截器bean.3.Advisor:BeanFactoryTransactionAttributeSourceAdvisor
+	>执行时机：先是动态代理类走方法时，调回调invoke()如JdkDynamicAopProxy.invoke(), 内部专门转交给new ReflectiveMethodInvocation().proceed()处理(此时已然在spring-aop里)，此类封装了拦截器和动态拦截Advice(来源：Advisor-->Advice:MethodInterceptor:Interceptor:Advice, MethodBeforeAdviceInterceptor(Advice):MethodInterceptor:Advice 包装了Advice), proceed()时候就先走Advice.intercepter.invoke()或者自己Advice.invoke()	；而TransactionInterceptor:MethodInterceptor 但是不一定会获取到 事务拦截器。
+>jedis: redis客户端：领域抽象和业务封装 的过程。业务规则的封装；逻辑的封装；业务逻辑的封装；片段的业务逻辑的封装；功能的封装；片段功能的封装；
+	>领域抽象和业务封装： 从连接redis服务端开始的封装，模拟redis发送命令的客户端。
+		>最底层开始：Socket 方式和服务端建立连接：封装在Connection里：
+			>Connection: 内部封装Socket 实例和参数设置(重用地址、keepalive、无缓冲delay、无拥塞控制的徘徊时间、连接超时时间)，如果ssl则调rt.jar里实现--要么用DefaultSSLSocketFactory要么用"ssl.SocketFactory.provider"配置的工厂来实例化得到SSLSocketFactory工厂，进一步创建socket;socket的输入输出流 封装到RedisOutputStream/RedisInputStream, 对外提供connect()方法，依赖 Protocol后 整体对外提供 命令发送统一接口方法 sendCommand()方法(具体命令作为入参)
+			>Protocol： 命令发送规范的封装：*bytelength\r\n$commandLength\r\ncommand\r\n$argLength\r\narg\r\n   来将命令输入到socket.outputStream, 从而封装出 sendCommand()方法 对外提供。2.自然也对外封装了read()方法，实现即 从 socket输入流里读取：第一个byte:是类型，以便分类处理、甚至递归处理。
+				>BinaryClient: 继承了Connection， 是发送命令功能的进一步封装，将命令具体化到方法而不是统一的方法(用入参区分不同命令) 从而更加精确和限制和人性；即 对外提供如 lpop(key)方法、lset(key,index,value)方法等。2.因为连接 可能涉及验证，要发送 auth 命令，所以覆盖父类connect()方法；在auth 之后 可能要 选择库,要发送select 命令，因此都是connect()被重写的理由。
+					>Client： 继承 BinaryClient, 来提供字符串化的命令接口，比BinaryClient更加人性化；同时引用了SafeEncoder，编解码为byte[]来给BinaryClient。
+						>BinaryJedis: 属性引用Client方式 进一步封装：且整合 事务Transaction 管道Pipeline 进来，调度指挥三个 继续对外提供 方法式命令服务：lpop()/get()等常规方法，且 独立封装出 新方法(联合三者的方法,或者联合一者的多个方法) resetState()(相当于一个门面方法,client/transaction/pipeline都要重置状态)/watch(key)(先调client发送命令,后调client获取状态码结果) (因为读写都是异步的,所以写之后要调读 而写方法本身不返回结果)，或者是封装出提供将字符串结果封装为对象的服务：getBinaryTupledSet()。。最核心的：封装往返，封装对象式入参和返回。
+							>Jedis: 继承BinaryJedis， 弥补BinaryClient没有封装的部分Client的功能，尤其运维相关 如：sentinel failover masterName 这样的功能(主服务器失效时,不问其他Sentinel强制开启一次故障迁移)，从而对外封装提供了sentinelFailover()这样的方法服务；也封装一些来回。
+								>JedisFactory: 内部局部变量引用Jedis,封装它到工厂方法makeObject()里，且进一步封装到DefaultPooledObject里。
+								>JedisPool: 
+						>Pipeline: 利用Client封装了 多键操作, 即 大部分命令 的 批量操作：如hgetall 命令的批量操作。mset原子性，但pipeline不是原子性。原理：批量命令：multi 开头,xxxx多个命令，然后flush发送，然后n次读取对象(同命令数) 并进一步封装。
+						>Transaction: 利用Client封装了类似Pipeline
+			>SafeEncoder: 封装了编码方法：对byte[]封装为UTF-8的String
+			>BaseObject: 表示一个池里的元素，无特殊封装。
+				>BaseGenericObjectPool:	继承 BaseObject 基本对象，封装池化基本方法：设置剔除策略类 服务、启动剔除任务服务
+					>GenericObjectPool: 池化的封装
+>idea 插件开发：					
+>整理jar的架构：领域模型和架构。
+	>架构：
+		>实现类的多态量：自己获取(bf/spi/), 外部注入
+		>多态量的实现类：自己获取(bf/spi/), 外部注入
+		>提供了一个什么功能的框架/模板：固定了一个什么流程/步骤。方法实现是一个怎么样的多态量编程。多态量的某个方法调用返回是另一个多态量。最顶层的指挥(多态量)调用(多态量的方法)，每个多态量内部的指挥调用(下一层的指挥调用)。(jar/框架的每个实现类的方法实现都是这样的顶层指挥调用)。调用框架、继承框架，被框架调用、被框架继承使用。(第三方jar调用 开发者写的项目代码，这种jar就是框架jar；用户写的就是被框架Jar当做装饰/工具/条件/命令/参数，而框架自己已经完整的在做一件事情-自己控制整个流程(开启和结束)、自己主动去调用用户写的程序(当然用户程序要有规范/如注解/如继承，而框架提供的注解和接口 就是要求用户编写的程序应该具有的规范(注解类/实现接口))，用户写的程序只是介入/引导/建议-搭个顺风车/是货物/是被动的)。。程序启动，启动的是框架，而不是启动的用户写的程序、项目。
+			>开发者调 工具jar:
+			>框架jar 调 开发者代码/项目：对于任何一个框架，必须明确2点：它的功能/完整做的事情，它对介入者/开发者 要求的规范(介入哪个环节的代码/类要具备什么特征(实现某个接口/继承某个类/被某个注解注解))。。一个框架的功能是闭环了的。最好有第三点：框架的边界(哪里开始哪里结束,哪个环节开始接手哪个环节开始交接)/作用域/作用范围。
+				>Tomcat: web容器框架(实现服务端功能，接收前端调用请求-解析-查找并调用符合规范的介入者得到结果-返回处理结果给调用端)， 将javax 接口 当做 规范。查找时直接查找 实现了这个规范的类/或者在启动可以 启动框架 的 主函数 时 从主函数注入到框架的类(例如spring-boot的启动类启动时调用SpringApplication来帮助启动 Spring框架+Tomcat框架(此种方式启动框架,对主函数来说,框架就是个工具(尽管对用户项目代码来说Tomcat就是框架)) 时(先启动Spring框架后Tomcat框架) 就先进行了对Tomcat框架(实例)(结构/配置池)注入了各个环节 符合它规范的从而它会捎带调用的 类)，典型的 Tomcat框架的 StandardWrapperValve/StandardWrapper 依赖了规范:多态量(接口)Servlet:javax.servlet.Servlet, 而这个规范/多态量的实现类 就是 对注入的字符串servletClass:String反射加载实例化实现的---而这个servlet名称 就是 主程序调spring-boot在启动spring容器时的自动配置解析就得到了DispatcherServlet并存储到一个Class:servletClass:属性 而在启动tomcat框架时获取到这个Class属性即实际值为为DispatcherServlet 来注入的。从而后面的行为表现就是接受到请求后转Servlet时转到了Spring-webmvc的：org.springframework.web.servlet.DispatcherServlet。
+				>Spring: bean容器框架，可以bean化/实例化 各种地方出现的各种类：规范为 @Component..../@Autowired...等注解，(类上/方法上)
+					>介入实例化：要求的规范：1.对接口的实例化，需要设置bd.resolvedClass
+				>Spring-webmvc框架：url映射method框架，作为Tomcat的接手框架，在Tomcat调用之后 开始独立行为，即解析请求 再从符合规范的方法中找到匹配的方法，再反射调用 这个方法(并提供足够的需要的入参)，当然会环绕 反射 有拦截器链的调用。规范：类上@Controller...注解，内部方法@RequestMapping 注解，并且该类符合spring bean化/实例化规范(bean容器框架规范)。框架接手类: DispatcherServlet, 框架转手类：ServletInvocableHandlerMethod--它实现了spring-web.jar框架介入规范:继承 InvocableHandlerMethod 类。即转手给了spring-web.jar框架(接手类InvocableHandlerMethod,转手类:HandlerMethod反射调用注入的用户bean+method)
+				>Mybatis: ORM框架，负责接手用户的对象方法查询 转为 sql 查询，并将sql查询结果转换为对象实例；作用范围/作用域/边界：dao接口方法调用<-->sql查询， 具体执行查询 则转接给数据库连接池框架如Driud。规范：dao接口上@Mapper注解,dao接口包下同名xml文件(结构定义规范http://mybatis.org/dtd/mybatis-3-mapper.dtd),方法名匹配sql节点端id值。启用此框架 + 全局的配置要求：启动类注解@MapperScan(dao所在包路径)
+				>Mybatis Plus：作用域：。框架接手类：1.启动环节：实现了Mybatis 框架规范的 Configuration 接口的 com.baomidou.mybatisplus.core.MybatisConfiguration；交接于AbstractMethod(引用了mybatis.jar 的 MapperBuilderAssistant:BaseBuilder,调其来添加MappedStatement 到 MybatisConfiguration.mappedStatements(显然就添加了若干个自己生成的常见curd sql:DefaultSqlInjector类里指定的17个对象生成的sql))。 2.
+				>Spring-tx: 事务框架。规范：1.实例化dao环节: 专门类需要继承 DaoSupport 类(配置检查/针对关联)。启用本框架 + 要求的 全局配置：。框架接手类：1.获取SqlSession环节：mybatis-spring.jar的SqlSessionUtils里调用的TransactionSynchronizationManager；2. 。启用此框架 + 全局配置要求：1.配置类/启动类上被@EnableTransactionManagement 注解。
+				>Zuul:
+				>RxJava:RxJavaHooks/Observable/OnSubscribeLift
+				--说明：
+					>规范：bf是最大的规范；实现框架要求的接口后 并注解要spring bean化 从而被实例化放到bf里就可以了，其他框架会根据类型查出来使用。
+	>领域模型：	概念精简和共享，来描述一个事情。领域抽象和业务封装。(编程就是在指挥千军万马).边界与逻辑，环节和步骤，依赖和用途(数据依赖和数据用途)，任务和指派(拆分和分配)，反馈和利用(调用来取得依赖(有返回的方法调用,有=赋值的语句,无返回值则纯转接和准备))。
+		>独立无关自边界领域和封装继承有关边界内领域：
+>业务重点：
+	>要维护的数据组织：CURD
+		>数据的层次结构：数据的抽象关系。
+	>基于 数+动作/服务+参数 编程：面向函数编程。
+	>领域建模有关：
+		>开发问题：抽象不足，建立的表就过于具体，当要新增同级类似的对象时，这个表记录就无法存，含义就不会，就要新建表。
+>技术关系：
+	>dubbo/Feiclient->dubbo/Service-->baomidou-->mybatis-->sharding-jbdc-->druid-->jdbc-->mysql
+	>源代码：关键是抽象它实现的功能模型(抽象一般的语言概念来描述)。
+	>扩展性：就是把 1."改"类(增删改代码) 完成的事 转换为 "增" 类 来完成(从而不丢失记录)。2."静态数据" 改为 "动态函数获取"(lamda表达式/共享配置)。3."简单两步if-else" 改为 一个函数实现。4.约定规范-减少映射和判断(同一含义的属性在不同表中同一字段名称)。5.深度介入框架实现功能过程中的每个阶段/环节
+		
+>项目：
+	>能否看到所有的问题：发现的所有问题/可以做的事情。
+		>数据库：
+			>字段设计：价格是否表示为分-准确同时更小空间(避免位数更多而自动四舍五入)。
+		>业务：
+			>名称：controller-->api
+	>存在的所有的痛点：	
+			
