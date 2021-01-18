@@ -194,3 +194,39 @@
 			>Rename Method: 函数改名;新增方法;就方法Deprecated标记
 			>Add Parameters: 参数提供足够的信息,或者通过其他函数提供信息; 也是使用新函数.
 			>Remove Parameters: 声明新函数;
+			>Separate Query from Modifier: 修改既有返回值 又有副作用的函数;..既修改又读取的函数  分开为 两个函数;读和写.
+			>Parameterize Method: 令函数携带 参数. 让参数辅助描述,使得 描述更加广泛----而可以合并一些函数/合并一些相似片段代码.
+			>Replace Parameter with Explicit methods: 函数里 按 参数的取值 分多种类型 分别处理, 可以 将分类值放到方法上 ,从而分解处多个方法---每个方法专门做相关的事情.  从而消除if;---让调用者判断该调用哪个函数---选择过程交给编程者/调用者----即最初的时候最初的方法的入参---就是调用某个具体含义的工厂方法(而不是直接数 或者带入参的工厂方法).
+				>返回简单类型数值的方法 不如 返回接口/对象类型的方法: 方法的返回值 应该避免是 直接基本类型数值---因为这样 调用者 可能会直接利用数值进行判断---从而丧失了多态性---判断需要if;而用接口 则封装了隐藏了数值---从而具备多态性---无需if也可以做到;
+			>Preserve Whole Object: 返回单参数的多个方法 封装为 返回一个接口对象的一个方法;; 或者 将 多个单参数的方法  改为 一个接口参数的方法; 同时传递对象 意味着传递了方法---可以方便函数回调 计算一些中间值;
+			>Replace Parameter with Methods : 以函数取代参数... 参数值 如果不需要用传参的方式获取则无需这种方式. 例如 将入参计算过程 放到 入参所在的形参方法里;
+			>Introduce Parameter Object: 入参封装到对象---且各个属性是不可变的; 同时引入对象方法----利用参数和新入参进行相关的计算----非常常见---封装属性并封装属性计算方法,
+			>Remove Setting Method: 
+			>Hide Method: 没有被其他类使用的方法,private化
+			>Replace Constructor with Factory Method:  new 替换为有参工厂方法;如果参数只有一个 --且 入参分类几种,则 工厂提供参数方法名化的多个工厂方法. 避免显式的 创建对象;  Product Trader 模式
+			>Encapsulate Downcast : 封装向下转型;
+			>Replace Error code with Exception: 首先 方法返回直接数 已经不好---应该是对象, 而如果这个数是状态码,那么 甚至 不需要这个返回值---而改为  成功 则返回 失败则抛出异常;....好一点的则改错误码为成功失败 的布尔值?
+				>抛出异常的检查语句:可以用断言 替换;
+				>不能当作条件检查: 而只是特殊意外情况的处理.
+			>Replace Exception with Test: 	操作之前先判断/提前测试; 而不是把 异常 当作是判断处理的分支.
+				>抛出运行时异常: 如 catch分支里;
+		>处理概括关系: 继承关系 
+			>Pull up Field: 子类字段上移到超类,并声明为protected
+			>Pull up method:  避免行为重复,子类方法上移... 超类 中 建立抽象函数也可以;
+			>pull up Constructor Body: 
+			>push down Method: 
+			>Push down Field: 只有子类需要,则移动到 子类;
+			>Extract Subclass: 类中的某些行为只有部分实例用到; 往往该类里有 类型码 字段; 则以某个类型码值为特征而建立子类, 把超类的构造函数protected化; 最后甚至可以把超类提炼为 抽象类 
+			>Extract SuperClass:  建立 空超类, 将重复代码 提出 到 超类;
+			>Extract Interface: 责任分离 出来 专门定义在 接口 中:为  方法;...从而方法中 也可以按 责任调用 / 按责任 接口类变量 来调用方法;
+			>Collapse Hierarchy: 
+			>Form TemPlate Method: 塑造模板函数..  两个子类 如果都有同一个实现方法, 但是内容流程很长,但是不断提取方法之后,可能可以流程上统一,而环节实现方法上不同;从而这样的方法可以提出到抽象类,而环节方法则是抽象方法;
+			>Replace Inheritance with Delegation:  以委托取代继承; 子类继承了一堆 不需要的方法.....内部 新建  委托类字段---引用超类; 消除 继承 超类
+			>Replace Delegation with Inheritance:  如果需要委托类的所有函数,那么继承 这个委托类;
+		>大型重构:	
+			>Tease Apart Inheritance: 梳理并分解继承体系.  识别继承体系 所承担的各项职责;; 分离职责到不同的接口,从而 类 继承接口 或者 引用接口;
+			>Convert Procedural Design to Objects: 将过程化设计 转化为 对象设计  ... 封装 数据与方法 到专门的类中;
+			>Separate Domain from Presentation:  分离展现逻辑和领域逻辑	
+			>Extract Hierarchy: 提炼继承体系;
+		>重构\复用和现实:
+		>重构工具:	idea 工具.	
