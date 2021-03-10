@@ -114,6 +114,7 @@
 	>范畴不明确：就会 陷入 “还有什么” 的困惑和迷途。范畴的向下具体划分和向上抽象统一更大范围。
 	>讲一个东西的内容时：可以看出是否结构化思考，是否很明确范畴，范畴化思考，不断的抽象上升又具体下降--树上遍历。因为问题，产生目标，想到思路，立刻执行。
 	>输入不必多：关键是转化 为 总结、实践  有 多少。	
+	>可视化：为最佳的理解方法。
 --领域、问题、逻辑。(路径/方案/思路)(条件/目标/路径)	范畴。顶级思路/顶层思路。顶层领域，顶层问题。范畴与逻辑。范畴关系(同一范畴内、不同范畴内)、比较关系、规则关系、联动关系。
 	>不能只以概念入手，也要从问题、思路入手。
 	>谈话永远不能泛泛而谈：回答而已，别总想着怎么回答会好-显得聪明有创意有见解之类。必须要有目标，要预见和引导 话题走势走向，进而从当前条件 寻找 路径/思路。
@@ -121,6 +122,7 @@
 		>链式调用：默认实现Filter 放在 最后，用户提供的放在前面；从而用户提供了实现如果想提前返回则可以直接先返回不走默认。
 		>插件的发现/用户回调类的注入：往往都是自动配置类bean  注入了外部的 beanFactory，而自动配置bean里就有本框架的核心类，而获取了bf,则各种规范的实现bean就都可以获取了，从而用在框架各个位置。
 	>一切技术都是简便方法：更快速的方法、更省的方法、更安全的方法。更可靠、更通用的方法。
+	>调用 就是 询问：询问就是调用。
 --顶级关注点：任何事物 寻找到它 最有价值的一面  对我有用有好处，如果有 则 认识到通和使用到精。没有看到组织结构，必然混乱和觉得复杂、含糊不清、仍然不懂、没有消化--分解/拆解出有营养可以被利用来构造系统的基本元素出来。
 	>于社会：形势和机会：最理性的分析 -->最准确的预测 --> 最周全的方案 --> 最简便的验证。很多人不相信完美的十全十美的方案的确存在，也就不愿思考和制作和逼近，而是找了一个草率的方案，执行后失败而亏损。
 		>人际关系：在不能够失败的事情上取得胜利 才叫胆子大胆略胆识,其他不能产生直接或间接作用用处的事情 失败了也无所谓--就当作给对方一个面子--做个厚道人-而不是尖酸刻薄没人接近没朋友-朋友就是大量小事上免费的互相帮助。办事：对方道德好-好心人，道德一般讲利益-合情合理，道德差坑蒙拐骗一把-就损失了。
@@ -166,6 +168,7 @@
 			>这些方案如何应用在业务中：这些方案又可以用在哪些业务中。
 				>方案的评估和论证：
 			>这些业务如何解决人们遇到过和将遇到的系统型的个人又难以独立解决的希望有组织-公司提供专业的服务来解决服务的问题/痛点： 
+				>动作的条件、目的和规范：如伸缩 这个动作。
 	>于创业：人们当前遇到了什么问题 --> 人们会遇到什么问题 --> 人们想要解决而无法解决想别人提供可以解决的哪怕是有偿的也要解决的问题是什么 --> 先 概括出用户想要而缺乏且看到则感到惊喜的服务是什么
 >举动-痛点：可扩展的方案。
 	>解法/解决方案：十二大要素应用。
@@ -174,7 +177,163 @@
 			>目标：实现一个Servlet规范的容器。
 			>顶层思路：建立完全技术的和具体业务无关的 通信框架，而将请求匹配到用户代码而 回调用户的业务代码。顶层流程：只用几个关键节点和节点之间的过渡线 来表示。
 				>基本领域确定：基本领域结构。从最外层巨大的边界到最内层最精细部件的边界。边界上的接口。按顶级流程 的节点  发现 每一层上 明显的边界，来确定这一层上的领域。每层上的划分规则，划分标准，划分线。划分标准：就是分工。就是认识到上一层边界内的事情 可以分工为 几件事情；分工实现。按环节，按状态，按事件。按转换的阶段(如如果上层边界内的输入输出转换路径太远，那么内层分多个边界时 每个边界的输入输出转换路径/映射路径/经过路径/层层处理路径 就要近些；例如从http请求转换为调用户项目代码 这个路径就很长，同样 将用户项目代码执行的结果 再转换为http响应 这个路径也很长)
-					>Server: 最外层边界，它的边界上 只有  start()/stop()接口方法。
-						>
-						
-				>活动领域确定：
+					>Server: 最外层边界，它的边界上 只有  start()/stop()接口方法。边界上输入输出之间的转换路径长，所以边界内需要分割为若干个闭合的子边界，来层层转换，传递可以接收的变化，每次微小的变化，从而可以快速的实现且并行的实现。不断的二分/三分。
+						>Acceptor: 因为从接收到响应路径太长了。所以分割为 从接收到 调用户代码；和 接收用户代码结果而到返回web请求。
+							>Transfomer:接收到调用户代码这个路径依然很长，这个输入输出模型 的内在转换/联系路径还是太远，复杂则不稳定，所以再次切割为 接收请求到调用户代码之前，调用户代码到获取用户代码执行的结果 。
+								>CommonTransformer: 由于请求转换为调用户的请求，两个请求之间格式差别其实很大；所以再次二分为 http请求转换为 普通调用请求所需信息准备就绪，普通调用请求信息就绪 到映射到用户具体某代码调用请求。
+									>Receiver: 由于web请求本身是客户端发送的，又要经过网络环境，所以从请求里提取出调用信息是一个多步过程，根据这个情况 而再次 将 http请求转换为普通调用请求信息 分割为：web请求的解码、解密、解压、普通信息封装。
+									>Decoder:
+									>DeAuth:
+									>DePress:
+									>CommonCallInfoPackage:
+								>UserCodeCallTransformer:
+							>Runner: 
+						>Responsor: 
+				>活动领域确定：精细描述，发现新的度量，来找到新的处理环节、隐藏的处理环节、忽视的处理环节、默认的处理环节、退化后的处理环节、单调化后的处理环节、平滑后的处理环节、理想化简化后的处理环节，从而还原真实的多步骤过程样貌，还原边界清晰轮廓凹凸的真实的处理环节。
+					>多租户、多用户同时访问，多开发者都有项目即多个开发者项目的隔离运行：所以要有 一个项目对应一个的 Service  活动领域。在Service下才是 Connector/Engine
+					>过程分解到各个组件中：使组件充分解耦，提高服务器的扩展性和可维护性。
+						>每个域名下提供若干个服务：所以要区分域名，用Host 来表示域名 这个 活动领域。 Host下才是 Context 用户服务。
+							>每个用户服务可以处理 多个不同uri请求：每个可以用不同的Servlet实例来处理(尽管Spring提供一个而通过内部的uri映射而找到用户的代码)，所以Context下是 Servlet--Tomcat中称为 Wrapper
+								>基于Engine/Host/Context/Servlet-Wrapper的共性，都是处理请求，所以继承父类 Container是合理的。容器可以做后台任务：所以 ContainerBase --异步启动后台处理。
+								>共性2：都有启动/关闭/销毁 生命周期过程，为了完整定义生命周期过程和确保每个 都统一生命周期名称， 以便如 门面模式/反射方式处理 等，增强扩展和维护性和使用方便，因此抽象出 Lifecycle 概念。
+									>其他方便：第三方外部统一观察这些 对象的生命周期行为，和在生命周期下 增加处理---监听器。
+							>一次调用一次水流：对水流的处理：管道 Pipeline 包裹 和 阀门 Valve 处理。每个Container容器都有 Pipeline/Valve
+							>请求的解析Connector/Coyote: Endpoint负责启动而监听端口，接收请求后调Processor处理，后者 通过 Mapper/CoyoteAdapter 映射找到 具体的容器。	
+							>启动：Bootstrap 反射创建 Catalina 实例， 后者解析server.xml配置文件等。不使用Bootstrap来启动 则 直接 用  Tomcat类也可以。
+		>类加载器：
+			>可见性：jar放的位置 是否 为 JVM上的所有应用都可见。
+			>Endorsed Standards机制：优先于JVM中的类加载。
+			>不同的应用项目加载器应当不同：以便jar不冲突；
+			>架构要素：
+			>三个加载器：Common/Shared/Catalina(服务器自己依赖的包) ,对每个Web应用 有 Web应用加载器--WEB-INF/classes,WEB-INF/lib下。
+				>要加载什么路径下的classes/jar： 就用什么加载器。
+			>JVM安全策略许可：禁止 Web应用 使用服务器相关实现类。	
+		>Catalina: 容器。Coyote/Jasper/Jave EL /Naming/Juli
+			>Digester: 将XML转换为 Java对象。实现算法：一个类 栈 + 一个 对象栈 。解析xml类似解析Json对象。
+			--Reactor 编程：就是 事件编程。
+				>模式1：事件A 发生时，执行方法B/注入的lamda表达式。方法名就是事件-方法调用就是事件发生或者组装注册，方法入参就是事件发生时执行的回调函数 或者 订阅者。
+					>订阅事件发生时，回调lamda表达式 生成新的可观测对象，再调这个可观测对象的订阅方法来处理源订阅者。defer(()->{})：defer具体怎么实现 则 用 处理动作 的编写 + 和老观察对象一起 封装到新的可观测对象 等主要思路来实现。
+					>订阅事件发生时，调用源可观测对象的订阅方法 来处理 新的订阅者，这个新的订阅者封装了源订阅者+lamda表达式构成的辅助订阅者，而新的订阅者被调用接收数据的方法时，先给辅助订阅者 再给源订阅者： 从而就像给订阅者加了一个数据接收监听器一样：doOnTerminate(()->{})
+						>订阅事件发生：即调可观测对象的subscrible(subscriber)方法。
+					>取消订阅事件发生时，希望能回调lamda表达式：实现做法，就是将lamda表达式封装到 一个 Subscription 对象里 加到 订阅者里 即可。doOnUnsubscrible(()->{})
+						>取消订阅事件发生：即订阅者的unsubscrible()方法。 
+					---必须 叫到的 概念：事件、回调函数、订阅者。才能理解 Observable的所有方法---每个方法自己本身期望达到的目标。事件肯定会发生，联动触发推动传递，希望 回调函数 在某环节事件上 起到什么作用
+					>订阅事件发生时，用回调lamda表达式 映射 源订阅者 为 新的订阅者， 再调 源可观测对象 来 订阅 新的 订阅者。：lift(()->{}) 。此需求产生的原因/场景：
+			>一次请求的处理过程：pipeline + n Valve
+				>过程：从 StandardEngineValve --> StandardHostValve-->StandardContextValve-->StandardWrapperValve-->ApplicationFilterChain--->Servlet
+		>Coyote: 连接器实现。封装了 请求协议和 IO方式。主要负责：Socket请求 ---> Request请求
+			>负责: 协议和IO的处理，所以没有涉及要实现 Servlet规范。而产生的Request/Response也跟Servlet规范没有关系，不是按照Servlet规范来实现的。会进一步转换为ServletRequest/ServletResponse才和下一级的 Catalina容器交互。
+			>支持的协议：应用层
+				>Http/1.1: Tomcat单独运行时。
+				>AJP协议：和Web服务器如Apache HTTP Server集成，实现对静态资源的优化和集群部署。支持AJP/1.3
+				>HTTP/2.0: 
+			>支持的IO方式：传输层/socket
+				>NIO: java nio类库实现。
+				>NIO2: 采用JDK7最新NIO2类库实现
+				>APR: 采用APR实现。APR是使用C/C++编写的本地库。
+			>结构：Connector启动时，启动它持有的Endpoint实例。
+				>EndPoint: 通信监听接口，Socket接收处理类，传输层的抽象。NioEndpoint/AprEndpoint/Nio2Endpoint
+					>启动时：并行运行多个线程，每个线程运行一个Acceptor实例；
+				>Acceptor: 等待请求 ,接收到请求后创建新的SocketProcessorBase对象，并异步Run它。它就-->EndpointHandler-->Processor-->Adapter-->Valve
+					>监听到请求时：将请求封装为SocketWrapper实例，传递给一个SocketProcessor处理--提交到线程池中异步run。
+				>Processor: 负责构造Request/Response对象；单线程运行， 同一次连接中复用Processor： 实现类：Http11Processor/AjpProcessor/StreamProcessor/UpgradeProcessorInternal
+					>SocketProcessor: 是一个线程池Worker实例；判断Socket状态后，提交到ConnectionHandler处理-->后者选择合适的具体Processor如Http11Processor--根据状态不同而不同UpgradeProcessorInternal	。
+				>ProtocolHandler: 封装Endpoint+Processor; 从而提供对具体协议的完整处理(协议+构造Request对象)。Http11NioProtocol/Http11AprProtocol/Http11Nio2Protocol/AjpNioProtocol/AjpAprProtocol/AjpNio2Protocol
+					>
+				>UpgradeProtocol: 处理变化后的/升级后的Http协议 如Websocket协议。	根据请求创建一个UpgradeToken这个令牌--->包括了具体的HTTP升级处理器HttpUpgradeHandler
+				>Adapter: 对外接口方法service(Request,Response),内部实现：将请求映射找到Engine,接着找到Engine的首个Valve,开始invoke这个Valve
+			>AJP协议：8kB一个包，	紧凑精简的报文。	
+			>SPDY协议：HTTP/HTTPS的有效隧道。
+			>HTTP2.0协议：支持明文传输，消息头压缩算法SPACK；基于帧和流的多路复用，基于一个链接的多请求并发处理。支持服务器推送。
+				>帧：如同包对于TCP。HEADERS/DATA/SETTINGS/WINDOWS_UPDATE/PUSH_PROMISE特性帧。
+					>9字节定长头：Length/Type/Flags/Stream Identifier
+					>变长的Payload: HTTP header/body存在这里。
+				>流：就是帧序列。一个完整的处理过程。
+					>一个HTTP2.0链接可以并发打开多个流：
+					>可以创建并被共享使用：
+					>同一个流中的帧按顺序发送：接收者按顺序处理。
+					>流由一个整数唯一标识：
+					>流相互独立：一个流的阻塞/停止 请求响应 不会影响 其他流的处理。
+					--状态转换：空闲-->打开-->关闭。。发送帧和接收帧 会导致 状态转换。
+			>IO: 
+				>阻塞非阻塞：调用者在等待结果前的状态。非阻塞时，调用者要轮询查看处理状态。
+				>同步异步：调用者对调用结果的获取方式(主动获取/被动获取)。等待获取：同步。异步获取--交给一个回调函数(如调用者的一个方法)来被动接收结果：异步。
+					>异步的方式下 调用者 完全不需要 阻塞等待了：因为如果等待，那么等待结束时，实际上结果已经被接受处理完了---相当于白等了、等就是在浪费时间、没有用、没意义。
+				--并行接收、异步并行处理。	
+			>NIO: 
+				>Poller: 轮询线程，每个Poller维护一个Selector实例，
+					>接收新的连接和注册到Selector: 接收到的新的连接 就是 SocketChannel对象，先转换为 tomcat.NioChannel对象，再封装到PollerEvent实例中，添加到事件队列；Poller运行时将 这个事件队列里的实例取出，再将SocketChannel的读事件注册到Poller持有的Selector上，然后执行Selector.select()
+						>当读取到的是读事件时：构造SocketProcessor,并提交到线程池进行请求处理。
+				>Acceptor: 循环 ServerSocketChannel.accept()的执行者	,将返回的SocketChannel对象即新的连接 添加到 轮转法从 多个Poller中的一个 轮询线程Poller的 事件队列里。
+			--总结Tomcat: 1. 一个ServerSocketChannel,多个Selector, 每次读取到的IO读写事件交给SocketProccessor处理。	Poller单独启动的，和Acceptor一样，不占用线程池。
+				>NioEndpoint: 启动 Acceptor ，也启动Poller拉取线程，来循环 拉取事件 队列里的 SocketChannel, 接着进行注册事件到Selector，并启动Selector.select()。
+			--总结Tomcat: 2. Processor处理：协议的解析-->构造Request/Response-->FilterChain-->Servlet 	
+			>NIO2: AIO
+				>非阻塞：返回Future, 再 isDone轮询，然后获取结果。
+					>非阻塞获取新链接：Future返回的连接为 AsynchronosSocketChannel
+					>非阻塞获取读写数据的结果：
+				>异步：实现回调处理类：CompletionHandler	
+					>异步通道组：=线程池+异步通道：线程接收指令执行IO事件 将结果分发到 CompletionHandler
+			>APR: 为应用程序开发提供统一的API,。提供功能：内存分配及内存池、原子操作、文件IO、锁、内存映射、哈希表、网络IO\轮询、进程和线程操作。调用本地库，所以性能接近原生处理速度。		
+				>使用好处：Tomcat可以获得 高度可扩展性 和优越的性能。可以和本地服务器技术集成，从而作为一款通用的Web服务器使用。
+					>Tomcat启动时自动检测是否安装了APR: 已安装则采用APR进行IO处理。显然：APR是C库。
+				>APR轮询：读写事件完成的数据查询。	
+				>Tomcat对外封装：AprEndpoint
+			>AJP协议：性能优于 HTTP。二进制传输可读性文本，在Web服务器和Tomcat之间 保持 持久性TCP连接。	
+		>Jasper: JSP引擎。JSPServletWrapper
+			>jsp页面的动态编译：服务器定期检测JSP页面的更新情况，发送变更则重新编译；JSP页面采用单独的类加载器，从而重新编译 只会 导致 这个JSP页面被重新加载，而不是整个应用都被重新加载。
+				>重新加载某个类：先获取类的字节码，然后调用ClassLoader中的本地方法等进行重新加载。即重新加载 是 可以开发者 手动控制的。
+				>编译器类：JspCompilationContext, AntCompiler，JDTCompiler
+					>Tomcat/bin下有一个 catalina-tasks.xml Ant脚本文件：描述声明了 Tomcat支持的Ant任务(编译任务)。使用Ant来执行JSP预编译。
+				--Ant: 描述编译任务 并且编译构建 项目的 一个工具。	maven能编译maven格式的项目。对于一般的项目，则用Ant来描述编译任务。
+				--UML图：重点只有三类：引用--用->箭头表示，继承--用三角形箭头表示, 组成--用菱形表示；
+				>编译过程：先生成java源代码再编译为Class字节码	
+		>Tomcat配置管理：		
+			>JVM配置：
+			>服务器配置：$CATALINA_BASE/conf 下的配置
+			>Web应用配置：通过context.xml进行web应用定制配置。
+			>管理配置：JMX,Ant 等 web应用部署管理方式。
+				>会话管理器：StandardManager
+			--Filter: Request的检查	
+		>Web服务器集成：静态资源处理能力的前移。	
+			>通过扩展模块：支持IMAP/POP3/SMTP
+			>Web服务器：Apache HTTP Server, nginx, Lighttpd\IIS
+			>应用服务器：Tomcat, JBoss, Weblogic, WebSphere
+			>二者集成方案：静态请求直接走web服务器内部处理模块处理后返回，动态请求 通过 web服务器的代理模块 转发到 应用服务器，接收返回数据后再返回给前端。
+				>转发规则：可以做到负载均衡，选择一个服务的若干个应用服务器中的一个来转发。也可以做服务转发，一个请求转发这个请求对应的多个服务中的某个。
+				--Apache Haus
+				>Apache HTTP Server 内部的代理模块：mod_jk, mod_proxy_ajp
+				--Nginx: 支持ajp协议的模块: 阿里开发的 nginx_ajp_module
+					>配置模型：两部分。server{}部分 为 配置 url-上行流的 映射 ；  upstream{} 为 配置 上姓流-ip:port 的 映射。
+		>Tomcat集群：web服务器前 还有负载均衡机构。
+			>集群通信框架：Apache Tribes 
+			>集群动作：
+				>伸缩：
+					>目的：负荷的增加，降低单台机器的压力，来提高响应性能；也逐渐提高吞吐量。
+					>条件：无状态服务。
+					>规范：平滑过渡；负载均衡式的分发；
+				>故障转移：
+					>目的：恢复服务。
+					>条件：需要有备服务
+					>规范：检测到故障预测到故障，快速转移切换。
+				>分配流量：
+					>目的：平均充分利用每台服务器，而不是倾斜。
+					>条件：有流控器
+					>规范：流控器 做负载均衡；
+			>Tomcat集群基础类：
+				>容器：Cluster  被 Host持有 
+				>HA: CatalinaCluster
+				>通信：Channel:
+		>Tomcat安全：
+			>默认8005端口：发送 SHUTDOWN会关闭Tomcat。
+			>默认异常由ErrorReportValve处理：会泄露系统信息；<error-page>类似的处理。
+			>安全域：Realm
+		>Tomcat性能调优：
+			>Tomcat性能测试和诊断：
+				>测试方式：
+					>负载测试：逐步增加访问量，响应时间会增大；可以确定系统的伸缩性有多大；弹性有多大；但是响应时间应该在正常范围内，此时的访问量才是最大负载。
+					>压力测试：持续增加访问量，直到系统崩溃；得到的是临界负载。
+					>持续运行时间测试：
+		>Tomcat附加功能：
+			>嵌入式启动：入口类 org.apache.catalina.startup.Tomcat, new一个可以添加 Servlet
+			>Websocket协议：握手协议请求：起始行、头部、报体 都一样；只是新增了head: Upgrade:websocket
