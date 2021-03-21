@@ -258,5 +258,7 @@
 		---做推荐系统：
 			>原因：信息过载时，可以帮助用户筛选和确定匹配，像是资源调度。
 			>条件：用户行为数据的深刻理解。
+		--交叉最小二乘法：ALS算法 
+			>基本：R=XY,  Loss = ∑(rui - xu^T * yi)^2 + λ*(xu^2+yi^2) = L(X,Y), 定Y,则 зL/зXu = -2∑yi(rui - yi^T*xu) + 2λ*xu = -2∑yi*rui + 2∑yi*yi^T*xu + 2λ*xu = -2Ru*Y + 2 ∑yi*yi^T*xu + 2λ*xu = 0, 则得出 xu = (∑yi*yi^T + λ *E)^(-1) * Ru*Y
 
 参考资料：https://blog.csdn.net/weixin_41843918/article/details/90216729
