@@ -1,0 +1,31 @@
+007796
+>idea安装： 亲测有效：https://tech.souyunku.com/?p=30970
+	>easycode配置：https://blog.csdn.net/hzw2312/article/details/106468270  
+		>easycode模板：https://my.oschina.net/u/3610293/blog/4390719
+>mysql安装：压缩包：https://downloads.mysql.com/archives/community/
+	>配置：创建my.ini 并 配置好。删除/data文件夹。
+			mysqld remove
+			mysqld --initialize-insecure
+			mysqld -install
+			net start mysql
+	>登录并改密码：mysql -uroot 登录之后：ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY "lsp"; 改密码。
+>项目修复：refresh + mvn clean:install + refresh + invalidate cache + 启动项目
+>数据库建模：PDMan, power designer, mysql workbench ,	SQL Power Architect,DB Designer,dbdiagram.io,Freedgo	
+>Jrebel: https://blog.csdn.net/qq_36676682/article/details/103928741	
+>Druid监控图：http://127.0.0.1:20142/druid/index.html
+>端口监控：netstat -ano|findstr "20142"	
+>powerDesigner: https://www.fujieace.com/software/powerdesigner.html 且反向工程 https://jingyan.baidu.com/article/d8072ac4b13d34ec94cefd5d.html
+>设计必要图：
+	>UML图： 概念之间的关联关系。viso 是好的。https://www.bouml.fr/download.html#Windows
+	>泳道图：一个活动开始到结束 从一个概念开始 借助 调用其他概念 使用其他 概念 来完成 子功能 而整合各个子概念提供的完成的结果而 对外 整体 提供服务达到目标/解决问题/创造价值 的过程。
+		>业务活动：其中 每个 角色/概念 的状态在变化，但其中关键的状态变化 才是需要关注的。这个关键的 各个角色的 状态变化过程图、状态转移图、马尔科夫过程 表达出来，才能恰好的表达这个活动的 根本信息/活动发生了完整的进行了的证明----促使各个角色的状态发生变化/转移。
+	>关联记录图：活动中关键的事件、关键的结果，往往一个是对概念进行了修改，第二个是 将 多个概念关联了起来；这个修改和 关联 要记录下来。每个关联记录 都是 某个活动的 产出结果、价值结果(不存在毫无理由毫无原因的关联)。
+		>业务活动的目的：走通完整的流程。一个入口 一个出口；或者 一个 入口  多个 可以的 出口(不含异常)(异常出口是总是存在的)。
+	>事情步骤推进图：事情从提出 到 筹划 到 启动 到 push推动 到 结束 到 复盘。每次向前 都是 动作推动的结果。完成的好坏、质量的高低 ，往往看 推进过程中 明确的动作是否做到位，没明确的忽略的动作 因为没做 是否 产生了大的影响。
+		>问题驱动式开发：事情推进需要处理的问题提出-用业务逻辑(业务设计)回答。(业务逻辑直到全部细节)
+			>问题没有组织 则没有抽象：不能把所有的问题问全，而只是零散的找到了几个问题 而遗漏了 不少问题。
+		>事情推进的过程就是业务设计的过程：事情推进完全想透、完整明白 之后，业务也就设计完成了。	
+			>事情推进过程中：关键时问题的提出，和业务逻辑的回答。需要什么数据 和 数据怎么存储 不是考虑的问题，也不应该出现这样的字眼，这些过于具体的内容。
+				>什么样的回答才是好的：从 目标、条件、思路 一步步考虑得到 方案的 结果。
+			>看业务逻辑代码：就是要总结 它 对于整个事情的推动作用是什么？ 它推动了什么？它解决了在事情推动过程中必须跨过的小决定是什么？ 它在解决什么问题？解决的这个问题 在 事情推进过程中 的哪个步骤哪个环节中遇到的？	
+				
