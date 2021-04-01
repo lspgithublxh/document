@@ -1,0 +1,178 @@
+1.executor设计体系：概念体系
+	>rxjava: 异步响应式编程框架。Observable 产生事件，Observer--接收消费事件。发布-订阅(异步接收)的异步编程模型。
+		>Function: 定义所有的动作和函数应该有的特征：仅仅为接口，标记。空方法。
+			>Action: 继承 Function, 所有的动作 应该具有的特征。
+				>Action1: 继承Action, 所有的 一个参数的动作 的 特征类。需要满足的特征：1.有单参方法 void call(T t);
+					>OnSubscribe: 规定 单参 类型为 Subscriber 的 单参动作  的 应满足的特征的 特征类。
+						>SyncOnSubscribe: 响应 来自 Subscriber 的后压 请求, 是一种改进：提供的独特方法：1.生成数据给下游的订阅者：S next(S state, Observer<? super T> observer)。2.订阅者订阅时产生一个状态值：S generateState() 3.反压方法request(n)--如果n==最大整数则fastPath()否则slowPath(n)。而fastPath()内部会循环的调用parent.next(state, this)即调用发送方--让它发送下一个元素；直到hasTerminated=true即收到了终止， 或者 unsubscribe()而导致自己的值<0 不再催 发送方。slowPath(n)因为有限量n，再收n个就停止了。
+							>SyncOnSubscribeImpl: 继承 SyncOnSubscribe, 实现两个方法。通过注入的 两个对象：一个无参Fun0:generator 一个二参Fun2:next 来实现。此外，也注入一个单参动作Action1 来实现取消订阅。
+						>OnSubscribeCreate: 特殊的回调类，继承 OnSubscribe, 在创建 Observable 时 构建。它对单参方法的实现：根据注入的BackpressureMode类型创建不同类型的Emitter:Observer, 后将 它 当做 Subscription 加入到 入参 Subscriber订阅者中；
+						>AsyncOnSubscribe: 也将next()/generateState()方法抽象化，而实现模板方法 call(Subscriber)
+			>Fun1: 定义 特征为 单参单返回 方法。
+				>Operator: 继承了 Subscriber
+		>Subscription: 订阅 本身 应该满足的 特征 的  定义： 1.停止接收通知： void unsubscribe() 2.当前订阅是否已经取消：boolean isUnsubscribed() 	
+			>SubscriptionList: 订阅列表， 继承 Subscription。内部维护  一个 Subscription list, 实现批量的 取消订阅 unsubscribe。 独立提供的服务：1.添加新的订阅(关系): void add(Subscription) 2. 是否取消订阅 --返回内部维护的订阅状态。
+		>Observer: 定义的  接收 基于 推送的 通知的 事物/观察者  应该具有的特征(服务/提供的供外部调用的操作)：1.应该告知 观察者 消息推送完成：void onCompleted() 2.应该告知 观察者 发生了异常：void onError(Throwable e) 3.应该告知 观察者 新的 可以观察的 元素void onNext(T t)。
+			>Subscriber: 继承 Observer 和 Subscription, 从而既可以 接收 Observable发的 消息， 也可以取消的  订阅者  应该具有的特征： 维护一个 订阅列表：SubscriptionList。独特方法：1.供 Observable 联系上 但在发送 事件前 调用的 方法：void onStart(); 2.供 开发者 调用的 要求 Observable发送的 最大数量：void request(long n)
+				>ActionSubscriber: 继承 Subscriber, 是一个行动类 订阅者： 注入3个Action,2个单参一个0参，分别对应 Subscriber的三个方法 的覆盖实现。
+				>ObserverSubscriber: 继承 Subscriber,注入一个 观察者，实现三个方法 就用 观察者 的三个方法。所以就是 Observer 的包装类--让这个Observer 实例 间接向下服务 Subscriber 接口(显然直接是不能赋值给Subscriber类型的变量的)。
+				>SafeSubscriber: 继承 Subscriber,
+			>Emitter: 	
+		>Producer: Subscriber 和 Observable 之间的缓冲区，提供设置最大数量的 方法：void request(n); 	
+			>SubscriptionProducer: 继承 Producer 和 Subscription 和 Observer, 
+			>AsyncOuterManager: 
+		>Observable: 定义 实现响应式模型的 可观察者的 特征方法： 内部维护一个单参动作/函数类对象 OnSubscribe ---这个就是 create()方法注入的那个 OnSubscribe。	1、创建一个可观察对象：create(OnSubscribe<T> f) 入参为对 每个 订阅者 进行应用 的 回调方法--显然这个回调方法必须是单参+参数类型为Subscriber，应用时间--发送事件时？。2.将一个观察者订阅到自己subscribe(Observer)-->内部实现为先调用了让订阅者启动的subscriber.onStart()方法，后RxJavaHooks.onObservableStart(observable, observable.onSubscribe).call(subscriber)实际上就 获取到 create()时的那个 OnSubscribe 来调用它的 call(subscriber)--->对于 SyncOnSubscribe的实现 就是 先 generateState()后add到 subscriber， 后 subscriber.setProducer()-->内部会调用 producer.request(n)。
+			$:create(OnSubscribe): 几乎是直接将注入的OnSubscribe 设置到内部的 处理动作属性上。
+			$:concatMap(Fun1): 构造一个 专门的 动作 实例：OnSubscribeConcatMap:OnSubscribe ，此动作应用到 观察者时-即call()时：将 观察者 封装到 专门的观察者 ConcatMapSubscriber 里---构造时就request(2)了，当设置Producer时--这个Producer.request(n)实现为调ConcatMapSubscriber.requestMore(n)
+				--固定的流程：subscrible-->call-->request-->next-->next-->next... 不变。
+			$:retry(Fun2):	先构建 单一动作的 Observable: just().再lift()
+			$:lift(Operator): 构建 指定 处理动作 为  OnSubscribeLift 的 Observable--->它的应用为：将 Operator 应用到 Subscriber --返回还是 Subscriber:s1, 再将 源 Observable 的 OnSubscribe处理动作 应用 到 s1. 所以 lift创建的 Observable 是 个 串行 应用 操作符  后继续应用 父类 处理动作的 复合过程。
+				--就是将 运算符 应用 在 老动作执行 之前 的 方法--lift()--即将 运算符 组装 在 老动作执行前。
+					--流程式编程：问题导向，解决它，一个动作接着一个动作构成方法，调这些方法。
+					--面向对象编程：现实对象导向，模拟它，定义类，定义它的属性和方法---相当于封装到一个域，调对象的方法。
+					--组装式编程：终态系统导向，构建它，先构建框架，后发现/注入/感知 定义好的函数模块/功能模块，装入框架，形成系统后，调系统的启动方法。非常类似 建造者模式(集中式、分散式)。
+						--封装式编程：方法里 新建对象 时 都要 复写 方法 重新实现--来把 局部变量 都 封装 进去。实例生成时复写--而不是 定义类时复写--匿名子类(来封装运行时变量)---可以完全自由的随意的注入无数对象变量 到 子类的方法里---尽管这个对象变量 不是 该匿名子类的 属性 也不是 入参 也不是 方法局部变量---可以理解为外部类的变量---因此可以取名 为 内部类 且为 匿名 即 匿名内部类是 合理的。 匿名内部类的弱化版本 就是 lamda表达式。
+							--匿名内部类：引用外部类的变量 来实现自己的方法。实现最自由的变量透传。最自由的切面编程-方法增强。
+			$:onErrorResumeNext(Func1) lift() 操作符为OperatorOnErrorResumeNextViaFunction。即 返回 一个 封装了 应用 OperatorOnErrorResumeNextViaFunction  的 新的 Subscriber 实例。
+			$:toBlocking(Observable): 封装入参 可观测对象 到 BlockingObservable 对象里，
+				--行为上的封装：
+			$:single(): lift()注入 OperatorSingle 运算符。一次 lift()是一个 OnSubscribeLift 动作，这个动作封装了运算符，动作call执行的内容：映射 入参 Subscriber<T> 为另一个 Subscriber<R>, 然后执行这个映射生成的 Subscriber 的 onStart(), 然后让 老动作 应用 在这个 新的 Subscriber上。	
+				-- OperatorSingle 没有改变 Subscriber 为新的，而是 给它 增加了 一个Subscription:ParentSubscriber 到它的：subscriptions 属性里，---在取消订阅的时候会调用这个属性：unsubscribe()--->即对每个 Subscription调用 s.unsubscribe()。。同时 ParentSubscriber 作为 Subscriber, onNext()收到超过1个则会 向 "订阅者" 报错、取消订阅关系。
+			---方法特征分类：
+				-一个属性 onSubscribe 
+				-封装动作+入参 到新动作 并  将新动作封装到 新的 Observable： single()/lift()
+				-封装入参值 到 新动作 并 将新动作 设置到 新的 Observable: just()
+			---新动作特征分类：void call(Subscriber)
+				-只调订阅者的setProducer() 注入的是新的生产者-且将值给生产者：JustOnSubscribe
+				-
+			---新生产者特征分类：request(n)	
+				-封装值+订阅者 到自己内部 并 在request(n)时 调用 订阅者 onNext(): 通知-而值就是初始化时得到的： SingleProducer
+				-
+			---新运算符特征分类：Subscriber call(Subscriber)
+				-封装入参订阅者 到新的 订阅者，而将新的订阅者 加入 老的订阅者的SubscriptionList 返回新的订阅者：OperatorSingle
+		--总结2：
+			>Subscriber: 四个方法：onNext/onError/onCompleted/request/setProducer 
+			>Operator: 一个方法： Subscriber call(Subscriber)
+			>Producer: 一个方法： void request(n) 
+			>OnSubscribe: 一个方法： void call(Subscriber)
+			>Observable: 多个方法：create/lift/subscribe/defer(延迟生产Observable并透传Subscrible给它)(延迟生产就是生产放到回调里,首次只创建回调本身而未调回调)/doOnTerminate(延迟订阅中止型观察者)
+				>非 subscribe()方法 是 封装进 动作/运算符(为新动作)； subscribe()是开始应用动作。
+					>封装进运算符的目的： 包装 订阅者 ， 在订阅者前面加控制/代理(onNext/onCompleted等的代理)。(找到这个代理 就成功)	
+						>控制如：控制接消息的个数。single()控制接1个,多了报错刚好则发送给被包装的订阅者(代理先收完消息-onCompleted)
+					>封装进动作的目的：增加 取数据的 代理。 即在request(n)前增加代理。           增加对订阅者的操作动作/调用操作。不只是setProducer()	
+		>RxJavaHooks： 工具类	。提供的方法：1.使用内部的Fun1来对 Observable 过滤一遍：onCreate(Observable.OnSubscribe) RxJavaObservableExecutionHook
+		--rxJava模式：配套模式。是一种 框架式编程。遵守：定义(用户定义的函数模块)--组装(函数模块到框架)--调框架(方法,回调用户定义的函数模块) 的编程模式(回调就是间接调用，让其他模块感知并调用)。
+			>模式1：构建 可观测对象 --> 订阅 观察者 -->绑定 可观测对象的处理动作 和 当前订阅者 到 一个新的 Producer --> Producer 请求生产n个事件 从而调用 可观测对象 next()执行n次(直到onComplete/onError)(next()内部调观察者onNext()来发送事件)
+				>总结：create(建)、subscribe(绑、生、发)
+			>模式2： ScalarSynchronousObservable(可观测对象)/JustOnSubscribe(处理动作)/	
+			>模式3：框架部分 就是 固定部分。用户编写部分就是框架各处回调部分。
+	>Flux:reactor-core: Flux是一种 序列处理框架，用户注入 序列生成函数、subscrible消费者函数、中间处理序列的函数
+		>Publisher: 发布者，提供给 订阅者 调用的 订阅方法：void subscribe(Subscriber)
+			>CorePublisher: 继承 Publisher, 提供更具体的 订阅 方法：void subscribe(CoreSubscriber)
+				>Mono: 继承 CorePublisher, 
+					>MonoCreate:
+		>				
+	>Mono: 	顺序执行 变为 消息发送执行。
+		>常规的并发编程的问题：死锁；消息通信不便；线程饥饿；竞争等待；
+		>函数式编程：
+			>高阶函数：入参为函数，出参也是函数。
+			>惰性求值：可以抵消相同项，避免重复的计算；
+			>没有副作用：不修改外部变量的值；
+			--
+			>不可变性：一个函数运算后 返回的是一个新的流，原来的流未改变。
+			>表层是架构描述/组建描述：没有直接的数据变化。
+		>命令式编程：自顶向下，是带状态的。
+		>响应式编程：让框架帮忙做事(框架提供一系列参数为函数返回也是函数的方法--高阶函数--也被称为 事件)(否则就要自己实现类似框架的功能--且每个功能都要实现一遍就显得重复)。开发者只需要提供函数即可--正所谓函数式编程--就是提供函数来实现功能的编程。	
+			>能实现的功能模型: 就是 流 映射。一旦问题可以归结为 流 映射 ，那么就可以用 响应式编程 来实现。
+			>创建方法 的 注入 函数 就是： 生产和传递函数--入参为消费者-函数内部生成数据并传递给消费者。这个注入函数 描述 怎么生产 和 传递(不可少的是传递)。
+			>订阅方法 的 注入 函数  就是： 消费者/接收数据的函数--入参为数据event。这个注入函数 描述 怎么 消费 处理/怎么独立分析使用 传递过来的事件。
+				--提供一个实现 消费 传递过来的事件 的 函数；
+				--提供一个实现 产生 和传递 数据的 函数； 
+				--高级的：传递已经做了，提供一个实现 产生的 函数 即可；进一步的提供 一个 流水线处理产生的数据的 映射函数；
+				--一般的：subscrible()之前的都是为了 产生/构建 一个 内部结构。可观测结构。
+			--是更向上层的封装：提供更组装而非命令的接口，以至于开发者已经无需写if-else-for-while等控制语句。
+			--https://zhuanlan.zhihu.com/p/27678951
+			--https://github.com/ReactiveX/RxJava/wiki/Creating-Observables
+			--https://github.com/Reactive-Extensions/RxJS/blob/master/doc/gettingstarted/creating.md
+			
+	>nio:
+	>tomcat:
+	>netty: 依赖了 rxjava
+	>executor:
+	>okhttp:
+	>hystrix: 依赖了 rxjava。
+		>领域：
+			>命令 Command :
+				>命令状态: 未开始、观测链中、用户代码执行、取消订阅、终止
+				>隔离策略：信号量、线程。
+				>事件通知者：notifier
+			>断路器：
+				>熔断方法：@applyHystrixSemantics(cmd)
+				>熔断检查通过后 且 信号量获取成功 后 执行：@executeCommandAndObserve(cmd)   每个线程有自己的 HystrixRequestContext 上下文。
+				>执行成功后：半开更新为关闭。
+				>状态：open/half_open/close  半开时只放一个请求来执行。
+		>Feign客户端核心方法：LoadBalancerFeignClient.execute(request,response)
+			>请求方法：AbstractLoadBalancerAwareClient.executeWithLoadBalancer(request,config)
+				>关键请求方法：LoadBalancerCommand.submit(ServerOperation).toBlocking().single() 最后两个方法就是 转为 BlockingObservable 后主动调用上一个Observable的订阅方法，并且只取第一个数据。并等待这个数据得到。所以看submit()是如何产生单个数据的。
+					>内部有两层的由concatMap构成的子订阅： 第一层concatMap加了retry, 是为了重试 重新从上一级获取server开始的操作(一般就是不同的server)；  第二层的concatMap 加了retry 则是 重试 重新 从一个确定的server开始的重新连接到它--即不同的tcp连接了，发送请求数据，获取请求结果。
+	--本质：为什么架构设计这么样，为了 各种 不同的操作 但都有 统一的形式。
+		>流计算 相对于 迭代： 引入了回调函数，预定义常规函数。迭代：开发者先生成集合，开发者 从集合中拉 元素 来 调用 编写的函数处理 (亲历亲为: 3步。生成序列-拉取元素-调用函数)。流计算： 开发者先生成序列，开发者提供 需要 应用在 序列上 的函数(半亲力亲为：1步。生成序列-提供调用函数)。响应式编程：开发者提供生成元素的方法(这个方法里需要手动调方法将数据发送给消费者)，也提供元素处理函数(执行subsrible订阅方法时-将开始调用各个回调)。
+		>Optional 相对于 Object: 引入了容器，使得NPE不存在。
+	>说明式编程： 就是 执行 说明式代码的外壳时 它 内容 没执行，当多个说明式代码的外壳都执行之后，才开始 这一段 说明式代码的内容的执行。这就相当于 组装的时候 ，不要通电；而当所有的部件都组装好了之后 才开始 对流程 通电。
+		>这导致的代码顺序：代码内容上看 就是： 先使用一个对象(的引用)，后构造这个对象。
+		>订阅关系：后面的方法产生的订阅者 订阅了 上一个方法的Observable
+		>消息顺序：由上述订阅关系，导致 消息顺序是 从第一个方法 产生的Observable 往第二个Obervable传递产生的数据，接着一个一个往后传递。
+		>执行顺序：从最后开始订阅开始,注入了消费者。而从最后的Observable开始执行它的Onsubscrible.call(),内部 会：
+			>情形1： 先request前一个Observable生产对象，这样就层层委托请求到了第一个Observable，这样第一个Observable就开始产生数据了。开始向后传递数据了。可以用一条层层链条来表示。
+			>情形2： 直接让上一个Observable.subscrible(自己的封装了最终订阅者的新的订阅者)。这样层层递归向上，第一个Observable的.OnSubscribe.call()就会直接产生对象 而发送给 第二个Observable传递给它的订阅者。
+	>何为策略：任何需要判断、选择、决策的事情/问题，解决的函数 就是一个策略，输入条件/选项 而输出单项/决定结果 的 流程/函数 就是 一个 策略。
+	>响应式编程：遇到的痛点、目标和基于什么而想到的思路和方案。JavaScript也是响应式编程语言---事件-响应。构造 事件 的流水线 处理。
+		>高并发异步编程：
+		>痛点：设计一个中心调度者：正如设计 迭代器(拉模式) 类似。方法：使用新的 运算符 + 新动作 为主。
+			>用户需求：
+				>1.一个数据准备好了，回调订阅者传递给它：一个数据准备好了，主动告诉订阅者。
+				>2.数据发送完了，回调订阅者告诉它：没有数据了，主动告诉订阅者。
+			>系统需求：事件-响应类需求
+				>1.生产者生产中故障了，告诉系统故障处理器：了 表达 了一个事件。
+				>2.数据发送完毕了，告诉系统完成器：了 表达了一个事件。
+				>3.订阅者取消订阅的时候，告诉一个执行器：调用某个 规范，规范最终调用注入规范容器的 Action/任意方法。方法注入/lamda表达式注入。。。....时候，执行....这里的措辞体现了 事件编程的思想。.doOnUnsubscribe()
+				>4.前面的订阅者都消费完后，告诉一个 指定的 可以是任意类型的 方法/lamda表达式：doOnTerminate(()->{}), doOnCompleted(()->{})
+				>5.订阅的时候，才根据 指定的 supplier 创建可观测对象,并注册订阅者：defer(()->{})
+				>6.订阅的时候，什么也不做：never()
+				>7.订阅的时候，回调指定的lamda表达式：doOnSubscribe(()->{}): 显然 增加一个运算符即可---转换订阅者。
+			>系统需求：事件-控制类需求。一层层通用常见的包装。
+				>1.消费数据的时候(onNext),每隔skip个给1个源订阅者; 每size个内每次都要执行给k个系统订阅者：windows(size, skip) 用运算符 封装 订阅者 到一个新的订阅者 可以实现。
+				>2.消费数据的时候，将数据累加(accumulator)后给 源 订阅者： 显然 也是只需要一个 运算符 映射 返回一个新的 订阅者 即可，这个订阅者 自己 负责存累加值，并计算下一个累加值而 传递给 下一个 源订阅者。scan(initV, accumulator)
+				>3.消费数据的时候，将数据利用lamda表达式转换为另一个值 再传递给 源 消费者： 自然也可以用构造一个新的订阅者 来 实现：map(()->{})
+				>4.在消费数据的时候，对生产的可观测对象都进行调lamda表达式映射/且将消费数据值映射：flatMap()。。。如果用map()产生了Stream<String[]> 这样的流，那么 将map替换为flatmap之后 就 返回 Stream<String>。。flatmap = merge(map(func))
+				>5.消费数据的时候，忽略k个元素后 再传递给源 订阅者：skip(n) 显然可以将源订阅者 封装到一个新的订阅者，而新的订阅者存一个忽略数，达到了忽略数再转发给源订阅者。
+				>6.消费数据的时候，认为这个数据也是Observable类型，然后调它的subscrible()来订阅 新的订阅者--封装了老的订阅者：新的订阅者接收到真正的数据(非Observable),然后调tryEmit(t)将数据入内部队列，然后emitLoop()从队列弹出元素发送给源订阅者：child.onNext(v)：：：merge(Observable<? extends Observable<? extends T>>)
+				>7.直接创建新的可观测对象，这个可观测对象的动作为 新的动作--直接导致这个新的可观测对象被订阅时 直接进入循环中--并发控制从而直到得到新的订阅者并且新的订阅者增加新的产品成功-然后老订阅者开始setProducer消费产品---此时产品生产对象直接交给新的订阅者而新的订阅者是空的； 
+					>连接事件的时候，让老数据源 才开始订阅新的订阅者。而老数据源有老的动作，这里就认为老的动作内部会生产产品进一步调用而传递给新的订阅者---从而新的调用者获得了产品 并 设置到 内部的 queue队列里，周期的传递给真正的订阅者/老订阅者。从而新的订阅者 是 老订阅者的 缓冲。并且保证上级订阅者是串行消费的；并且还控制消费的实际--发生在连接方法执行成功之后。publish()
+		>每个方法：描述了 一个新的可观测对象 和 一个新的 生产传递 过程 和 新的 处理过程；	且 三个新的 都可能依赖 三个 旧的。		
+			>增强功能类型：	不需描述怎么组装的过程，而是描述 动态过程：订阅后的效果，达到的目标；
+				>1.给现有 可观测对象 上增加 一个消费者:
+				>2.给原生产 出来 的数据 增加 各种 变换：
+				>3. 简单生产、直接传递、默认消费：create\
+				>4. 替换的可观测对象：其他不变。defer, 每次订阅时动态生成新的可观测对象；
+			>用户目标：角度来描述 方法的 用途：
+				>1.先有一组源数据序列，订阅时, 把序列中的数据一个个传递给订阅者，最后传递结束：from
+				>2.订阅后，将 周期的把 内部自增的整数值 传递 给 订阅者： interval 同时周期还可以自己指定。
+				>3.订阅后，将 指定的整数区间内的整数逐个发送给 订阅者：range
+				>4.订阅后，将 原始Observable产生的每个数据 都复制n遍 来发送给 订阅者： repeat , 显然必须使用一个模拟的消费者，这个消费者收到源数据后 循环n次发送给订阅者。甚至 使用 这个 模拟的消费者 可以实现 接收k个源数据后 依次 发送给消费者，但是发送这个k小序列发送n轮---小序列级别的重复。
+				>5.订阅后，将 原始Observable产生的数据 每累计k个 后打包为一个对象 发送给 订阅者： buffer, 显然也必须使用一个模拟的消费者--而不是原始的真实的那个消费者； 。。增强版 就是 每累计k个 忽略k个中的最后1个，把剩下的k-1个发送给消费者；；；更强版 是 使用一个表示器，模拟的消费者每次收到一个数据后，调一下标识器，询问一下是否收集完毕，完毕则把这不定长的小序列发送给 消费者。
+				>6.先有2个Observable, 要求，订阅后，依次让两个Observable 订阅 订阅者： 两个Observable产生的数据可以先缓冲在一个队列里，然后从队列里拉取数据传递 给 消费者；
+				>7.订阅后，先 将全部事件 先缓存起来，并按照item->type分类 为 若干组，item->val 产生这个组的新的真正的值，每组from方式转换为一个新的流并放到一个Observable[]里-再from为一个--订阅给原始用户/或者直接每个发送给订阅者： groupby
+				>8.订阅后，将 原始Observable产生的每个数据 用累计器 处理 后 得出 一个新的结果 发送 给 订阅者： scan((t1,t2)->t1+t2)
+				>9.订阅后， 将 原始Observable产生的每个数据 累积n个 为一个 Observble对象后发送给 订阅者： windows(n,skip)显然也是 新增一个订阅者就可以实现。另一种实现：定期的添加终止符到 数据缓存队列里，然后读取到终止符 就把已经缓存了的数据全部发送出去。第三种实现：每发送一个open, 则发送一次producer--就是一个Observable对象，其他时刻则直接接受数据到producer,
+				>10.订阅后，将 原始Observable产生的数据 缓存，查看缓存速率，过滤掉高的，然后 按 指定的调用次数/频率后 将数据发送给 订阅者：Debounce 
+				>11.订阅后， 将 原始Observable产生的每个数据 缓存，并保存缓存时间，每次收到信的数据则和上次接收时间比较， 如果时间间隔超过了某个数据值，则不发送，否则发送给订阅者：throttleFirst   这就是限流的发送。
+				>12.订阅后， 将 原始Observable产生的数据 先缓存， 后启动定时任务去取，取来 发送给订阅者：sample
+				>13.订阅后， 将 原始Observable产生的数据 去重：distinct 实现方式 很巧妙：就是 内部使用一个Set, 加入成功则才发送给订阅者。
+				>14.订阅后， 将 原始Observable产生的数据 用 入参mapper映射为一个Observable类型对象，然后将这个对象订阅 真正的订阅者(即会将这个Observable对象产生的数据发送给真正的订阅者)/下一层的订阅者，所以这就类似一个concatMap()的功能。核心功能。
+				>15.订阅后， 将 原始Observable产生的异常/上一个Observable产生的异常  作为入参注入到 专门的fun1, 产生一个新的Obervable, 然后让这个新的Observable.subscrible(封装了老订阅者的新的订阅者)，这样在上一个Obervable发生了异常之后，就转交给 新的这个Obervalbe来负责产生数据，传递给下一层的Observable,下一层就像无感知一样；所以相当于一种异常恢复：onErrorResumeNext()
+				>16.订阅后， 直接得到 原始Observable，这个对象产生的数据才是要传递给下一层Observable的，所以要订阅这个对象，而订阅中 可能这个对象会产生错误，但收到错误后可能要重试几次--即再次订阅这个对象，重试的策略就是 将 这个对象 产生的异常 和 已经重试的次数 作为 入参 来调 专门的策略fun2()返回是否要重试的判定结果，结果如果是要继续重试，从而继续再次调这个对象的订阅方法：当然调这个对象的订阅方法是异步进行的---在一个专门的线程池里。这就是重试方法：retry()=just(this).lift(xxx)  这是从上一个方法的订阅开始完整重试，这相当于重复执行n型调用路径。
+				>17.简单的封装 上一个 Observable 而返回一个新的特殊的可以自己调用上一个Observable的订阅方法的 Observable: toBlocking()
+				>18.订阅后， 将 原始Observable产生的第一个数据 存下来，并在收到结束信号的时候发送给下一层的Observable, 更多的数据直接忽略。single()
+				>19.主动调用 上一个Observable的订阅方法，入参为自己的订阅者，然后开始阻塞等待，当这个订阅者收到数据后 放到一个容器里，当收到结束信号后让外部不再等待，而返回容器里的这个数据。这个方法就是：BlockingObservable.single()/blockForSingle()方法。相当于主动要求上一个Observable发送且仅接收第一个结果。
+				>20.订阅后， 将 自己 传递给 下一个 Observable；所以下一个Observable想要获取数据，需要调用得到的这个Observable.订阅方法 才能得到上上个应该产生的数据。这个方法:nest(),即：just(this)
