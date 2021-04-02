@@ -1,0 +1,36 @@
+>面对的痛点：从逻辑到代码 的过程：变化仍然太大。膨胀了很多倍。能否逻辑即 代码？。第二，很多 某个动作之后，必然需要 继续做的若干个动作，是否可以让框架自动做，开发者不必再写。
+	>逻辑即代码：建立 事件-方法-数据-DOM 的 联动(鼠标事件引起/鼠标操作按钮引起) 。建立  事件-数据 的 联动(表单输入)。
+		>最强大的地方：可以 监听 数据的变化。js中的数据的变化 事件 也能被监听 是 vue成功的关键。
+	>一操作引起的必然要做的附加操作：DOM的处理 不用 用户 处理，由VUE处理，用户只需要声明即可。
+>vue指令：v- 开头的 VUE提供的DOM的特殊属性。
+	>v-bind:title="message"： 绑定属性。该DOM的title属性和VUE的 message 数据项保持一致。
+		>v-bind:visible.sync="message": 双向绑定： 当 visible 的值因为事件改变了之后， 也会 更新 message的值。
+	>v-if:="seen": 绑定 到 DOM结构。当seen数据项的值=true时，该DOM被加载渲染，=false则被清除。
+		>过渡效果：即被清除、添加、更新时 的渐进效果。
+	>v-for="todo in todos"： 数组 绑定到 DOM结构：出现 重复DOM 形式(数组项可以访问)。	
+	>v-on:click="reverseMessage": 方法 绑定到 DOM事件：当DOM事件发生时 就会调用绑定的方法。而方法可以远程调用，也可以直接改变 vue数据，而vue数据变了则对应的DOM也会跟着改变。
+>vue数据：可以在console动态的改变，改变后对应的DOM就会相应的改变。	
+>vue组件：允许 自定义 标签。所有的vue组件都是vue实例。
+	>页面映射为组件树：组件结构。
+	>自定义组件：标签+标签的属性 +属性绑定的数据+ 标签被替换为的H5格式的真正的内容 
+		>Vue.component('todo-item', {props: ['todo'],template: '<li>{{ todo.text }}</li>'})： 定义了 标签名，标签属性，标签的真正内容。
+		><div id="app-7"> <ol><todo-item v-for="item in groceryList" v-bind:todo="item" v-bind:key="item.id" ></todo-item> </ol></div>: 组件的使用，自定义标签的使用。绑定自定义标签DOM到 数组数据--且这个数组数据就来自 父作用域；再绑定标签属性到数据。其中：标签的key属性是需要绑定到数据的。
+	>组件式构建页面：	
+>vue的响应式系统：vue实例创建时，响应式系统 接收vue实例的data对象，当data对象的某属性改变了，则对应让视图重新渲染 以 响应。	
+	>直接监听data数据的改变事件：vm.$watch('a', function (newValue, oldValue) {}); watch\el\data 是 vue实例 基本属性。
+	>监听data数据运算表达式的值的改变事件：vm.$watch(function () {return this.a + this.b},function (newValue, oldValue) {})
+	>vue实例代表的DOM: el\template 指定。编译为 虚拟Dom渲染函数。智能计算最少需要渲染的组件。
+>其他语法：
+	>缩写：v-bind:href="url" 简写为 :href="url"   ;  v-on:click="doSomething" 简写 为 @click="doSomething"
+	>vm实例其他属性：
+		>computed: 返回使用数据 进行动态计算的结果。H5中调用：{{reversedMessage}} 。。也能监听数据的变化！！即 如果函数中 使用了 vue data，则data变化了 会重新计算。
+			>computed: { reverseMessage: function(){return this.message.split('').reverse().join('')}}
+			>可以set: computed:{reverseMessage: {set: function(newValue){}}} 可以
+		>methods: 可以被调用的方法。如v-on 指令 说明的方法。	
+		
+		
+		
+>实际开发：vue+elementUI + nodejs: 
+	>https://cloud.tencent.com/developer/section/1489863 
+	>https://blog.csdn.net/vbirdbest/article/details/84871336
+	>https://cn.vuejs.org/v2/guide/computed.html	
