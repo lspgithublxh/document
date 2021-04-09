@@ -1,6 +1,7 @@
 package com.example.demo.artifict.pullStream;
 
 import com.example.demo.artifict.pullStream.chain.Chain;
+import com.example.demo.artifict.pullStream.executor.Schedulers;
 import com.example.demo.artifict.pullStream.fun.FunBox;
 import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
@@ -92,8 +93,8 @@ public class Pull {
 
     private static void demo5() {
         Chain.create(Source.random(1))
-                .asyncRead(Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()))
-                .asyncReadable(Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()))
+                .asyncRead(Schedulers.read())
+                .asyncReadable(Schedulers.readable())
                 .appendThrough(Through.doubleData())
                 .appendThrough(Through.map3(FunBox::intToDouble))
                 .startSink(Sink.consoleSink());
@@ -110,29 +111,27 @@ public class Pull {
 
     private static void demo7() {
         Chain.create(Source.random(2))
-                .asyncReadable(Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()))
-                .asyncRead(Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()))
+                .asyncReadable(Schedulers.readable())
+                .asyncRead(Schedulers.readable())
                 .appendThrough(Through.doubleData())
                 .appendThrough(Through.map3(FunBox::intToDouble))
                 .merge(Chain.create(Source.timestamp(2))
-                        .appendThrough(Through.commonMap(FunBox::longToDouble)))
+                                .appendThrough(Through.commonMap(FunBox::longToDouble)))
                 .merge(Chain.create(Source.timestamp(2))
-                        .appendThrough(Through.commonMap(FunBox::longToDouble)))
+                                .appendThrough(Through.commonMap(FunBox::longToDouble)))
                 .startSink(Sink.consoleSink());
     }
 
     private static void demo8() {
         Chain.create(Source.random(2))
-                .asyncReadable(Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()))
-                .asyncRead(Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()))
+                .asyncReadable(Schedulers.readable())
+                .asyncRead(Schedulers.readable())
                 .appendThrough(Through.doubleData())
                 .appendThrough(Through.map3(FunBox::intToDouble))
                 .asyncMerge(Chain.create(Source.timestamp(2))
-                        .appendThrough(Through.commonMap(FunBox::longToDouble)),
-                        Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()))
+                                .appendThrough(Through.commonMap(FunBox::longToDouble)),Schedulers.merge())
                 .asyncMerge(Chain.create(Source.timestamp(2))
-                                .appendThrough(Through.commonMap(FunBox::longToDouble)),
-                        Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()))
+                                .appendThrough(Through.commonMap(FunBox::longToDouble)),Schedulers.merge())
                 .startSink(Sink.consoleSink());
     }
 }

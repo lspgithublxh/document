@@ -3,6 +3,7 @@ package com.example.demo.artifict.pullStream.chain;
 import com.example.demo.artifict.pullStream.IReadable;
 import com.example.demo.artifict.pullStream.ISinkable;
 import com.example.demo.artifict.pullStream.IThroughable;
+import com.example.demo.artifict.pullStream.executor.Schedulers;
 import com.example.demo.artifict.pullStream.fun.DataMapper;
 import com.example.demo.artifict.pullStream.readable.*;
 import lombok.Data;
@@ -57,20 +58,20 @@ public class Chain<T> {
 
     /**
      * 异步数据请求
-     * @param executor 请求执行线程池
+     * @param scheduler 请求执行线程池
      * @return chain
      */
-    public  Chain<T> asyncReadable(Executor executor){
-        return new Chain<T>(new AsyncReadable<T>(executor, iReadable));
+    public  Chain<T> asyncReadable(Schedulers.Scheduler scheduler){
+        return new Chain<T>(new AsyncReadable<T>(scheduler.getExecutor(), iReadable));
     }
 
     /**
      * 异步发送数据
-     * @param executor
+     * @param scheduler
      * @return
      */
-    public Chain<T> asyncRead(Executor executor){
-        return new Chain<T>(new AsyncIcbReadable<>(executor, iReadable));
+    public Chain<T> asyncRead(Schedulers.Scheduler scheduler){
+        return new Chain<T>(new AsyncIcbReadable<>(scheduler.getExecutor(), iReadable));
     }
 
     /**
@@ -91,8 +92,8 @@ public class Chain<T> {
         return new Chain<>(new CommonMergeChainReadable<>(this, chain2));
     }
 
-    public Chain<T> asyncMerge(Chain<T> chain2, Executor executor){
-        return new Chain<>(new AsyncCommonMergeChainReadable<>(this, chain2, executor));
+    public Chain<T> asyncMerge(Chain<T> chain2, Schedulers.Scheduler scheduler){
+        return new Chain<>(new AsyncCommonMergeChainReadable<>(this, chain2, scheduler.getExecutor()));
     }
 
     /**
