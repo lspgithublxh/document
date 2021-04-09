@@ -88,7 +88,11 @@ public class Chain<T> {
      * @return
      */
     public Chain<T> merge(Chain<T> chain2){
-        return new Chain<>(new AsyncMergeChainReadable<>(this, chain2));
+        return new Chain<>(new CommonMergeChainReadable<>(this, chain2));
+    }
+
+    public Chain<T> asyncMerge(Chain<T> chain2, Executor executor){
+        return new Chain<>(new AsyncCommonMergeChainReadable<>(this, chain2, executor));
     }
 
     /**

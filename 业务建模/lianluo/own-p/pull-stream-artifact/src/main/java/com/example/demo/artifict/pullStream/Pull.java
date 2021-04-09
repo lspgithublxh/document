@@ -60,25 +60,27 @@ public class Pull {
 //        demo5();
         //demo6: 合并流：
 //        demo6();
-        //demo7:异步的情况下合并流
-        demo7();
+        //demo7:异步请求响应的情况下合并流
+//        demo7();
+        //demo8: 异步请求响应 且 异步 合并流
+        demo8();
         log.info("[main-thread] end.");
     }
 
 
     private static void demo1() {
-        Pull.build(Source.random(5), Lists.newArrayList(Through.throught1()), Sink.sink1());
+        Pull.build(Source.random(5), Lists.newArrayList(Through.doubleDataThrough()), Sink.logSink());
     }
 
     private static void demo2() {
-        Pull.build2(Source.random(5), Sink.sink1());
-//        Pull.build2(Source.random(5), Sink.sink1(), Through.throught1());
+        Pull.build2(Source.random(5), Sink.logSink());
+//        Pull.build2(Source.random(5), Sink.logSink(), Through.doubleDataThrough());
     }
 
     private static void demo3() {
         Chain.create(Source.random(5))
-                .appendThrough(Through.throught1())
-                .startSink(Sink.sink1());
+                .appendThrough(Through.doubleDataThrough())
+                .startSink(Sink.logSink());
     }
 
     private static void demo4() {
@@ -108,12 +110,29 @@ public class Pull {
 
     private static void demo7() {
         Chain.create(Source.random(2))
-                .asyncRead(Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()))
                 .asyncReadable(Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()))
+                .asyncRead(Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()))
                 .appendThrough(Through.doubleData())
                 .appendThrough(Through.map3(FunBox::intToDouble))
                 .merge(Chain.create(Source.timestamp(2))
                         .appendThrough(Through.commonMap(FunBox::longToDouble)))
+                .merge(Chain.create(Source.timestamp(2))
+                        .appendThrough(Through.commonMap(FunBox::longToDouble)))
+                .startSink(Sink.consoleSink());
+    }
+
+    private static void demo8() {
+        Chain.create(Source.random(2))
+                .asyncReadable(Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()))
+                .asyncRead(Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()))
+                .appendThrough(Through.doubleData())
+                .appendThrough(Through.map3(FunBox::intToDouble))
+                .asyncMerge(Chain.create(Source.timestamp(2))
+                        .appendThrough(Through.commonMap(FunBox::longToDouble)),
+                        Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()))
+                .asyncMerge(Chain.create(Source.timestamp(2))
+                                .appendThrough(Through.commonMap(FunBox::longToDouble)),
+                        Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()))
                 .startSink(Sink.consoleSink());
     }
 }

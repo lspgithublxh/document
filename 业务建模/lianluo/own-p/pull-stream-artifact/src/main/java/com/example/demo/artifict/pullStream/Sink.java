@@ -14,7 +14,7 @@ import java.util.Objects;
 @Slf4j
 public class Sink{
 
-    public static ISinkable<Integer> sink1(){
+    public static ISinkable<Integer> logSink(){
         return new ISinkable<Integer>() {
             @Override
             public void sink(IReadable<Integer> readable) {
@@ -37,6 +37,10 @@ public class Sink{
         });
     }
 
+    /**
+     * 接收到的数据输出到控制台 的sink
+     * @return sink
+     */
     public static ISinkable<Double> consoleSink(){
         return new ISinkable<Double>() {
             @Override

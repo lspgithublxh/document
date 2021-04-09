@@ -21,7 +21,7 @@ import java.util.Objects;
 @Slf4j
 public class Through{
 
-    public static IThroughable<Integer,Integer> throught1(){
+    public static IThroughable<Integer,Integer> doubleDataThrough(){
         return new IThroughable<Integer,Integer>() {
             @Override
             public IReadable<Integer> through(IReadable<Integer> readable) {

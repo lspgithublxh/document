@@ -176,3 +176,4 @@
 				>18.订阅后， 将 原始Observable产生的第一个数据 存下来，并在收到结束信号的时候发送给下一层的Observable, 更多的数据直接忽略。single()
 				>19.主动调用 上一个Observable的订阅方法，入参为自己的订阅者，然后开始阻塞等待，当这个订阅者收到数据后 放到一个容器里，当收到结束信号后让外部不再等待，而返回容器里的这个数据。这个方法就是：BlockingObservable.single()/blockForSingle()方法。相当于主动要求上一个Observable发送且仅接收第一个结果。
 				>20.订阅后， 将 自己 传递给 下一个 Observable；所以下一个Observable想要获取数据，需要调用得到的这个Observable.订阅方法 才能得到上上个应该产生的数据。这个方法:nest(),即：just(this)
+				
