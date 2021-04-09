@@ -1,0 +1,15 @@
+1.业务逻辑：自顶向下梳理、分解。
+	>流程角度：梳理出一个个流程出来，每个流程 若干个环节，每个环节 明确 问题/目标/条件/顶层想法/顶层思路/规则-规律/策略/算法/路径/考虑-顾虑, 这些细节。
+	>流程环节式编程框架：
+2.各个框架的架构设计：jdk中的,开源的。zk + springcloud(feign+hystrix+ribbon+eurake+gateway) + netty: 封装和塑造过程。领域模型。彻彻底底。(像对redis客户端一样看其封装和塑造和定义)
+	>zk:
+	>springcloud:
+	>netty:
+	>mybatis:
+	>mybatis-plus:
+	>druid:
+	>jdbc:
+	>tomcat:
+	>springboot:
+	>seata:
+3.
