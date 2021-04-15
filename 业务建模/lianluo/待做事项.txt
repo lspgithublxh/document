@@ -12,4 +12,4 @@
 	>tomcat:
 	>springboot:
 	>seata:
-3.
+3.并行流parallStream的使用：

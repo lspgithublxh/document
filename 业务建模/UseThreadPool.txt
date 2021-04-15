@@ -1,0 +1,33 @@
+private void sendTaskToVeh(OtaTaskInfoModel otaTaskInfoModel, List<String> vinList) {
+        if(CollectionUtils.isEmpty(vinList)){
+            return;
+        }
+        ThreadPoolExecutor executor = ThreadPoolUtil.getSingleton(ThreadPoolUtil.UseType.TASK_JOB);
+        Set<String> finishSendSet = Sets.newConcurrentHashSet();
+        AtomicBoolean stopSubmit = new AtomicBoolean(false);
+        CountDownLatch latch = new CountDownLatch(vinList.size());
+        for (String vin : vinList) {
+            executor.execute(() -> {
+                synchronized (stopSubmit){
+                    if(stopSubmit.get()) return;
+                    finishSendSet.add(vin);
+                }
+                doSendTaskToVeh(otaTaskInfoModel, vin);
+                latch.countDown();
+            });
+        }
+        try {
+            boolean toZero = latch.await(vinList.size(), TimeUnit.SECONDS);
+            if(!toZero){
+                synchronized (stopSubmit){
+                    stopSubmit.set(true);
+                }
+                log.info("OtaTaskInfoJob worker time over, rest work count :{}, main thread run them now.", vinList.size() - finishSendSet.size() );
+                vinList.stream().filter(vin -> !finishSendSet.contains(vin)).forEach(vin ->{
+                    doSendTaskToVeh(otaTaskInfoModel, vin);
+                });
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
