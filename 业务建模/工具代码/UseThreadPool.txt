@@ -1,0 +1,4 @@
+new ThreadPoolRunContext<>(ThreadPoolUtil.UseType.VALIDATE_TASK, vin ->{
+                        doValidateVehInfo(vehSeriesNo, vehVariableModelNos, targetVersion, otaTaskType, checkFailedVinAndReasons, isSupportConfigCodeMap, vin);
+                        },afterDistinctList, Math.min(vehVariableModelNos.size(), 20 * 60))
+                .awaitTermination();
