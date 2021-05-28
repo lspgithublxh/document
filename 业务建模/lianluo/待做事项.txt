@@ -13,3 +13,27 @@
 	>springboot:
 	>seata:
 3.并行流parallStream的使用：
+
+
+
+------------------------
+1.压测 一下 优化后的校验功能。QPS，瓶颈在哪里。
+2.异步工具的使用和架构了解：CompletableFuture.runAsync().thenRunAsync();   CompletableFuture.allOf(..).get();
+3.方法的异步调用：@Async("OTA-APP-THREAD")  后台发现代理后来交给了advice/MethodInterceptor:AnnotationAsyncExecutionInterceptor/AsyncExecutionInterceptor 而使用线程池提交submit:executor.submit(task):AsyncTaskExecutor, 
+	>核心入口：JdkDynamicAopProxy .invoke()调用开始： 会获取targetClass的 method 的所有的匹配的 MethodInterceptor： 
+		>这些方法拦截器来自：
+			>advisor 是 PointcutAdvisor    类型: 方法需要满足切点表达式，Advisor 直接得出的 Advice 强转为 MethodInterceptor ---这种常见于spring-aop-aspectj的AspectJAroundAdvice， 或者 AdvisorAdapter 处理Advisor后得出的 Advice封装到 MethodInterceptor ---这种方式常见为spring-aop中的 前后环绕通知AfterReturningAdvice/MethodBeforeAdvice 
+			>advisor 是 IntroductionAdvisor类型：类匹配就可以了。同上。
+4.线程池中的线程抛出异常后怎么处理？	32155个异常。
+	>worker 运行中Runnable突然抛出异常：则 worker会退出：
+		>退出前做的事情：
+			>1.这个worker.completedTaskCount++ 即认为这个worker完成了这个task, 然后加到全局的completedTaskCount上。
+			>2.然后整体worker数-1， 将worker从workers队列里移除。
+			>3.尝试终止线程池：一般没用，因为此时线程池状态running.
+			>4.如果线程池state<stop则添加一个worker: 这个新的worker 没有 firstTask, 也不是coreTask; 这样添加成功率更高；
+	
+5.服务拦截：给服务添加新的方法。
+	>
+	
+6.线程池外露 主从同步 策略：超时、永远等待、抛出运行时异常。	
+

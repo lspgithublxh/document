@@ -1,0 +1,22 @@
+CREATE TABLE ota_task_strategy_delta(
+`id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
+`task_info_id` INT(10) NOT NULL COMMENT '任务ID',
+`name` VARCHAR(32) NOT NULL DEFAULT '' COMMENT '策略名称',
+`pre_upgrade_condition` VARCHAR(1024) COMMENT '预升级条件',
+  `package_type` INT(1)  COMMENT '升级包类型，1:增量包，如果没有推送全量包；2:全量包;3:动态选择',
+  `is_compare_ecu_version` INT(1) COMMENT '是否比较ECU版本，1:比较；0:不比较,2:动态选择',
+  `create_user_id` BIGINT(20) NOT NULL COMMENT '创建人id',
+  `create_user_name` VARCHAR(16) NOT NULL DEFAULT '' COMMENT '创建人名称',
+  `create_time` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`id`) USING BTREE,
+  KEY idx_ts_task_info_id(task_info_id)
+)ENGINE=INNODB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8 COMMENT='抽检任务策略变更表';
+
+CREATE TABLE ota_task_verificate_whitelist_version(
+`id` INT(10) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
+`task_info_id` INT(10) NOT NULL COMMENT '任务ID',
+`type` INT(11) NOT NULL COMMENT '类型：1：同版本刷写；2：降版本刷写',
+PRIMARY KEY (`id`) USING BTREE,
+  KEY idx_tvwv_task_info_id(task_info_id)
+)ENGINE=INNODB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8 COMMENT='任务版本校验白名单表';
+

@@ -1,0 +1,4 @@
+ALTER TABLE ota_upgrade_strategy_ecu_relation ADD INDEX idx_strategy_ecu(`upgrade_strategy_id`,upgrade_order);
+ALTER TABLE  ota_upgrade_strategy_veh_relation  ADD INDEX idx_strategy_veh(`vehicle_series_model_id`, `is_default`);
+ALTER TABLE `ota_vehicle_blacklist` ADD INDEX idx_vin_blacklist(`vin`,`is_delete`);
+ALTER TABLE `ota_vehicle_whitelist` ADD INDEX idx_vin_whitelist(`vin`,`type`,`is_delete`);

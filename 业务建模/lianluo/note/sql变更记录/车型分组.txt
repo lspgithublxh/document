@@ -1,0 +1,27 @@
+DROP TABLE IF EXISTS ota_vehicle_model_group_veh_relation;
+CREATE TABLE `ota_vehicle_model_group_veh_relation` (
+  `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `ota_vehicle_model_group_id` INT(11) NOT NULL COMMENT '车系分组id',
+  `ota_vehicle_series_model_id` INT(11) NOT NULL COMMENT '车系车型表id',
+  `is_delete` INT(1) DEFAULT '0' COMMENT '是否删除，1：已删除；0：未删除',
+  `create_time` TIMESTAMP  DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` TIMESTAMP  DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
+  PRIMARY KEY (`id`)
+) ENGINE=INNODB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8 COMMENT='车型分组和车系车型关联关系表';
+alter table ota_vehicle_model_group_veh_relation add unique uniq_group_id_series_model_id(`ota_vehicle_model_group_id`, `ota_vehicle_series_model_id`);
+
+
+DROP TABLE IF EXISTS ota_vehicle_model_group;
+CREATE TABLE `ota_vehicle_model_group` (
+  `id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `name` VARCHAR(32) NOT NULL COMMENT '分组名称',
+  `is_delete` INT(1) DEFAULT '0' COMMENT '是否删除，1：已删除；0：未删除',
+  `create_user_id` BIGINT(20) DEFAULT '0' COMMENT '创建人id',
+  `create_user_name` VARCHAR(16)  DEFAULT '' COMMENT '创建人名称',
+  `create_time` TIMESTAMP  DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_user_id` BIGINT(20)  DEFAULT '0' COMMENT '最后更新人ID',
+  `update_user_name` VARCHAR(16)  DEFAULT '' COMMENT '最后更新人名称',
+  `update_time` TIMESTAMP  DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最后更新时间',
+  PRIMARY KEY (`id`)
+) ENGINE=INNODB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8 COMMENT='车型分组表';
+alter table ota_vehicle_model_group add unique uniq_name(`name`);

@@ -1,0 +1,131 @@
+007796
+>idea安装： 亲测有效：https://tech.souyunku.com/?p=30970
+	>easycode配置：https://blog.csdn.net/hzw2312/article/details/106468270  
+		>easycode模板：https://my.oschina.net/u/3610293/blog/4390719
+	>热更新：配置idea spring-boot 项目  on frame deactivation
+	>自动输入：settings auto import
+	>mapper-xml提示插件：
+>mysql安装：压缩包：https://downloads.mysql.com/archives/community/
+	>配置：创建my.ini 并 配置好。删除/data文件夹。
+			mysqld remove
+			mysqld --initialize-insecure
+			mysqld -install
+			net start mysql
+	>登录并改密码：mysql -uroot 登录之后：ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY "lsp"; 改密码。
+>项目修复：refresh + mvn clean:install + refresh + invalidate cache + 启动项目
+>数据库建模：PDMan, power designer, mysql workbench ,	SQL Power Architect,DB Designer,dbdiagram.io,Freedgo	
+>Jrebel: https://blog.csdn.net/qq_36676682/article/details/103928741	
+>Xrebel的激活：http://jrebel.cn:81/e6b12368-46e4-238e-0c31-8877a5112f1d + 随便哪个邮箱即可888@163.com  
+	>项目本地访问地址：http://192.168.73.89:20142/xrebel
+		>项目页面上也可查看：直接查看页面请求的完整执行过程。参考博客：https://blog.csdn.net/njpkhuan/article/details/100159990
+			>激活服务搭建：https://www.jianshu.com/p/2f32a47b2442  搭建号的激活服务：https://active.jrebel.cn/
+	>项目启动参数：增加一个 agent:  javaagent:xrebel.jar 
+>Druid监控图：http://127.0.0.1:20142/druid/index.html
+>端口监控：netstat -ano|findstr "20142"	
+>powerDesigner: https://www.fujieace.com/software/powerdesigner.html 且反向工程 https://jingyan.baidu.com/article/d8072ac4b13d34ec94cefd5d.html
+>设计必要图：
+	>UML图： 概念之间的关联关系。viso 是好的。https://www.bouml.fr/download.html#Windows
+	>泳道图：一个活动开始到结束 从一个概念开始 借助 调用其他概念 使用其他 概念 来完成 子功能 而整合各个子概念提供的完成的结果而 对外 整体 提供服务达到目标/解决问题/创造价值 的过程。
+		>业务活动：其中 每个 角色/概念 的状态在变化，但其中关键的状态变化 才是需要关注的。这个关键的 各个角色的 状态变化过程图、状态转移图、马尔科夫过程 表达出来，才能恰好的表达这个活动的 根本信息/活动发生了完整的进行了的证明----促使各个角色的状态发生变化/转移。
+	>关联记录图：活动中关键的事件、关键的结果，往往一个是对概念进行了修改，第二个是 将 多个概念关联了起来；这个修改和 关联 要记录下来。每个关联记录 都是 某个活动的 产出结果、价值结果(不存在毫无理由毫无原因的关联)。
+		>业务活动的目的：走通完整的流程。一个入口 一个出口；或者 一个 入口  多个 可以的 出口(不含异常)(异常出口是总是存在的)。
+	>事情步骤推进图：事情从提出 到 筹划 到 启动 到 push推动 到 结束 到 复盘。每次向前 都是 动作推动的结果。完成的好坏、质量的高低 ，往往看 推进过程中 明确的动作是否做到位，没明确的忽略的动作 因为没做 是否 产生了大的影响。
+		>问题驱动式开发：事情推进需要处理的问题提出-用业务逻辑(业务设计)回答。(业务逻辑直到全部细节)
+			>问题没有组织 则没有抽象：不能把所有的问题问全，而只是零散的找到了几个问题 而遗漏了 不少问题。
+		>事情推进的过程就是业务设计的过程：事情推进完全想透、完整明白 之后，业务也就设计完成了。	
+			>事情推进过程中：关键时问题的提出，和业务逻辑的回答。需要什么数据 和 数据怎么存储 不是考虑的问题，也不应该出现这样的字眼，这些过于具体的内容。
+				>什么样的回答才是好的：从 目标、条件、思路 一步步考虑得到 方案的 结果。
+			>看业务逻辑代码：就是要总结 它 对于整个事情的推动作用是什么？ 它推动了什么？它解决了在事情推动过程中必须跨过的小决定是什么？ 它在解决什么问题？解决的这个问题 在 事情推进过程中 的哪个步骤哪个环节中遇到的？	
+	>业务的扩展：
+		>如果想在某张表中新增一条记录，但是又想区分它和其他记录不同，但是已有字段无法区分：则需要 新增记录的同时 在另外的地方 存储 区分信息/补充信息 以及 区分信息 和源记录 关联 ， 显然最 直接的实现 就是 新增一张和原记录 主键关联的存放区分信息/额外信息的 表(当然存在redis/mongodb只是不同的存储数据库而已)。
+>日志问题：
+	>不显示日志: 
+		>想显示sql日志：
+	>要求不显示日志：但是要看执行的sql: 使用druid的SQL监控页面即可：http://127.0.0.1:20142/druid/sql-detail.html?sqlId=11 	
+>api查看：
+	>swagger方式：http://127.0.0.1:10744/swagger-ui.html#/ota-ecu-api/syncEcuUsingPOST
+>git 项目迁移：
+	>git clone --mirror 源项目地址
+	>cd 产生的.git文件夹
+	>git push --mirror 新项目地址
+>分析：分析就是按层次 找联系：也是从一个概念开始向上向下进行扩展，将层次补充完整，从而发现更多的隐藏在各个层次中的联系。
+>何为策略：任何需要判断、选择、决策的事情/问题，解决的函数 就是一个策略，输入条件/选项 而输出单项/决定结果 的 流程/函数 就是 一个 策略。
+	
+>抽象到具体的叙事风格：就是自顶向下表述 事情的 风格。	
+	>一般到具体的叙事风格：说话风格。大范畴概念到小范畴概念的叙事风格；一般到具体的叙事风格。大类到子类的叙事风格。统一的名称到具体实现的风格；目标到方案的风格，问题到方案的风格。大的动作 到 小的可以落实的动作，用户的语言到 开发者的语言 到 计算机的语言。
+		>比如：数据库 到 mysql 。。
+	>风格的意义：思路更简便。说明更清晰，使得抽象的地方尽可能简便，而具体的地方又能非常的详细。高的时候能足够高，大的时候能无限大。	
+>业务 整理时 描述它的风格：多描述目标/大目标小目标/需求/要求/约束/业务功能/业务要完成一件什么事情/产品都经常使用的词语，少描述 手段/实现/具体操作/具体实现/实现具体路径。	
+	>限制描述所使用的词语：少具体技术过程。如：从xx服务获取xx信息,存储xx信息在mysql表里。
+	>逻辑属于实现，属于对 要求 的实现：要求可以是：非常非常具体的指标，非常具体的流程上某个环节通过的要求/限制。	
+		>各种类型的要求：限制要求、范围要求、取值要求、匹配要求、满足规则的要求、存在要求。特征要求。
+		>要求：相当于规格书。。比如宝马给 宁德时代的 电池规格书-几千页 详尽的描述。不管具体实现多简单多难，统一都要描述出来，不能出现逻辑漏洞。
+	>流程出现的目的：走流程。让请求 走流程。让请求走什么流程。走流程的目的：办事。办事为什么要通过走流程的方式：让办事更加平等统一规范和可描述可管理可监控可评估可改善。
+	>要一件业务事情一件业务事情的看：无论这一件事情范围有多大，构成多复杂，都要先当作一件事，自顶向下的描述到精细。绝对不要因为它大 就从它的 腰部或者脚步开始描述，这样就会越来越混乱，线索思路都不清晰。	
+		>很多时候：一件业务事情 的代码展现形式 和 产品角度看的业务事情的实现是 出入很大的，比如突然查数据库得到的数据后面备用，就很突兀，突然做了一件后面才知道用途/才具体使用其结果的事情--先做了。
+	>评价讲述有一个准则：就是逻辑是否清晰，讨论是否带有逻辑，讨论中的逻辑是否深入到非常细节的部分非常具体的部分 而不是泛泛而谈表面的粗略部分模棱两可部分。	
+	>业务整理：顶层的全部抽象到 底层的全部细节。就是建立 一个业务索引图。
+		>快速索引到业务的最细节部分：从业务最抽象部分(如目标/服务/功能) 若干步之内 索引 到 某个业务流程 的 某个环节 的 小功能的策略/路径 的 具体规则 的细节 (甚至到这个细节的代码实现/数据库表设计实现)。
+	
+>代码扩展性：
+	>流程中某个动作：以后的改变可能不是加个if/else,再是否执行它；而是可能需要 平行扩展它。即同样的条件，需要执行两个服务--显然，如果可以并列执行，则可以以消息mq/抽象服务-子服务/rx响应式编程/线程池/策略类/注解方式实现更佳?, 从而让所在的类方法 可以固定 而具有扩展性。
+		>平行扩展： 寻找服务组-同步/发到mq主题-异步 执行的方式。(服务的方式，则服务只能调一个方法--内部需要聚合)
+		>按参数替换：策略方式 可以 实现 动态替换的效果。
+		>方法简化：一个接口里方法太多--这个接口是个一般化的接口/应该在它的若干个子接口中的某一个中进行；。
+	>对抽象流程的要求：	描述中没有 关于实现和具体子类特征 的词语，必须是这一层上的概念。接口式描述，函数式描述-少用 运算符。
+		>抽象描述也要看扩展：某个一般的动作也要可以 平行 扩展/定义顺序 。
+	>对实现的要求：分散存储。单独存储，存储在不同类里 优先，不同方法里 其次。不同类里，继续 就是 在 不同的包下、项目里。
+		>可配置：灵活替换。
+		>可以并行扩展：某个动作也可以并行扩展；某件具体的事情可以并行扩展。
+	>流程中增加一个环节：环节式编程。定义一个流程，可以在方法上注解配置 环节序号(可以小数/版本)，同时定义一个这个流程的上下文--这样每个环节产生的数据可以输出到流程上下文，而需要的数据也可以从上下文获取到；	
+		>好处：环节式编程，可以方便的增加环节和删除环节。自然可以替换环节(修改注释enable即可)。方便环节很多、经常扩展 的 业务场景。
+			>好处2：环节为单元，为原子单元，使得 业务 单元 更坚固，替换更精细，可维护性更高，更加清晰稳定，对已有业务代码层没有侵入-只是在运行时功能不一样了-即运行时侵入。精细到环节，还使得 一个方法里实现的业务更小，更加可管理。
+				>业务精细到环节 粒度的 分散存储：每个环节都可以分散存在不同的类文件里。
+		>构建一个环节式 编程框架：
+>问题：
+	>如何把嵌套式编程 转为 流水式编程：
+	>手机手写记录：
+>idea无法下载源码：settings/maven/Importing 设置正确的JDK
+>spring el表达式：https://zhuanlan.zhihu.com/p/174786047
+>git:
+	>合并几个commit为一个： 
+		>git rebase -i 6e371baa7b41c99509eb6568d67924fd576950c2 这个commit是边界，不是需要合并的
+			>或者使用另外一种合并方式：git rebase -i HEAD~2 表示合并 顶部的两个commit为一个commit。
+		>编辑：修改第一条以下的pick为 squash
+		>保存退出：编辑提交内容后 再次 保存推出。
+	>将master分支的远端分支同步进来：git pull 即可。
+	>之前从master checkout 出的分支A，独立开发了提交了，现在要和已经和远端同步了的master进行合并：在这个分支A上 : git rebase master 即可。相当于 之前是 从master 作为基地 出来的，现在 再次 和master作为基地，从而把 master内容合并进来。
+		>执行后可能有冲突文件：需要解决冲突，然后执行 git rebase --continue 相当于 提交commit。 然后就可以 checkout 到master而进行 merge A了。
+	>git pull/merge 和 git rebase 的区别：
+		>git merge/pull 后接分支 ，相当于将 那个分支的所有commit 和 本地代码 直接合并进来，合并冲突后 产生一个新的commit	，那么其他分支上的提交和本地的commit都会保留，且是分叉结构，并且产生一个新的commit。
+		>git rebase 后接commit、分支，如果 接commit则是 合并分支为一个， 接 分支如master，则是相当于 上次从master checkout 出 B以来 master新增了commit,而B也新增了commit,此时把B新增的commit都平行的移动到master的最新的commit的后面，这样，所有的commit都保留 且 没有产生分叉。
+	>git cherry-pick ： 接commit, 而git merge 则接 分支，把分支完全的合并进来。
+		>git cherry-pick 接commit 则是把另一个分支的部分commit合并进来，即添加到当前分支的末尾---且加进来的每个commit映射一个新的commit hash。
+			--应用前：先 执行 git fetch origin xxx 拉取xxx分支的commit进来，否则会报 fatal: bad revision  错误。
+			--应用中：发生了冲突，则到idea resolve之后 但不要commit(否则丢失该分支的历史commit记录), 然后 继续执行 git cherry-pick --continue 保存推出即可，继续merge,直到完成，不再|CHERRY-PICKING 状态。
+			>git cherry-pick commit1 commit2 
+			>git cherry-pick commit1..commit2 不包含commit1
+			>git cherry-pick commit1^..commit2 包含commit1
+		>git cherry-pick 接 分支 则是 把该分支的最新commit合并进来。可能更方便于回退，而merge则回退到合并时所在的分支。
+	>git branch -D xx: 删除本地分支。
+	>git reset --hard HEAD^： 撤销最新的commit, git reset --hard parent_commit 撤销到某个commit--不包含这个commit
+	>git merge branch: 在idea 里执行效果 最好，最灵活。
+	>将远程分支拉取 到本地 的一个新分支： git checkout all/feature_merge_five_branch -b local_five 
+	>远程分支同步： git fetch origin branchname:branchname 
+	>强行推送来reset分支提交：git push -f all local_five:master
+>api接口的postman调用：直接用 swagger-ui提供的模板：之上进行简答的修改即可。http://127.0.0.1:10142/swagger-ui.html	
+	>甚至不用修改：直接swagger执行调用 也有结果返回。
+	>产生curl 语句：。
+	
+>android 再idea下的安装和开发：https://www.jb51.net/article/196746.htm 灵活的地方在：1.先 install Haxm ; 2. 后重启后 直接 最顶部的Download 然后 A system image must be selected to continue 就消失了。
+	>可以成功启动一个新的手机：模拟手机。	
+	>可以新建一个项目：然后直接run, 应用就会 添加到 这个 虚拟手机 中，并且 运行起来。
+	
+>gradle 项目配置 ： 
+	dependencies {
+        classpath 'com.android.tools.build:gradle:4.2.1'
+
+        classpath 'com.google.protobuf:protobuf-gradle-plugin:0.8.16'
+    }
+	
+>发布位置：	Dashbord 的 待发布里。

@@ -1,0 +1,6 @@
+>需求背景：
+	>ECU工作模式：正常模式、物流模式、展车模式、OTA模式1、OTA模式2
+>目的：
+	>记录数据关联：在表中：ota_vehicle_ecu_work_model。记录的是：每辆车vin对应的每个ECU的工作模式、当前模式、目标模式、切换时间、切换结果。
+	>发送给汽车：VIN.
+	>保存消息和数据：ota_vehicle_ecu_work_mode_read_update_command

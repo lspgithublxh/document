@@ -104,3 +104,196 @@
 			>数据结构：
 			>算法：
 		>TypeHandlerRegistry: 参数值的类类型处理器 仓库。	
+>spring-aop核心：
+	>调用时：
+		>核心入口：JdkDynamicAopProxy .invoke()调用开始： 会获取targetClass的这个method 的所有的匹配的 MethodInterceptor： 然后形成chain 逐个 procced: 即拦截器链的执行。
+			>这些方法拦截器来自：
+				>advisor 是 PointcutAdvisor    类型: 方法需要满足切点表达式，Advisor 直接得出的 Advice 强转为 MethodInterceptor ---这种常见于spring-aop-aspectj的AspectJAroundAdvice， 或者 AdvisorAdapter 处理Advisor后得出的 Advice封装到 MethodInterceptor ---这种方式常见为spring-aop中的 前后环绕通知AfterReturningAdvice/MethodBeforeAdvice 
+				>advisor 是 IntroductionAdvisor类型：类匹配就可以了。同上。
+		>获取targetClass: AopUtils.getTargetClass(invocation.getThis())
+		>获取原方法：ClassUtils.getMostSpecificMethod(invocation.getMethod(), targetClass)	
+		>核心执行过程：方法实际调用 封装到 Callable里， 再看方法的返回类型：来选择是 executor.submitListenable()还是.submit(), 还是 CompletableFuture.supplyAsync()
+	>@Async 注解方法后 对 方法的影响：
+		>调用该方法时：走专门拦截器 AnnotationAsyncExecutionInterceptor
+			>这个拦截器里记录了所有bean中有这个@Async注解的方法：并已经对应指定了一个 ThreadPoolTaskExecutor --内部新建一个 ThreadPoolExecutor()--具体配置：拒绝策略：抛运行时异常；线程工厂：线程组+名递增+优先级+后台运行；队列：LinkedBlockingQueue/无长度则同步队列SynchronousQueue； 且覆盖execute()方法--来包装装饰Runnable任务:TaskDecorator; 同时允许核心线程超时：allowCoreThreadTimeOut。
+				>ThreadPoolTaskExecutor来源：bean ,用户提供。
+		>构造AnnotationAsyncExecutionInterceptor的时间地点：bean化时候执行 AsyncAnnotationBeanPostProcessor/AbstractAdvisingBeanPostProcessor 创建动态代理 -->	创建advisor:AsyncAnnotationAdvisor--->创建Advice:AnnotationAsyncExecutionInterceptor,Pointcut:AnnotationMatchingPointcut (匹配方法的标准：有@Async注解/或者@javax.ejb.Asynchronous注解)
+			>注意这个拦截器的 executor的来源： 从配置类 ProxyAsyncConfiguration： 获取 用户自己的自动配置类 AsyncConfiguration/AsyncConfigurer 调用方法产生的执行器 都是 null。 所以 还是运行时 产生的：AsyncExecutionAspectSupport.determineAsyncExecutor() -->通过 方法的 @Async注解的value, 然后 从bf 里 找 有这个 qulifier的 Executor类型的bean， 这个就是用户自己配置的bean了。
+>linux下功能：
+	>查看java应用启动命令：ps
+	>spring-boot应用的端口占用：netstat -anp | grep pid
+>线程池中的线程抛出异常后怎么处理？
+	>worker 运行中Runnable突然抛出异常：则 worker会退出：
+		>退出前做的事情：
+			>1.这个worker.completedTaskCount++ 即认为这个worker完成了这个task, 然后加到全局的completedTaskCount上。
+			>2.然后整体worker数-1， 将worker从workers队列里移除。
+			>3.尝试终止线程池：一般没用，因为此时线程池状态running.
+			>4.如果线程池state<stop则添加一个worker: 这个新的worker 没有 firstTask, 也不是coreTask; 这样添加成功率更高；
+	>对主线程的影响：没有？只是抛出了一个异常；	
+	>线程池在execute了一个任务到队列后：会复检recheck, 看是否还有worker,如果此时worker数为0，则添加一个空初始任务的worker。(很明显，添加之前需要检查线程池状态是否还在running-不在running则需要从队列移除这个task)	
+>mybatis 中的KeyGenerator功能：
+	>在执行更新：PreparedStatementHandler.update(Statement statement)方法的时候，在execute语句之后，先从mappedStatement获取了 KeyGenerator, 然后执行它的处理方法keyGenerator.processAfter()，这里就会转到tkmybatis里的实现了。
+>mybatis: 
+	>如何进行扫包的：形式上 增加了注解@MapperScan
+		>启动阶段有效行为：注册了一个bean:MapperScannerConfigurer 它实现了BeanFactoryPostProcessors的方法，从而这个bean在被实例化时 会调用实现的post方法：有效动作就是 实例化一个new ClassPathMapperScanner()对象来扫包.scan("basePackages") 并注册扫到的合理的类到 仓库:beanFactory
+			>扫的类：1.先候选类：先盲选 路径下所有的 没有被filter排除的、没有Conditional关系的 所有 .class --->再过滤：因为这个Scanner有自己定制的TypeFilter:excludeFilters:规则很简单：类名不是package-info结尾即可。而定制的TypeFilter:includeFilters则 只要没有@Conditional注解 就始终可以--->进一步过滤：定制的ClassPathMapperScanner 要求 必须是接口类型 且独立。。(因此Service接口也会被代理，所以这是引起问题的地方)
+	>普通的ComponentScan: 是确定的包下有@Component/@ComponentScan注解的。所以Controller/ServiceImpl可以，而接口/Dto/Entity不可以。
+>resilience4j：架构和使用。	
+
+>spring-security: 顶级想法和认识。
+	>封装过程：过程拆分为了多少个环节，每个环节由哪个类负责。
+		>启动配置的封装过程： 用户定义配置类使用 @EnableWebSecurity 该注解@Import了 配置类 WebSecurityConfiguration ---这个配置类定义了名为"springSecurityFilterChain"的javax.servlet.Filter:
+			>这个Filter的构建过程/真实内容：WebSecurity 主导构建：1.初始化-->2.配置-->3.构建 
+				>初始化：SecurityConfigurer.init() 这个SecurityConfigurer就是用户自己定义的继承了WebSecurityConfigurerAdapter的配置类。
+					>认证管理器：配置和构建。调用户配置类可能覆盖的配置方法@configure(AuthenticationManagerBuilder auth) 否则父类默认。
+					>直接构建：new HttpSecurity()
+					>直接配置这个 HttpSecurity： http.csrf().headers()...  根本就是 每个方法的返回值都是AbstractHttpConfigurer:SecurityConfigurer类型。
+						>配置的效果：1.新建一个配置对象 加到 了HttpSecurity:AbstractConfiguredSecurityBuilder 内部的map:configurers: LinkedHashMap<SecurityConfigurer, List<SecurityConfigurer>>  2.新建一个Filter加到HttpSecurity 内部的 List<Filter>
+							>配置对象如：CsrfConfigurer/ExceptionHandlingConfigurer/HeadersConfigurer/SessionManagementConfigurer/SecurityContextConfigurer/RequestCacheConfigurer/AnonymousConfigurer/ServletApiConfigurer/LogoutConfigurer
+					>补充配置 HttpSecurity: 从 spring.factories里加载 AbstractHttpConfigurer类型的 实现类 来实例化后 apply应用到 httpSecurity。
+					>继续补充配置 HttpSecurity:	调 用户定义配置类 的 configure(HttpSecurity http) 来实现。此时如 ExpressionUrlAuthorizationConfigurer/RequestMatcherConfigurer 也加进来了。
+					>将 HttpSecurity 加入到 WebSecurity对象securityFilterChainBuilders属性里: 并 给WebSecurity配置一个 FilterSecurityInterceptor。
+				>配置：SecurityConfigurer.config()
+				>构建：WebSecurity.performBuild()
+					>遍历所有的安全过滤器链构建器来获取过滤器并封装到一个DefaultSecurityFilterChain对象里：如 HttpSecurity: 执行它的build()返回的就是所有的Filter 。由于方法是统一的，build过程：init->config->performBuild
+						>init: 就是将 HttpSecurity 里的 SecurityConfigurer map:configurers 的所有values都合并起来，然后逐个执行它的init()方法
+						>config: 什么也没做
+						>performBuild: 将 HttpSecurity的 filters:List<Filter> 排序后 封装到 一个 DefaultSecurityFilterChain对象 返回。这里的过滤器 包括：UsernamePasswordAuthenticationFilter/LogoutFilter/AnonymousAuthenticationFilter
+					>将获取的所有DefaultSecurityFilterChain封装到FilterChainProxy对象：这个FilterChainProxy 作为 Filter返回。
+		>配置的封装包括全局配置：GlobalMethodSecurityConfiguration 这个配置类。也构建认证管理器。	
+	>运行流程：
+		>从tomcat的ApplicationFilterChain.internalDoFilter()开始：内部执行它的若干个Filter: .doFilter()这些过滤器：OrderedCharacterEncodingFilter/WsFilter/DelegatingFilterProxyRegistrationBean$1(这个的名称为springSecurityFilterChain)
+			>进入到过滤链代理：FilterChainProxy.doFilter(ApplicationFilterChain)-->FilterChainProxy.doFilterInternal(ApplicationFilterChain) 内部构造new VirtualFilterChain()对象.doFilter()开始。
+				>过滤器链代理开始 过滤：FilterChainProxy 内部有一个 Filter 列表：doFilter() 包括的过滤器：LogoutFilter，，这些过滤器doFilter()方法的最后都是chain.doFilter(request, response): 这个Chain就是FilterChainProxy。
+					>执行通用的认证控制流程模板方法：尝试认证-->认证结果实体用于 会话Session --> 认证成功后应该做的事情。
+						>认证过滤器尝试认证：UsernamePasswordAuthenticationFilter.attemptAuthentication() 开始。
+							>生成 认证实体 ：从httpRequest里获取username和password参数 封装到 UsernamePasswordAuthenticationToken()对象。
+							>验证 认证实体：AuthenticationManager.authenticate() 入口，调一系列的 AuthenticationProvider.authenticate() 实例 迭代 进行。
+								>认证过程：输入 认证实体 输出 认证实体。
+									>从认证实体里获取 username：
+									>获取UserDetails： 一般要用UserDetailsService.loadUserByUsername(username) 来 获取。 对 InMemoryUserDetailsManager 实现: 则是 内部 一个map 保存了username-UserDetails 映射。
+									>检查UserDetails: 1.账户状态检查(是否可用/证书是否过期/是否锁住/账户是否无效) 、2.证书匹配检查(对于用户名密码方式：将 从认证实体里获取的证书字符串 和 UserDetails里的编码后的密码字符串 匹配-用PasswordEncoder密码编码器匹配 (后者作为salt和前者生成一个编码来和后者逐字节比较))
+									>构建新的认证实体：将 username + 认证实体中的证书字符串 + 认证实体中的权限集合(字符串统一upper/lower) 封装到新的认证实体如UsernamePasswordAuthenticationToken对象。
+								>自身认证未通过：则parent来认证：	AuthenticationManager.authenticate() 
+								>成功则返回这个认证实体。
+						>认证结果实体用于 会话Session: 在 request上 增加几个 token 属性：1.对CsrfAuthenticationStrategy 这个策略，则 "CsrfToken":"xxx"。。2.ConcurrentSessionControlAuthenticationStrategy让session过期。
+						>认证成功后应该做的事情： 1.设置认证结果实体 到 SecurityContextHolder。2.调RememberMeServices服务登录成功：loginSuccess().3.认证成功处理器的调用：AuthenticationSuccessHandler.onAuthenticationSuccess()
+					
+>elasticJob: 架构和使用。
+	>架构： 
+	>使用： 
+		>准备过程：
+			>名称空间的解析：RegNamespaceHandler.init() -->注册ZookeeperBeanDefinitionParser这个bean--->注册ZookeeperRegistryCenter这个bean:构造方法则注入ZookeeperConfiguration解析对象。
+			>Bean的构建：构建bean:ZookeeperRegistryCenter 且注入 ZookeeperConfiguration 配置--> 对每个任务Job: 构建 配置对象 SimpleJobConfiguration/DataflowJobConfiguration/ScriptJobConfiguration ,封装到工厂方式创建的SpringJobScheduler里，然后对这个调度器初始化init()
+				>调度器初始化：使用quartz的StdSchedulerFactory创建一个Scheduler:QuartzScheduler:StdScheduler对象(内部就新建了QuartzSchedulerThread对象并用ThreadExecutor:SimpleThreadPool运行了起来)和JobDetail对象并封装到 JobScheduleController 里 -->使用quartz开始调度：scheduler.scheduleJob(jobDetail, createTrigger(cron))它内部的实现方式：计算下一次执行时间，然后wait到那个时候唤醒notify任务线程；
+		>时间到触发过程：
+			>线路1：当当的JobScheduler创建了这个-->StdSchedulerFactory.getScheduler():instantiate()创建了QuartzScheduler-->QuartzScheduler 创建QuartzSchedulerThread对象--> QuartzSchedulerThread 创建JobRunShell对象，然后用内部的QuartzSchedulerResources对象获取线程池而运行这个shell对象。-> 使用quartz 执行 Job.execute(jec);
+			>线路2：在Bean的初始化中：QuartzScheduler:scheduler.scheduleJob()时-->notifySchedulerThread()里最后就调用了QuartzSchedulerThread:schedThread.signalSchedulingChange()--->内部唤醒了sigLock.notifyAll()这个锁；而等待这个锁的方法就是这个类里的@run()方法-这个方法在上述的SimpleThreadPool里已运行起来了，等待之后就 执行 创建JobRunShell对象，初始化后放到线程池中异步运行。
+>zookeeper: 架构和使用。
+>curatorFramework: 架构和使用流程设计。自顶向下的塑造和 自底向上的封装。
+	>客户端架构：
+		>重试策略 继承 结构 设计：泛化策略/塑造过程/j。
+	>使用流程设计：1.配置和构建zk连接客户端 实例 -->2.启动客户端实例-->3.阻塞式连接直到成功,失败则关闭客户端。
+		>配置信息封装：1.连接信息+认证信息。 2.连接超时+会话超时时间。
+		>构建zk连接客户端：CuratorFrameworkImpl <-- CuratorZookeeperClient <-- 工厂方式创建ZooKeeper对象的工厂
+		>启动客户端实例：
+			>连接状态管理器 启动：内部异步拉取消费 事件队列 里的 事件。
+			>增加连接状态监听器 记录 错误的连接：
+			>在已经启动的情况下 启动 “连接状态“对象：ConnectionState
+				>启动监控工具：Exhibitor 内部自己异步 处理 。
+				>重建zk客户端：Zookeeper
+			>异步执行后端循环操作事务：已启动状态下，不断 从后台操作 队列 里 取出操作，然后实际执行 操作 要求做的内容。
+				>操作的实际执行内容：如删除 节点等。
+			>	
+>函数式编程：Observable 可以看做是 二分树 分支编程(每个分支：正常则执行/异常则执行  转换 到 方法中 模式化 实现；开发更简单，更有层次化、且保证执行先后顺序、逻辑顺序)		
+	>也可以看做是 一种 事件 传递式编程：
+	
+>超时机制：Watchdog-AsyncTimeout: com.squareup.okio.okio.jar
+	>AsyncTimeout:  
+		>scheduleTimeout()执行内容：设定node.timeoutAt = now+等待时间; 或者直接=截至时间。采用头插法，将节点插入队列--剩余时间从小到大的排序所在位置；如果刚好插在head后，则需要nofity()看门狗AsyncTimeout.class.notify()---表示有节点插入了且在头部--不能在idle。
+			>如果队列head=null则启动一个看门狗WatchDog:new Watchdog().start() ： 并且 head = new AsyncTimeout()对象。
+		>awaitTimeout()执行内容：取队列 第一个 AsyncTimeout ，查看它剩余时间(timeoutAt-now) ,>0则等待这么长时间Object.wait() 返回空；如果剩余时间<=0 ,则remove这个节点：让head.next指向下下一个节点,返回被移除的节点。如果队列本身就是空的，则idle 60s, 之后如果发现head.next=null依然，则WatchDog会退出无限循环。
+		>exit()执行内容：退出检查。如果被检查节点在队列中，说明还没有超时，移除节点，且返回false； 如果不在队列中，则已经被超时移除，返回true。
+	>Watchdog: 继承了 Thread  在run()里：就是在无限循环中：AsyncTimeout.class来同步 来 调用 awaitTimeout()方法；
+
+>okio的架构设计：
+	>缓存对象：Buffer 
+		>内部属性：head:Segment 段		
+	>段-内存资源池：SegmentPool
+		>池内部属性: 
+			>next:Segment:属性 
+				>段属性：
+					>data: 数据数组
+					>pos: 当前读取位置
+					>limit: 数据结束位置 
+					>SIZE: 段的总大小；即data数组的长度。值=8192=1024*8 即 8kB, 最小使用单位1kB
+				>段方法：
+					>pop(): 弹出next指向的段，同时将这个头移除，即next更新为next.next
+		>池方法：
+			>recycle(Segment): 回收段, 即用头插法，将这个Segment插入到 next链表的头部。
+	>超时检查机制：Timeout 
+		>throwIfReached(): 检查截至时间 是否到了 -- 即和 现在比较 是否超过现在。		
+	>设计的写数据接口Sink： write(Buffer, long): 第一个参数即数据源，第二个参数是可用的字节数。	
+	>主类Okio: 
+		>提供方法1：封装出一个含"写数据到指定流"方法的对象Sink：okio.Okio#sink(java.io.OutputStream, okio.Timeout) 一般为了后续写。
+		>
+>okhttp的架构设计：
+	>Http2Stream: 
+		>属性： 
+			>receiveBuffer: 即接收缓存。
+	>Http2Connection: 
+		>方法： 
+			>Http2Connection(Builder builder): 构造方法。做的事情：1.封装一个线程池writerExecutor:ScheduledThreadPoolExecutor, 以固定速率调用PingRunnable任务 来检查链接状态。
+				>ping不通：则关闭writer、流、socket、写线程池, 优雅停 而不影响 已经建立的流。
+				>发送ping: writer:Http2Writer.ping(isAck,payload1,payload2) ：具体过程：调sink.writeInt() 发送6个整数标记位作为 header, 然后 发送2个payload整数，然后sink.flush()
+			>writeSynReply(): 调 writer:writer.synReply.synReply()
+		>属性： 
+			>streams:Map<Integer,Http2Stream> 即持有的所有的流。
+			>peerSettings: Settings 即对端发送过来的设置帧里的内容。
+	>Http2Writer: 
+		>方法： 
+			>synReply(): 调 buffer:Buffer.writeByte(b)写 或者 调 sink:BufferedSink:RealBufferedSink.write()写。
+	>BufferedSink: 	
+		>方法： 
+			>write(Buffer,long): 调内部buffer:Buffer.write()写。
+			>writeInt(): 调 Buffer.writeInt()发送 。
+	>Buffer: 
+		>方法： 
+			>writeInt(int): 就是 将 int拆分为4个byte写到内部 的 段 Segment里。 
+	>Builder: 
+		>方法： 
+			>Builder()： 构造方法。创建了 连接池、socket工厂
+	>RealConnection: 
+		>方法： 
+		>属性： 
+			>Route:		
+
+>jsse.jar的架构设计：	
+	>ssl过程：三步。目的：实现交换对称加密密钥。
+		>协商 密码套件： 客户端发起 提供自己的，服务端从中选择 合适的 密码套件。密码套件包括：公钥算法/对称密钥算法/数据哈希算法。例如：RSA/AES/HMAC
+		>密传 对称密钥： 客户端发起 查询 服务端的 公钥证书，验证坚固后，用其公钥 来加密 一个 根据协商的对称密钥算法 而 自己生成的对应的一个 对称密钥 ，发送给服务端。服务端收到 则 知道了对称密钥。
+		>密传 数据及其哈希：客户端 先 用 对称密钥+对称加密算法 对 原始数据 和 对原始数据进行协商的hash算法生成的hash 一并加密 ， 然后发送 给服务器。服务器 也这样 发送给 客户端。 
+			>第二种方法：客户端 先 用 对称密钥+对称加密算法 对 原始数据 和 对原始数据进行协商的hash算法生成的hash 一并加密 ，然后 还用 服务端的公钥 对 消息摘要hash加密。
+	>非对称密钥算法：
+		>RSA：
+		>DH: 证书没有完全包括。
+			>双方都互发部分信息：然后双方同时用部分信息 来 构造出完整的加密密钥---这样，完整的加密密钥其实没有 出现在网络上。
+	>证书链：后一个证书 签发 前一个证书	的公钥。即 前一个证书中的 公钥 的签名 部分 是 用后一个 证书的私钥加密后生成的。
+		
+>java ssl证书的生成：
+	>keytool.exe -genkey -validity 36000 -alias www.lsp.org -keyalg RSA -keystore D:\kkk.keystore
+	>keytool.exe -export -keystore D:\kkk.keystore -alias www.lsp.org -file D:\kkk.cer -rfc
+	>keytool -genkey -v -alias client -keyalg RSA -storetype PKCS12 -keystore D:\p12.p12
+	>keytool -export -alias client -keystore  D:\p12.p12 -storetype PKCS12 -storepass 123456 -rfc -file D:\p12.cer
+	
+
+>jvm: 
+	>jmap -histo 89961 | sort -k 2 -g -r | head -n 10 按个数排序。
+	>jmap -histo:live 89961 | head -n 10 按 字节排序。
+	
+>linux: 
+	>
+参考资料：
+1.https://docs.oracle.com/javase/8/docs/technotes/guides/security/jsse/tls.html#the_tls_1.2_handshake tls过程。		
+2.https://www.jianshu.com/p/738b341df10b java ssl api		
+		
