@@ -757,10 +757,12 @@
 							---由上述运算构成的函数f:	
 							>迹函数性质：转置不变：tr(A^T) = tr(A) ;  交换律：tr(AB) = tr(BA) 都容易证明。(简答的指标带入即可)。矩阵乘法和迹交换：tr((A⊙B)^T*C)  = tr(A*(B^T⊙C)) 也容易证明，指标带入即可。
 							---利用上述性质: 再次对 标量 对 矩阵 求导进行 推导： 
-								>例子1： y = a^T*X*b, 则 зy/зX = ? , 先进行微分：dy = d(a^T*X*b) = da^T*(Xb) + a^T*d(Xb) = a^T*d(Xb) = a^T*dX*b = ΣΣai*dXij*bj = ΣΣai*bj*dXij = (a*b^T)⊙dX ,则 dy/dXij = ai*bj ;根据 标量函数对 矩阵求导的定义：dy/dX = [dy/dXij] = [ai*bj] = a*b^T , 这个形式就是 (a*b^T)⊙dX的左边的项的形式；所以 将微分 表示成这样就 可以 得出 标量对 矩阵的求导的结果。 
-							
-							
-							
+								>例子1： y = a^T*X*b, 则 зy/зX = ? , 先进行微分：dy = d(a^T*X*b) = da^T*(Xb) + a^T*d(Xb) = a^T*d(Xb) = a^T*dX*b = ΣΣai*dXij*bj = ΣΣai*bj*dXij = (a*b^T)⊙dX ,则 dy/dXij = ai*bj ;根据 标量函数对 矩阵求导的定义：dy/dX = [dy/dXij] = [ai*bj] = a*b^T , 这个形式就是 (a*b^T)⊙dX的左边的项的形式；所以 将微分 表示成这样就 可以 得出 标量对 矩阵的求导的结果。
+								>例子2：y = a^T*exp(Xb), 则 зy/зX = ? ,同理，先进行微分：dy = d	(a^T*exp(Xb)) = a^T*dexp(Xb) = a^T*exp(Xb)*d(Xb) = 	a^T*exp(Xb)*dX*b = ΣΣai*exp(Xij*bj)*dXij*bj = ΣΣai*exp(ΣXik*bk)*bj*dXij = a⊙exp(Xb)*b^T⊙dX = diag(exp(Xb))*a*b^T⊙dX , 所以 dy/dX = a⊙exp(Xb)*b^T
+								>例子3：y = tr(A), 则 зy/зA = ? , 同理， dy = dtr(A) = tr(dA) = ΣdAii, 所以 dy/dAij = I , 即 是单位矩阵。这是迹函数的特殊特征。
+								>例子4： y = tr(AB) ，则 зy/зA  = ? 则 dy = dtr(AB) = tr(d(AB)) = tr(dA*B + A*dB) = tr(dA*B) = ΣΣdAij*Bji , 所以 dy/dAij = Bji , 所以 dy/dA = [Bji] = B^T ; 同理 dtr(AB)/dB = A^T (注意矩阵相乘的表达式中的指标 是 绑定指标之间的关系而已,什么名称无所谓)
+								>例子5： y = tr(W^T*A*W),зy/зW  = ? 则 dy = dtr(W^T*A*W) = tr(d(W^T*A*W)) = tr(dW^T*(AW) + W^T*d(AW)) = tr(dW^T*(AW) + (W^T*A)*dW) = ΣΣΣdW^Tij*Ajk*Wki + ΣΣΣW^Tij*Ajk*dWki = ΣΣΣdWji*Ajk*Wki + ΣΣΣW^Tij*Ajk*dWki = ΣΣΣdWij*Aik*Wkj + ΣΣΣW^Til*Alj*dWji = ΣΣΣdWij*Aik*Wkj + ΣΣΣW^Tjl*Ali*dWij, 所以 dy/dWij = ΣAik*Wkj + ΣW^Tjl*Ali , 而 [ΣAik*Wkj + ΣW^Tjl*Ali] = [ (AW)ij + (W^T*A)ji ] = [(AW)ij + (W^T*A)^Tij] = AW + A^T*W = (A+A^T)W
+								>例子6： y = tr(B^T*X^T*CXB), зy/зX = ? 则 dy = dtr(B^T*X^T*CXB) = tr(d(B^T*X^T*CXB)) = tr(B^T*d(X^T*CXB)) = tr(B^T*(dX^T*(CXB) + X^T*C*dX*B)) = tr((CXB)^T*dX*B) + tr(B^T*X^T*C*dX*B) = tr(B*(CXB)^T*dX) + tr(BB^T*X^T*C*dX), 根据定义，则 dy/dX = 迹函数中dX前面的部分 = B*(CXB)^T + BB^T*X^T*C = BB^T*X^T*(C+C^T) 
 							
 							
 https://www.zhihu.com/question/20695804 张量 解释。					
