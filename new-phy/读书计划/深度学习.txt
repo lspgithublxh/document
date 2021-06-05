@@ -751,7 +751,7 @@
 							>加减法：d(X+Y)= dX + dY 
 							>乘法/转置/迹：d(XY) = dX*Y + X*dY ;  dX^T = (dX)^T;  d tr(X) = tr(dX)
 							>哈马达乘积：很好理解 d(X⊙Y) = X⊙dY + Y⊙dX
-							>矩阵函数微分/逐元素微分：dσ(X) = σ'(X) ⊙ dX = tr(σ'(X)*dX) 从上面知道 σ'(X) = [зσ/Xij]
+							>矩阵函数微分/逐元素微分：dσ(X) = σ'(X) ⊙ dX = tr((σ'(X))^T*dX) 从上面知道 σ'(X) = [зσ/Xij]
 							>矩阵的逆矩阵的微分：dX^(-1)的推导： d(X*X^(-1)) = dI = 0 = dX*X^(-1) + X*dX^(-1)   ， 所以  0 = X^(-1)dX*X^(-1) + dX^(-1) 所以 dX^(-1) = - X^(-1)dX*X^(-1)
 							>行列式微分：d|X| 的推导： 因为 |X| = ΣXij * Xij的代数余子式Aij或者说伴随矩阵的元素X*ji,这里对j求和 = ΣXij * (-1)^(i+j)*det(X^ij) 而代数余子式 就是删除i行j列后的元素构造的新矩阵的行列式*(-1)^(i+j)的值，跟Xij无关；因此  з|X|/зXij = Xij的代数余子式 = (-1)^(i+j)*det(X^ij) =Aij=X*ji,  因此 d|X| = ΣΣз|X|/зXij * dXij = ΣΣ(-1)^(i+j)*det(X^ij) * dXij = ΣΣAij*dXij = ΣΣX*ij*dXij , 因为 X*X* = det(X)*E , 即 X*X的伴随矩阵 = X的行列式为对角元素的对角阵。这里要证明：ΣXij*X*jk = 0 当i!=k时成立----推导方法：利用行列式某一行加到另一行上 后 行列式值不变 ,即 ΣXij*X*ji = Σ(Xij + Xkj)*X*ji = ΣXij*X*ji + ΣXkj*X*ji 因此 ΣXkj*X*ji=0。所以 X* = X^(-1)*det(X)*E , 因此 ΣΣX*ij*dXij = tr(X**dX) = tr(X^(-1)*det(X)*E*dX) = det(X)*tr(X^(-1)*dX)(假象可以这样认为：ΣΣ |X|*dXij/Xij = |X|*ΣΣdXij/Xij = |X|tr(X^(-1)*dX))
 							---由上述运算构成的函数f:	
@@ -762,9 +762,24 @@
 								>例子3：y = tr(A), 则 зy/зA = ? , 同理， dy = dtr(A) = tr(dA) = ΣdAii, 所以 dy/dAij = I , 即 是单位矩阵。这是迹函数的特殊特征。
 								>例子4： y = tr(AB) ，则 зy/зA  = ? 则 dy = dtr(AB) = tr(d(AB)) = tr(dA*B + A*dB) = tr(dA*B) = ΣΣdAij*Bji , 所以 dy/dAij = Bji , 所以 dy/dA = [Bji] = B^T ; 同理 dtr(AB)/dB = A^T (注意矩阵相乘的表达式中的指标 是 绑定指标之间的关系而已,什么名称无所谓)
 								>例子5： y = tr(W^T*A*W),зy/зW  = ? 则 dy = dtr(W^T*A*W) = tr(d(W^T*A*W)) = tr(dW^T*(AW) + W^T*d(AW)) = tr(dW^T*(AW) + (W^T*A)*dW) = ΣΣΣdW^Tij*Ajk*Wki + ΣΣΣW^Tij*Ajk*dWki = ΣΣΣdWji*Ajk*Wki + ΣΣΣW^Tij*Ajk*dWki = ΣΣΣdWij*Aik*Wkj + ΣΣΣW^Til*Alj*dWji = ΣΣΣdWij*Aik*Wkj + ΣΣΣW^Tjl*Ali*dWij, 所以 dy/dWij = ΣAik*Wkj + ΣW^Tjl*Ali , 而 [ΣAik*Wkj + ΣW^Tjl*Ali] = [ (AW)ij + (W^T*A)ji ] = [(AW)ij + (W^T*A)^Tij] = AW + A^T*W = (A+A^T)W
-								>例子6： y = tr(B^T*X^T*CXB), зy/зX = ? 则 dy = dtr(B^T*X^T*CXB) = tr(d(B^T*X^T*CXB)) = tr(B^T*d(X^T*CXB)) = tr(B^T*(dX^T*(CXB) + X^T*C*dX*B)) = tr((CXB)^T*dX*B) + tr(B^T*X^T*C*dX*B) = tr(B*(CXB)^T*dX) + tr(BB^T*X^T*C*dX), 根据定义，则 dy/dX = 迹函数中dX前面的部分 = B*(CXB)^T + BB^T*X^T*C = BB^T*X^T*(C+C^T) 
-							
-							
+								>例子6： y = tr(B^T*X^T*CXB), зy/зX = ? 则 dy = dtr(B^T*X^T*CXB) = tr(d(B^T*X^T*CXB)) = tr(B^T*d(X^T*CXB)) = tr(B^T*(dX^T*(CXB) + X^T*C*dX*B)) = tr((CXB)^T*dX*B) + tr(B^T*X^T*C*dX*B) = tr(B*(CXB)^T*dX) + tr(BB^T*X^T*C*dX), 根据定义，则 dy/dX = 迹函数中dX前面的部分的转置 = (B*(CXB)^T + BB^T*X^T*C)^T = (BB^T*X^T*(C+C^T) )^T = (C+C^T)*X*B*B^T
+							>标量对多个向量的链式法则：x->y->z 这样的依赖关系，x是m*1维向量，y是n*1维向量，z是标量，则 зz/зx = зz/зy * зy/зx  但是  因为按照定义 зy/зx 是 n*m维度的Jaccobian矩阵，所以无法直接相乘的：一种则是：m*1 = m*n * n*1, 即 зz/зx = (зy/зx)^T*зz/зy , 这就是 多个标量对多个向量的链式法则。当 y1->y2->...->yn->z , 则 利用 前述关系，则 зz/зy1 = (зyn/зy(n-1)*зy(n-1)/зy(n-2)*...*зy2/зy1)^T*зz/зyn
+								>例子1： 最小二乘法的目标 是 优化 损失函数：l = (Xθ - y)^T*(Xθ - y) , 显然第一个子目标就是要 求 导数 зl/зθ,  虽然可以直接展开右边，但是形式特征上看，不妨 令 z = Xθ - y, 则 l = z^T*z , 从而θ->z->l  зl/зθ = (зz/зθ)^T*зl/зz = (X)^T* зl/зz = X^T * 2z = 2X^T*z = 2X^T*(Xθ-y)
+							>标量对多个矩阵的链式法则：X->Y->z 这样的依赖关系， X是m*n维度，Y是n*p维度,z是标量， 则 зz/зxij = Σ зz/зYkl * зYkl/зXij (对kl积分)= 很明显是个哈马达相乘:зz/зY ⊙ зY/зXij 再对结果矩阵的所有元素求和, 而这个和表达式就是 矩阵表达式 зz/зY * (зY/зXij)^T 的结果矩阵的对角线上的元素的和相等：即 哈马达乘积后的所有和 等于 矩阵乘积的迹函数映射的值；所以 зz/зxij = tr(зz/зY * (зY/зXij)^T) = tr((зY/зXij)^T * зz/зY)
+								>例子1： z = f(Y), Y = AX + B , 则 зz/зX = ?  先看对每个元素的偏导数，зz/зxij = Σ зz/зYkl * зYkl/зXij = Σзz/зYkl*з(AX+B)kl/зXij ,因为 з(AX+B)kq/зXij = з(ΣAkc*Xcl)/зXij = зAki*Xil/зXij = Aki*δlj ,所以 Σзz/зYkl*з(AX+B)kl/зXij = Σзz/зYkl*Aki*δlj = Σзz/зYkj*Aki*δlj 这里只对k求和,此时已经使用了l=j则δlj=1 ，所以=Σзz/зYkj*Aki = ΣA^Tik*зz/зYkj = (A^T*зz/зY)ij。  因此  зz/зXij = A^T*зz/зY 
+								>例子2： z = f(y), y = Ax + b, 其中 x,y都是m维度的向量，则 зz/зx = ? 类似上面 ,зz/зxi = Σзz/зyk * зyk/зxi = Σзz/зyk * з(ΣAkc*xc)/зxi = Σзz/зyk * Akc*xc*δci = Σзz/зyk*Aki = ΣA^Tik*зz/зyk = (A^T*зz/зy)i ,所以 зz/зx = A^T*зz/зy 
+								>例子3： z = f(Y), Y = XA + B, 则 зz/зX = ? 同上，可知 зz/зXij = Σ зz/зYkl * зXkj*Ajl/зXij = Σ зz/зYkl * Ajl*δki = Σзz/зYil*Ajl = Σзz/зYil*A^Tlj = (зz/зY*A^T)ij , 所以 зz/зX = зz/зY * A^T 
+								>例子4： z = f(y), y = Xa + b, 则 зz/зx = ? 同理 ， зz/зxij = Σзz/зyk * зyk/зxij = Σзz/зyk * з(ΣXkc*ac)/зXij = Σзz/зyk * з(Xkj*aj)/зXij = зz/зyk* aj*δik = зz/зyi*aj = ((зz/зy)*a^T)ij , 所以 зz/зX = (зz/зy)*a^T
+							>矩阵对矩阵求导：F:p*q, X:m*n, 不会 使用 зFij/зX 或者 зF/зXij的方式。而是矩阵向量化。也不是 зFi; / зX;j  而是 зvec(F)/зvec(X)  即直接将F,X拉成向量。 即 vec(F) 是 (pq)*1 规格的向量,vec(X) 是 (mn)*1的向量； 而 зF/зX 是 (p*q)*(m*n)的矩阵 ,或者 (pq*1)*(mn*1)的矩阵：зvec(F)/зvec(X)，  因为  dFij = tr((зFij/зX)^T * dX) ， 即 是 F的第ij位置元素生成的偏导数矩阵和dX的哈马达乘积的全和,则 dF就是 F的所有的位置的元素的这样的全和的 和，想象这个加法的过程，是一个巨大的p*q个m*n的矩阵的全和，如果把зF/зX 表示为 pq行*mn列的矩阵，即第一行表示第一个vec(F)第一个元素 对 vec(X)的第j个个元素求偏导数,  则 vec(dF) = зF/зX * vec(dX)
+								>矩阵分析和应用：张贤达的书。
+								>克罗内克积：vec(ab^T) = b ⊕ a 
+
+
+
+								
+								
+								
+								
 https://www.zhihu.com/question/20695804 张量 解释。					
 https://www.docin.com/p-1150499820.html Christoffel 的推导 学报。
 https://zhuanlan.zhihu.com/p/116461924 协变导数的推导 
@@ -773,3 +788,4 @@ https://www.cnblogs.com/neopenx/p/5590756.html 前馈网络求导
 https://www.cnblogs.com/huangyc/p/9706575.html 感知机 随机梯度下降算法 计算 w,b
 https://blog.csdn.net/u014313009/article/details/51039334 较好的 反向传播算法推导。
 https://zhuanlan.zhihu.com/p/144255438 行列式的本质解释。
+https://www.cnblogs.com/pinard/p/10930902.html 矩阵微分的 极佳解释。
