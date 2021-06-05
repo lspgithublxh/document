@@ -749,13 +749,15 @@
 						>同理：将矩阵元素 看作多变量，则矩阵函数f 的微分： df = ΣΣ зf/зxij *dXij = 同规模的两个矩阵的对应元素之积的和 --如果一行一行对应的来看--就会发现和A*B^T的结果矩阵和这个目标和的关系即：tr(A*B^T)=目标和。所以： ΣΣ зf/зxij *dXij = tr((зf/зX)^T*dX) 其中 tr()就是迹函数，标量的迹函数就是它本身，所以 tr((зf/зx)*dx) = зf/зx * dx  从而形式就统一了。而注意 前面 dX 是 一个矩阵--且就是直接对每个矩阵元素进行微分。
 						>矩阵微分的性质：注意 f 是 多变量 的函数，取值是标量，而зf/зX 则是一个矩阵。df也是标量。
 							>加减法：d(X+Y)= dX + dY 
-							>乘法/转置/迹：d(XY) = dX*Y + X*dY
+							>乘法/转置/迹：d(XY) = dX*Y + X*dY ;  dX^T = (dX)^T;  d tr(X) = tr(dX)
 							>哈马达乘积：很好理解 d(X⊙Y) = X⊙dY + Y⊙dX
 							>矩阵函数微分/逐元素微分：dσ(X) = σ'(X) ⊙ dX = tr(σ'(X)*dX) 从上面知道 σ'(X) = [зσ/Xij]
 							>矩阵的逆矩阵的微分：dX^(-1)的推导： d(X*X^(-1)) = dI = 0 = dX*X^(-1) + X*dX^(-1)   ， 所以  0 = X^(-1)dX*X^(-1) + dX^(-1) 所以 dX^(-1) = - X^(-1)dX*X^(-1)
 							>行列式微分：d|X| 的推导： 因为 |X| = ΣXij * Xij的代数余子式Aij或者说伴随矩阵的元素X*ji,这里对j求和 = ΣXij * (-1)^(i+j)*det(X^ij) 而代数余子式 就是删除i行j列后的元素构造的新矩阵的行列式*(-1)^(i+j)的值，跟Xij无关；因此  з|X|/зXij = Xij的代数余子式 = (-1)^(i+j)*det(X^ij) =Aij=X*ji,  因此 d|X| = ΣΣз|X|/зXij * dXij = ΣΣ(-1)^(i+j)*det(X^ij) * dXij = ΣΣAij*dXij = ΣΣX*ij*dXij , 因为 X*X* = det(X)*E , 即 X*X的伴随矩阵 = X的行列式为对角元素的对角阵。这里要证明：ΣXij*X*jk = 0 当i!=k时成立----推导方法：利用行列式某一行加到另一行上 后 行列式值不变 ,即 ΣXij*X*ji = Σ(Xij + Xkj)*X*ji = ΣXij*X*ji + ΣXkj*X*ji 因此 ΣXkj*X*ji=0。所以 X* = X^(-1)*det(X)*E , 因此 ΣΣX*ij*dXij = tr(X**dX) = tr(X^(-1)*det(X)*E*dX) = det(X)*tr(X^(-1)*dX)(假象可以这样认为：ΣΣ |X|*dXij/Xij = |X|*ΣΣdXij/Xij = |X|tr(X^(-1)*dX))
-								
-							
+							---由上述运算构成的函数f:	
+							>迹函数性质：转置不变：tr(A^T) = tr(A) ;  交换律：tr(AB) = tr(BA) 都容易证明。(简答的指标带入即可)。矩阵乘法和迹交换：tr((A⊙B)^T*C)  = tr(A*(B^T⊙C)) 也容易证明，指标带入即可。
+							---利用上述性质: 再次对 标量 对 矩阵 求导进行 推导： 
+								>例子1： y = a^T*X*b, 则 зy/зX = ? , 先进行微分：dy = d(a^T*X*b) = da^T*(Xb) + a^T*d(Xb) = a^T*d(Xb) = a^T*dX*b = ΣΣai*dXij*bj = ΣΣai*bj*dXij = (a*b^T)⊙dX ,则 dy/dXij = ai*bj ;根据 标量函数对 矩阵求导的定义：dy/dX = [dy/dXij] = [ai*bj] = a*b^T , 这个形式就是 (a*b^T)⊙dX的左边的项的形式；所以 将微分 表示成这样就 可以 得出 标量对 矩阵的求导的结果。 
 							
 							
 							
@@ -768,3 +770,4 @@ https://zhuanlan.zhihu.com/p/30483076 高斯混合模型
 https://www.cnblogs.com/neopenx/p/5590756.html 前馈网络求导
 https://www.cnblogs.com/huangyc/p/9706575.html 感知机 随机梯度下降算法 计算 w,b
 https://blog.csdn.net/u014313009/article/details/51039334 较好的 反向传播算法推导。
+https://zhuanlan.zhihu.com/p/144255438 行列式的本质解释。
